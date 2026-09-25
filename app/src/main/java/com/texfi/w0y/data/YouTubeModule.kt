@@ -1,5 +1,6 @@
 package com.texfi.w0y.data
 
+import android.content.Context
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.cipher.PlayerConfigRepository
 import com.metrolist.innertubex.cipher.RemotePlayerConfigStore
@@ -9,6 +10,7 @@ import com.metrolist.innertubex.extraction.YtConfigParserImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
@@ -44,7 +46,17 @@ object YouTubeModule {
 
     @Provides
     @Singleton
-    fun innerTube(httpClient: HttpClient): InnerTube = InnerTube(httpClient = httpClient)
+    fun innerTube(
+        httpClient: HttpClient,
+        @ApplicationContext context: Context,
+    ): InnerTube {
+        // Локаль правится ещё раз прямо перед созданием клиента: InnerTube
+        // запоминает её один раз, а системную локаль Android переустанавливает
+        // при смене конфигурации — и тогда порядок вызовов перестаёт быть
+        // очевидным.
+        YouTubeLocaleFix.apply(context)
+        return InnerTube(httpClient = httpClient)
+    }
 
     @Provides
     @Singleton

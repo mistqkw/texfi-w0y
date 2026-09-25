@@ -24,6 +24,8 @@ ktor = "3.6.0"
 innertubex = "v0.7.0"
 timber = "5.0.1"
 junit = "4.13.2"
+robolectric = "4.17"
+androidxTestCore = "1.7.0"
 
 [libraries]
 compose-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "compose" }
@@ -61,6 +63,8 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

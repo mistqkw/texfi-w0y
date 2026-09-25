@@ -80,6 +80,7 @@ android {
         // в android.util.Log; на JVM его нет, и без заглушки тест падает
         // не по делу.
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     packaging {
@@ -126,4 +127,9 @@ dependencies {
 
     implementation(libs.timber)
     testImplementation(libs.junit)
+    // Robolectric нужен, чтобы ловить android-специфичные поломки локально:
+    // на чистой JVM подключается JVM-вариант библиотеки, а на телефоне —
+    // android-вариант, и ведут они себя по-разному.
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

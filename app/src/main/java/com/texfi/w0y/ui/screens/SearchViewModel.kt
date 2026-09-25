@@ -2,6 +2,7 @@ package com.texfi.w0y.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.playback.PlayerConnection
@@ -27,7 +28,7 @@ sealed interface SearchState {
 
     data class Results(val songs: List<SongItem>) : SearchState
 
-    data class Failed(val message: String) : SearchState
+    data class Failed(val message: String, val detail: String? = null) : SearchState
 }
 
 @HiltViewModel
@@ -60,9 +61,31 @@ class SearchViewModel @Inject constructor(
                     emit(
                         result.fold(
                             onSuccess = { SearchState.Results(it) },
-                            onFailure = {
-                                Timber.w(it, "Поиск «$query» не удался")
-                                SearchState.Failed("Не получилось спросить YouTube Music. Проверь сеть.")
+                            onFailure = { error ->
+                                Timber.w(error, "Поиск «$query» не удался")
+                                SearchState.Failed(
+                                    message = "Не получилось спросить YouTube Music.",
+                                    // В debug показываем настоящую причину прямо
+                                    // на экране: телефон у пользователя, логи
+                                    // читать неоткуда, а «проверь сеть» скрывает
+                                    // любую ошибку кода под видом проблем связи.
+                                    detail =
+                                        if (BuildConfig.DEBUG) {
+                                            buildString {
+                                                append(error::class.qualifiedName)
+                                                error.message?.let { append(": ")
+                                                    append(it.take(300)) }
+                                                error.cause?.let {
+                                                    append("\n← ")
+                                                    append(it::class.simpleName)
+                                                    append(": ")
+                                                    append(it.message?.take(200).orEmpty())
+                                                }
+                                            }
+                                        } else {
+                                            null
+                                        },
+                                )
                             },
                         ),
                     )
@@ -73,6 +96,13 @@ class SearchViewModel @Inject constructor(
 
     fun onQueryChange(value: String) {
         _query.value = value
+    }
+
+    /** Повтор того же запроса: сеть на телефоне отваливается чаще, чем код. */
+    fun retry() {
+        val current = _query.value
+        _query.value = ""
+        _query.value = current
     }
 
     fun playFrom(songs: List<SongItem>, index: Int) = player.play(songs, index)

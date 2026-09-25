@@ -68,7 +68,22 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 }
 
             is SearchState.Failed ->
-                Hint(current.message)
+                Column {
+                    Hint(current.message)
+                    current.detail?.let {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.secondary,
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    com.texfi.w0y.ui.components.PixelButton(
+                        text = "ЕЩЁ РАЗ",
+                        onClick = viewModel::retry,
+                    )
+                }
 
             is SearchState.Results ->
                 if (current.songs.isEmpty()) {
