@@ -1,45 +1,212 @@
 package com.texfi.w0y.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.texfi.w0y.R
-import com.texfi.w0y.ui.components.PixelCard
+import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.PixelTitle
 
 @Composable
-fun SearchScreen() {
+fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+
     Column(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
         Spacer(Modifier.height(18.dp))
-        Text(
-            text = stringResource(R.string.tab_search),
-            style = PixelTitle,
-            color = colors.text,
+        Text(stringResource(R.string.tab_search), style = PixelTitle, color = colors.text)
+        Spacer(Modifier.height(14.dp))
+        SearchField(value = query, onValueChange = viewModel::onQueryChange)
+        Spacer(Modifier.height(14.dp))
+
+        when (val current = state) {
+            SearchState.Idle ->
+                Hint(stringResource(R.string.search_hint))
+
+            SearchState.Loading ->
+                // Скелетоны вместо спиннера: экран сразу показывает форму
+                // будущего списка, и ожидание не читается как пустота.
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    repeat(6) { SkeletonRow() }
+                }
+
+            is SearchState.Failed ->
+                Hint(current.message)
+
+            is SearchState.Results ->
+                if (current.songs.isEmpty()) {
+                    Hint(stringResource(R.string.search_nothing))
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        // Ключ по id: без него Compose пересобирает строки
+                        // при каждом обновлении списка, и прокрутка дёргается.
+                        items(current.songs, key = { it.id }) { song ->
+                            SongRow(
+                                song = song,
+                                onClick = {
+                                    viewModel.playFrom(current.songs, current.songs.indexOf(song))
+                                },
+                            )
+                        }
+                    }
+                }
+        }
+    }
+}
+
+@Composable
+private fun SearchField(value: String, onValueChange: (String) -> Unit) {
+    val colors = LocalW0yColors.current
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(colors.surface)
+            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text),
+            cursorBrush = SolidColor(colors.accent),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(18.dp))
-        // Честно: поля ввода-пустышки здесь нет. Пока поиск не ходит в
-        // YouTube Music, экран говорит это прямым текстом.
-        PixelCard(label = "ПОИСК", modifier = Modifier.fillMaxWidth()) {
+        if (value.isEmpty()) {
             Text(
-                text = stringResource(R.string.search_not_wired),
-                style = MaterialTheme.typography.bodyMedium,
+                text = stringResource(R.string.search_placeholder),
+                style = MaterialTheme.typography.bodyLarge,
                 color = colors.textMuted,
             )
         }
     }
+}
+
+@Composable
+private fun SongRow(song: SongItem, onClick: () -> Unit) {
+    val colors = LocalW0yColors.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AsyncImage(
+            model = song.thumbnailUrl,
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(colors.surfaceHigh),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = song.title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.text,
+                maxLines = 1,
+            )
+            Text(
+                text = listOfNotNull(song.artist.takeIf { it.isNotBlank() }, song.album)
+                    .joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+                maxLines = 1,
+            )
+        }
+        song.durationText?.let {
+            Spacer(Modifier.width(10.dp))
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+    }
+}
+
+@Composable
+private fun SkeletonRow() {
+    val colors = LocalW0yColors.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(colors.surfaceHigh),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Box(
+                Modifier
+                    .fillMaxWidth(0.7f)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(colors.surfaceHigh),
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth(0.4f)
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(colors.surface),
+            )
+        }
+    }
+}
+
+@Composable
+private fun Hint(text: String) {
+    val colors = LocalW0yColors.current
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.textMuted,
+        modifier = Modifier.padding(top = 6.dp),
+    )
+}
+
+@Composable
+internal fun SectionLabel(text: String) {
+    val colors = LocalW0yColors.current
+    Text("❯ $text", style = PixelSectionLabel, color = colors.accent)
 }

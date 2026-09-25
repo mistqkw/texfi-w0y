@@ -30,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.R
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.screens.HomeScreen
@@ -44,9 +47,10 @@ private enum class Tab(val labelRes: Int, val sprite: List<String>) {
 }
 
 @Composable
-fun W0yShell() {
+fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
     var tab by remember { mutableStateOf(Tab.HOME) }
+    val playerState by viewModel.player.state.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -72,6 +76,12 @@ fun W0yShell() {
                 }
             }
         }
+        MiniPlayer(
+            state = playerState,
+            positionProvider = viewModel.player::positionMs,
+            onToggle = viewModel.player::togglePlayPause,
+            onNext = { viewModel.player.skipNext() },
+        )
         PixelNavBar(selected = tab, onSelect = { tab = it })
     }
 }

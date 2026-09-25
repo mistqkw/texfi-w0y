@@ -41,10 +41,16 @@ fun HomeScreen() {
             )
         }
         Spacer(Modifier.height(14.dp))
-        PixelCard(label = "СБОРКА", modifier = Modifier.fillMaxWidth()) {
+        PixelCard(label = "ДАЛЬШЕ", modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.home_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.skeleton_note, BuildConfig.VERSION_NAME),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = colors.textMuted,
             )
         }

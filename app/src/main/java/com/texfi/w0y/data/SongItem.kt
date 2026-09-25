@@ -1,0 +1,20 @@
+package com.texfi.w0y.data
+
+import androidx.compose.runtime.Immutable
+
+/**
+ * Трек в том виде, в каком его показывает интерфейс.
+ *
+ * Модель неизменяемая и без ссылок на сетевые типы: Compose пропускает
+ * рекомпозицию списка, если элементы стабильны, а это прямо влияет на
+ * плавность прокрутки — одно из трёх требований к приложению.
+ */
+@Immutable
+data class SongItem(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String? = null,
+    val durationText: String? = null,
+    val thumbnailUrl: String? = null,
+)

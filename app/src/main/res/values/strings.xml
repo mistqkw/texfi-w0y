@@ -9,7 +9,9 @@
     <string name="home_title">w0y</string>
     <string name="home_empty">Здесь появится то, что ты слушаешь. Пока пусто — начни с поиска.</string>
     <string name="search_placeholder">Трек, альбом, исполнитель…</string>
-    <string name="search_not_wired">Поиск ещё не подключён к YouTube Music. Это следующий шаг.</string>
+    <string name="search_hint">Набери название трека или исполнителя — найду в YouTube Music.</string>
+    <string name="search_nothing">Ничего не нашлось. Попробуй иначе.</string>
     <string name="library_empty">Своих плейлистов пока нет. Появятся, когда будет что складывать.</string>
-    <string name="skeleton_note">Каркас v%1$s. Дальше: поиск и воспроизведение.</string>
+    <string name="home_hint">Поиск и воспроизведение уже работают. Библиотека, загрузки и настройки — следующие шаги.</string>
+    <string name="skeleton_note">Сборка v%1$s</string>
 </resources>

@@ -75,6 +75,13 @@ android {
         }
     }
 
+    testOptions {
+        // Смоук-тесты ходят в сеть через библиотеки, которые попутно пишут
+        // в android.util.Log; на JVM его нет, и без заглушки тест падает
+        // не по делу.
+        unitTests.isReturnDefaultValues = true
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/{AL2.0,LGPL2.1}",
