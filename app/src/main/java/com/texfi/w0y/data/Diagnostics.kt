@@ -80,7 +80,7 @@ class Diagnostics @Inject constructor(
 
     private companion object {
         const val CLIENT_VERSION = "1.20260707.12.00"
-        const val FILTER = SearchParser.SONGS_FILTER
+        const val FILTER = YouTubeRepository.SONGS_FILTER
         const val USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0"
     }

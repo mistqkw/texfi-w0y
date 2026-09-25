@@ -14,4 +14,5 @@
     <string name="library_empty">Своих плейлистов пока нет. Появятся, когда будет что складывать.</string>
     <string name="home_hint">Поиск и воспроизведение уже работают. Библиотека, загрузки и настройки — следующие шаги.</string>
     <string name="skeleton_note">Сборка v%1$s</string>
+    <string name="downloads_channel">Загрузки</string>
 </resources>

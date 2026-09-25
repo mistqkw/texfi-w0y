@@ -58,6 +58,12 @@ android {
         }
     }
 
+    // Схемы Room в репозитории: без них миграции пишутся вслепую.
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
+        arg("room.generateKotlin", "true")
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -107,6 +113,9 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.splashscreen)
     implementation(libs.datastore)
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
     implementation(libs.hilt)
     ksp(libs.hilt.compiler)

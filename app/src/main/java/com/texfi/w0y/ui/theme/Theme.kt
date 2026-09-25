@@ -2,11 +2,13 @@ package com.texfi.w0y.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.texfi.w0y.data.ThemeMode
 
 /**
  * Токены, которых нет в Material: пиксельная граница, офсетная тень и
@@ -27,12 +29,12 @@ data class W0yColors(
     val textMuted: Color,
 )
 
-val LocalW0yColors = staticCompositionLocalOf {
+private val DarkColors =
     W0yColors(
-        background = W0yBlack,
-        surface = W0ySurface,
-        surfaceHigh = W0ySurfaceHigh,
-        border = W0yBorder,
+        background = Color(0xFF0D0D11),
+        surface = Color(0xFF16161C),
+        surfaceHigh = Color(0xFF20202A),
+        border = Color(0xFF2E2E3A),
         shadow = Color(0xFF05050A),
         accent = TexFiBlue,
         accentDeep = TexFiBlueDeep,
@@ -40,27 +42,78 @@ val LocalW0yColors = staticCompositionLocalOf {
         text = W0yText,
         textMuted = W0yTextMuted,
     )
-}
 
-private val DarkScheme = darkColorScheme(
-    primary = TexFiBlue,
-    onPrimary = W0yBlack,
-    secondary = W0yAmber,
-    background = W0yBlack,
-    onBackground = W0yText,
-    surface = W0ySurface,
-    onSurface = W0yText,
-    surfaceVariant = W0ySurfaceHigh,
-    onSurfaceVariant = W0yTextMuted,
-    outline = W0yBorder,
-    error = W0yDanger,
-)
+/** Чёрная тема для AMOLED: фон именно #000000, иначе смысла нет. */
+private val OledColors =
+    DarkColors.copy(
+        background = Color(0xFF000000),
+        surface = Color(0xFF0A0A0D),
+        surfaceHigh = Color(0xFF14141A),
+        shadow = Color(0xFF000000),
+    )
+
+/**
+ * Светлая тема тёплая, а не бело-серая: голый Material-белый выглядит как
+ * дефолт фреймворка, а в TexFi светлая тема всегда с тёплой бумагой.
+ */
+private val LightColors =
+    W0yColors(
+        background = Color(0xFFF7F1E4),
+        surface = Color(0xFFFFFDF7),
+        surfaceHigh = Color(0xFFEDE4D2),
+        border = Color(0xFFD5C7AC),
+        shadow = Color(0xFFC9B99B),
+        accent = TexFiBlue,
+        accentDeep = TexFiBlueDeep,
+        secondary = Color(0xFFD9822B),
+        text = Color(0xFF191921),
+        textMuted = Color(0xFF6B6455),
+    )
+
+val LocalW0yColors = staticCompositionLocalOf { DarkColors }
 
 @Composable
-fun W0yTheme(content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalW0yColors provides LocalW0yColors.current) {
+fun W0yTheme(mode: ThemeMode = ThemeMode.DARK, content: @Composable () -> Unit) {
+    val colors =
+        when (mode) {
+            ThemeMode.DARK -> DarkColors
+            ThemeMode.OLED -> OledColors
+            ThemeMode.LIGHT -> LightColors
+        }
+    val scheme =
+        if (mode == ThemeMode.LIGHT) {
+            lightColorScheme(
+                primary = colors.accent,
+                onPrimary = Color.White,
+                secondary = colors.secondary,
+                background = colors.background,
+                onBackground = colors.text,
+                surface = colors.surface,
+                onSurface = colors.text,
+                surfaceVariant = colors.surfaceHigh,
+                onSurfaceVariant = colors.textMuted,
+                outline = colors.border,
+                error = W0yDanger,
+            )
+        } else {
+            darkColorScheme(
+                primary = colors.accent,
+                onPrimary = colors.background,
+                secondary = colors.secondary,
+                background = colors.background,
+                onBackground = colors.text,
+                surface = colors.surface,
+                onSurface = colors.text,
+                surfaceVariant = colors.surfaceHigh,
+                onSurfaceVariant = colors.textMuted,
+                outline = colors.border,
+                error = W0yDanger,
+            )
+        }
+
+    CompositionLocalProvider(LocalW0yColors provides colors) {
         MaterialTheme(
-            colorScheme = DarkScheme,
+            colorScheme = scheme,
             typography = W0yTypography,
             content = content,
         )

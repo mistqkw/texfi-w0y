@@ -2,8 +2,8 @@ package com.texfi.w0y
 
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.models.YouTubeClient
-import com.metrolist.innertubex.models.response.SearchResponse
-import com.texfi.w0y.data.SearchParser
+import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.data.YtJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -34,9 +34,9 @@ class SearchSmokeTest {
                 .search(
                     client = YouTubeClient.WEB_REMIX,
                     query = "daft punk instant crush",
-                    params = SearchParser.SONGS_FILTER,
-                ).body<SearchResponse>()
-        val songs = SearchParser.songs(response)
+                    params = YouTubeRepository.SONGS_FILTER,
+                ).body<kotlinx.serialization.json.JsonObject>()
+        val songs = YtJson.songs(response)
         songs.take(5).forEach { println("НАЙДЕНО: ${it.title} — ${it.artist} [${it.id}] ${it.durationText}") }
         http.close()
         assertTrue("Поиск вернул пусто", songs.isNotEmpty())

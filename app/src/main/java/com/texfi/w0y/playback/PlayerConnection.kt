@@ -13,9 +13,15 @@ import com.texfi.w0y.data.SongItem
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 /** Что показывает интерфейс о текущем воспроизведении. */
 data class PlayerUiState(
@@ -45,6 +51,11 @@ class PlayerConnection @Inject constructor(
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private var controller: MediaController? = null
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var sleepJob: Job? = null
+
+    private val _sleepRemainingMs = MutableStateFlow<Long?>(null)
+    val sleepRemainingMs: StateFlow<Long?> = _sleepRemainingMs.asStateFlow()
 
     private val listener =
         object : Player.Listener {
@@ -112,6 +123,29 @@ class PlayerConnection @Inject constructor(
     }
 
     fun positionMs(): Long = controller?.currentPosition ?: 0L
+
+    /** Таймер сна: по истечении ставит паузу, а не глушит приложение. */
+    fun startSleepTimer(minutes: Int) {
+        sleepJob?.cancel()
+        val totalMs = minutes * 60_000L
+        sleepJob =
+            scope.launch {
+                var left = totalMs
+                while (left > 0) {
+                    _sleepRemainingMs.value = left
+                    delay(1_000)
+                    left -= 1_000
+                }
+                _sleepRemainingMs.value = null
+                controller?.pause()
+            }
+    }
+
+    fun cancelSleepTimer() {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepRemainingMs.value = null
+    }
 
     private fun push(player: Player) {
         val queue =

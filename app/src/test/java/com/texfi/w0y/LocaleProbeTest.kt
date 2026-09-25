@@ -3,8 +3,8 @@ package com.texfi.w0y
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.models.YouTubeClient
 import com.metrolist.innertubex.models.YouTubeLocale
-import com.metrolist.innertubex.models.response.SearchResponse
-import com.texfi.w0y.data.SearchParser
+import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.data.YtJson
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -44,9 +44,9 @@ class LocaleProbeTest {
                         .search(
                             client = YouTubeClient.WEB_REMIX,
                             query = "династия",
-                            params = SearchParser.SONGS_FILTER,
-                        ).body<SearchResponse>()
-                }.map { SearchParser.songs(it) }
+                            params = YouTubeRepository.SONGS_FILTER,
+                        ).body<kotlinx.serialization.json.JsonObject>()
+                }.map { YtJson.songs(it) }
             println("hl=${locale.hl} gl=${locale.gl} → ${songs.map { it.size }}")
             http.close()
             assertTrue(

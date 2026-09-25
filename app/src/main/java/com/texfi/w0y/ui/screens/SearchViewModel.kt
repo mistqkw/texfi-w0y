@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.Diagnostics
+import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.data.db.PlaylistEntity
+import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -37,8 +41,28 @@ sealed interface SearchState {
 class SearchViewModel @Inject constructor(
     private val repository: YouTubeRepository,
     private val diagnostics: Diagnostics,
+    private val library: LibraryRepository,
+    private val downloads: DownloadsRepository,
     val player: PlayerConnection,
 ) : ViewModel() {
+    val playlists: StateFlow<List<PlaylistEntity>> =
+        library.playlists.stateIn(
+            viewModelScope,
+            kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            emptyList(),
+        )
+
+    fun download(song: SongItem) = downloads.download(song)
+
+    fun addToPlaylist(playlistId: Long, song: SongItem) =
+        viewModelScope.launch { library.addToPlaylist(playlistId, song) }
+
+    fun createPlaylistWith(name: String, song: SongItem) =
+        viewModelScope.launch {
+            val id = library.createPlaylist(name)
+            library.addToPlaylist(id, song)
+        }
+
     private val _diagnosis = MutableStateFlow<String?>(null)
     val diagnosis: StateFlow<String?> = _diagnosis.asStateFlow()
     private val _query = MutableStateFlow("")

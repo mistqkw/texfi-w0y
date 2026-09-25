@@ -3,12 +3,12 @@ package com.texfi.w0y.ui.shell
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,16 +34,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.texfi.w0y.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.R
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.screens.HomeScreen
 import com.texfi.w0y.ui.screens.LibraryScreen
+import com.texfi.w0y.ui.screens.LibraryViewModel
+import com.texfi.w0y.ui.screens.LoginScreen
 import com.texfi.w0y.ui.screens.PlayerScreen
 import com.texfi.w0y.ui.screens.SearchScreen
+import com.texfi.w0y.ui.screens.SettingsScreen
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
 private enum class Tab(val labelRes: Int, val sprite: List<String>) {
@@ -57,63 +61,87 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     val playerState by viewModel.player.state.collectAsStateWithLifecycle()
     var playerExpanded by remember { mutableStateOf(false) }
+    var settingsOpen by remember { mutableStateOf(false) }
+    var loginOpen by remember { mutableStateOf(false) }
+    val libraryViewModel: LibraryViewModel = hiltViewModel()
 
-    // Полноэкранный плеер живёт поверх оболочки: вкладки и очередь
-    // сохраняют состояние, пока он открыт, и закрытие ничего не пересобирает.
-    BackHandler(enabled = playerExpanded) { playerExpanded = false }
+    // Полноэкранные слои живут поверх оболочки: вкладки и очередь сохраняют
+    // состояние, пока они открыты, и закрытие ничего не пересобирает.
+    BackHandler(enabled = playerExpanded || settingsOpen || loginOpen) {
+        when {
+            loginOpen -> loginOpen = false
+            settingsOpen -> settingsOpen = false
+            else -> playerExpanded = false
+        }
+    }
 
-    Box(Modifier.fillMaxSize().background(colors.background)) {
-    Column(
+    Box(
         Modifier
             .fillMaxSize()
-            .statusBarsPadding(),
+            .background(colors.background),
     ) {
-        Box(Modifier.weight(1f)) {
-            // Переход экранов — fade+scale на 180 мс. Material-slide поверх
-            // резкой пиксельной графики читается как дефолт фреймворка.
-            AnimatedContent(
-                targetState = tab,
-                transitionSpec = {
-                    (fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.98f)) togetherWith
-                        fadeOut(tween(120))
-                },
-                label = "tab",
-            ) { current ->
-                when (current) {
-                    Tab.HOME -> HomeScreen()
-                    Tab.SEARCH -> SearchScreen()
-                    Tab.LIBRARY -> LibraryScreen()
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding(),
+        ) {
+            Box(Modifier.weight(1f)) {
+                // Переход экранов — fade+scale на 180 мс. Material-slide поверх
+                // резкой пиксельной графики читается как дефолт фреймворка.
+                AnimatedContent(
+                    targetState = tab,
+                    transitionSpec = {
+                        (fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.98f)) togetherWith
+                            fadeOut(tween(120))
+                    },
+                    label = "tab",
+                ) { current ->
+                    when (current) {
+                        Tab.HOME -> HomeScreen(onOpenSettings = { settingsOpen = true })
+                        Tab.SEARCH -> SearchScreen()
+                        Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
+                    }
                 }
             }
+            MiniPlayer(
+                state = playerState,
+                positionProvider = viewModel.player::positionMs,
+                onToggle = viewModel.player::togglePlayPause,
+                onNext = { viewModel.player.skipNext() },
+                onExpand = { playerExpanded = true },
+            )
+            PixelNavBar(selected = tab, onSelect = { tab = it })
         }
-        MiniPlayer(
-            state = playerState,
-            positionProvider = viewModel.player::positionMs,
-            onToggle = viewModel.player::togglePlayPause,
-            onNext = { viewModel.player.skipNext() },
-            onExpand = { playerExpanded = true },
-        )
-        PixelNavBar(selected = tab, onSelect = { tab = it })
-    }
 
-    AnimatedVisibility(
-        visible = playerExpanded && playerState.song != null,
-        enter = slideInVertically(tween(220)) { it } + fadeIn(tween(160)),
-        exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
-    ) {
-        PlayerScreen(
-            state = playerState,
-            positionProvider = viewModel.player::positionMs,
-            onCollapse = { playerExpanded = false },
-            onToggle = viewModel.player::togglePlayPause,
-            onNext = { viewModel.player.skipNext() },
-            onPrevious = viewModel.player::skipPrevious,
-            onSeek = viewModel.player::seekTo,
-            onShuffle = viewModel.player::toggleShuffle,
-            onRepeat = viewModel.player::cycleRepeat,
-            onPlayAt = viewModel.player::playAt,
-        )
-    }
+        AnimatedVisibility(
+            visible = playerExpanded && playerState.song != null,
+            enter = slideInVertically(tween(220)) { it } + fadeIn(tween(160)),
+            exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
+        ) {
+            PlayerScreen(onCollapse = { playerExpanded = false })
+        }
+
+        AnimatedVisibility(
+            visible = settingsOpen,
+            enter = slideInVertically(tween(200)) { it / 3 } + fadeIn(tween(150)),
+            exit = fadeOut(tween(120)),
+        ) {
+            SettingsScreen(onClose = { settingsOpen = false })
+        }
+
+        AnimatedVisibility(
+            visible = loginOpen,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(120)),
+        ) {
+            LoginScreen(
+                onCookie = { cookie ->
+                    libraryViewModel.onSignedIn(cookie)
+                    loginOpen = false
+                },
+                onClose = { loginOpen = false },
+            )
+        }
     }
 }
 
@@ -139,9 +167,10 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
                 val active = entry == selected
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clickable { onSelect(entry) }
-                        .padding(horizontal = 18.dp, vertical = 4.dp),
+                    modifier =
+                        Modifier
+                            .clickable { onSelect(entry) }
+                            .padding(horizontal = 18.dp, vertical = 4.dp),
                 ) {
                     PixelSprite(
                         rows = entry.sprite,
@@ -150,7 +179,7 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
                     )
                     Text(
                         text = stringResource(entry.labelRes),
-                        style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelMedium,
                         color = if (active) colors.text else colors.textMuted,
                         modifier = Modifier.padding(top = 4.dp),
                     )

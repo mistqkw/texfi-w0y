@@ -1,0 +1,92 @@
+package com.texfi.w0y.ui.screens
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.Lyrics
+import com.texfi.w0y.data.LyricsRepository
+import com.texfi.w0y.data.SettingsRepository
+import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.W0ySettings
+import com.texfi.w0y.data.db.PlaylistEntity
+import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.PlayerConnection
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+@HiltViewModel
+class PlayerViewModel @Inject constructor(
+    val player: PlayerConnection,
+    private val library: LibraryRepository,
+    private val lyricsRepository: LyricsRepository,
+    private val settingsRepository: SettingsRepository,
+    private val downloads: DownloadsRepository,
+) : ViewModel() {
+    val settings: StateFlow<W0ySettings> =
+        settingsRepository.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), W0ySettings())
+
+    val playlists: StateFlow<List<PlaylistEntity>> =
+        library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val isLiked: StateFlow<Boolean> =
+        player.state
+            .map { it.song?.id }
+            .flatMapLatest { id -> if (id == null) MutableStateFlow(false) else library.isLiked(id) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    private val _lyrics = MutableStateFlow<Lyrics?>(null)
+    val lyrics: StateFlow<Lyrics?> = _lyrics.asStateFlow()
+
+    private var lyricsForId: String? = null
+
+    /** Лирика тянется один раз на трек и только если она включена. */
+    fun ensureLyrics(song: SongItem?) {
+        if (song == null || song.id == lyricsForId) return
+        lyricsForId = song.id
+        _lyrics.value = null
+        viewModelScope.launch {
+            if (!settingsRepository.settings.first().showLyrics) return@launch
+            _lyrics.value = lyricsRepository.lyrics(song)
+        }
+    }
+
+    fun toggleLike(song: SongItem) {
+        viewModelScope.launch {
+            val liked = library.toggleLike(song)
+            // Авто-скачивание лайкнутого — отдельная настройка, поэтому
+            // проверяем её здесь, а не в репозитории лайков.
+            if (liked && settingsRepository.settings.first().autoDownloadLiked) {
+                downloads.download(song)
+            }
+        }
+    }
+
+    fun download(song: SongItem) = downloads.download(song)
+
+    fun addToPlaylist(playlistId: Long, song: SongItem) =
+        viewModelScope.launch { library.addToPlaylist(playlistId, song) }
+
+    fun createPlaylistWith(name: String, song: SongItem) =
+        viewModelScope.launch {
+            val id = library.createPlaylist(name)
+            library.addToPlaylist(id, song)
+        }
+
+    fun startSleepTimer() =
+        viewModelScope.launch {
+            player.startSleepTimer(settingsRepository.settings.first().sleepTimerDefaultMin)
+        }
+
+    fun cancelSleepTimer() = player.cancelSleepTimer()
+}

@@ -25,6 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +42,10 @@ import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
+import com.texfi.w0y.ui.components.AddToPlaylistPanel
+import com.texfi.w0y.ui.components.SongRow
+import com.texfi.w0y.ui.components.SpriteButton
+import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.PixelTitle
 
 @Composable
@@ -47,6 +54,9 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val diagnosis by viewModel.diagnosis.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    var pickPlaylistFor by remember { mutableStateOf<SongItem?>(null) }
+    var newPlaylistName by remember { mutableStateOf<String?>(null) }
 
     Column(
         Modifier
@@ -117,11 +127,44 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                                 onClick = {
                                     viewModel.playFrom(current.songs, current.songs.indexOf(song))
                                 },
+                                actions = {
+                                    SpriteButton(
+                                        rows = Sprites.download,
+                                        onClick = { viewModel.download(song) },
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    SpriteButton(
+                                        rows = Sprites.plus,
+                                        onClick = { pickPlaylistFor = song },
+                                    )
+                                },
                             )
                         }
                     }
                 }
         }
+    }
+
+    pickPlaylistFor?.let { song ->
+        SearchPlaylistPanel(
+            song = song,
+            playlists = playlists.map { it.id to it.name },
+            newName = newPlaylistName,
+            onNewNameChange = { newPlaylistName = it },
+            onPick = {
+                viewModel.addToPlaylist(it, song)
+                pickPlaylistFor = null
+            },
+            onCreate = {
+                viewModel.createPlaylistWith(it, song)
+                newPlaylistName = null
+                pickPlaylistFor = null
+            },
+            onDismiss = {
+                pickPlaylistFor = null
+                newPlaylistName = null
+            },
+        )
     }
 }
 
@@ -151,48 +194,6 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit) {
                 style = MaterialTheme.typography.bodyLarge,
                 color = colors.textMuted,
             )
-        }
-    }
-}
-
-@Composable
-private fun SongRow(song: SongItem, onClick: () -> Unit) {
-    val colors = LocalW0yColors.current
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        AsyncImage(
-            model = song.thumbnailUrl,
-            contentDescription = null,
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(colors.surfaceHigh),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = colors.text,
-                maxLines = 1,
-            )
-            Text(
-                text = listOfNotNull(song.artist.takeIf { it.isNotBlank() }, song.album)
-                    .joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-                maxLines = 1,
-            )
-        }
-        song.durationText?.let {
-            Spacer(Modifier.width(10.dp))
-            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         }
     }
 }
@@ -244,3 +245,15 @@ internal fun SectionLabel(text: String) {
     val colors = LocalW0yColors.current
     Text("❯ $text", style = PixelSectionLabel, color = colors.accent)
 }
+
+/** Панель выбора плейлиста живёт поверх экрана поиска. */
+@Composable
+private fun SearchPlaylistPanel(
+    song: SongItem,
+    playlists: List<Pair<Long, String>>,
+    newName: String?,
+    onNewNameChange: (String) -> Unit,
+    onPick: (Long) -> Unit,
+    onCreate: (String) -> Unit,
+    onDismiss: () -> Unit,
+) = AddToPlaylistPanel(song, playlists, newName, onNewNameChange, onPick, onCreate, onDismiss)

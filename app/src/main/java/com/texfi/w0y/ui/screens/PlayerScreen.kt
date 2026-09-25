@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,21 +34,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
-import com.texfi.w0y.playback.PlayerUiState
+import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.PixelSprite
+import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import kotlinx.coroutines.delay
 
 /**
- * Полноэкранный плеер: обложка, перемотка, очередь.
+ * Полноэкранный плеер: обложка, перемотка, лирика, очередь.
  *
  * Полоса прогресса пиксельная и тянется пальцем; во время перетаскивания
  * показывается позиция пальца, а не то, что сейчас у плеера, — иначе
@@ -55,162 +60,203 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun PlayerScreen(
-    state: PlayerUiState,
-    positionProvider: () -> Long,
     onCollapse: () -> Unit,
-    onToggle: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onShuffle: () -> Unit,
-    onRepeat: () -> Unit,
-    onPlayAt: (Int) -> Unit,
+    viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
+    val state by viewModel.player.state.collectAsStateWithLifecycle()
+    val liked by viewModel.isLiked.collectAsStateWithLifecycle()
+    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
     val song = state.song ?: return
+
     var position by remember { mutableLongStateOf(0L) }
     var dragPosition by remember { mutableStateOf<Long?>(null) }
+    var showPlaylists by remember { mutableStateOf(false) }
+    var newPlaylistName by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(song.id) { viewModel.ensureLyrics(song) }
     LaunchedEffect(song.id, state.isPlaying) {
         while (true) {
-            position = positionProvider()
-            delay(400)
+            position = viewModel.player.positionMs()
+            delay(300)
         }
     }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(colors.background)
-            .statusBarsPadding()
-            .padding(horizontal = 20.dp),
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PixelSprite(
-                rows = Sprites.collapse,
-                color = colors.textMuted,
-                modifier =
-                    Modifier
-                        .size(22.dp)
-                        .clickable(onClick = onCollapse),
-            )
-            Spacer(Modifier.width(14.dp))
-            Text("❯ ИГРАЕТ", style = PixelSectionLabel, color = colors.accent)
-        }
-
-        AsyncImage(
-            model = song.thumbnailUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(colors.surfaceHigh),
-        )
-
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = song.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.text,
-            maxLines = 2,
-        )
-        Text(
-            text = song.artist,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textMuted,
-            maxLines = 1,
-        )
-
-        Spacer(Modifier.height(18.dp))
-        Seekbar(
-            positionMs = dragPosition ?: position,
-            durationMs = state.durationMs,
-            onDrag = { dragPosition = it },
-            onDragEnd = {
-                dragPosition?.let(onSeek)
-                dragPosition = null
-            },
-        )
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = formatTime(dragPosition ?: position),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-            )
-            Text(
-                text = formatTime(state.durationMs),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PixelSprite(
-                rows = Sprites.shuffle,
-                color = if (state.shuffle) colors.accent else colors.textMuted,
-                modifier = Modifier.size(22.dp).clickable(onClick = onShuffle),
-            )
-            PixelSprite(
-                rows = Sprites.previous,
-                color = colors.text,
-                modifier = Modifier.size(28.dp).clickable(onClick = onPrevious),
-            )
-            PixelSprite(
-                rows = if (state.isPlaying) Sprites.pause else Sprites.play,
-                color = colors.accent,
-                modifier = Modifier.size(40.dp).clickable(onClick = onToggle),
-            )
-            PixelSprite(
-                rows = Sprites.next,
-                color = colors.text,
-                modifier = Modifier.size(28.dp).clickable(onClick = onNext),
-            )
-            PixelSprite(
-                rows = Sprites.repeat,
-                color = if (state.repeatMode == Player.REPEAT_MODE_OFF) colors.textMuted else colors.accent,
-                modifier = Modifier.size(22.dp).clickable(onClick = onRepeat),
-            )
-        }
-        if (state.repeatMode == Player.REPEAT_MODE_ONE) {
-            Text(
-                text = "повтор одного трека",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-
-        Spacer(Modifier.height(22.dp))
-        Text("❯ ОЧЕРЕДЬ", style = PixelSectionLabel, color = colors.accent)
-        Spacer(Modifier.height(10.dp))
+    Box(Modifier.fillMaxSize().background(colors.background)) {
         LazyColumn(
             Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp),
         ) {
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SpriteButton(Sprites.collapse, onClick = onCollapse)
+                    Spacer(Modifier.width(14.dp))
+                    Text("❯ ИГРАЕТ", style = PixelSectionLabel, color = colors.accent, modifier = Modifier.weight(1f))
+                    SpriteButton(
+                        rows = Sprites.timer,
+                        onClick = { if (sleepLeft == null) viewModel.startSleepTimer() else viewModel.cancelSleepTimer() },
+                        active = sleepLeft != null,
+                    )
+                }
+                sleepLeft?.let {
+                    Text(
+                        text = "Таймер сна: ${it / 60_000} мин ${(it / 1000) % 60} с",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.secondary,
+                    )
+                }
+            }
+
+            item {
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.surfaceHigh),
+                )
+                Spacer(Modifier.height(18.dp))
+            }
+
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = song.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.text,
+                            maxLines = 2,
+                        )
+                        Text(
+                            text = song.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textMuted,
+                            maxLines = 1,
+                        )
+                    }
+                    SpriteButton(Sprites.heart, onClick = { viewModel.toggleLike(song) }, active = liked)
+                    Spacer(Modifier.width(14.dp))
+                    SpriteButton(Sprites.download, onClick = { viewModel.download(song) })
+                    Spacer(Modifier.width(14.dp))
+                    SpriteButton(Sprites.plus, onClick = { showPlaylists = true })
+                }
+                Spacer(Modifier.height(16.dp))
+            }
+
+            item {
+                Seekbar(
+                    positionMs = dragPosition ?: position,
+                    durationMs = state.durationMs,
+                    onDrag = { dragPosition = it },
+                    onDragEnd = {
+                        dragPosition?.let(viewModel.player::seekTo)
+                        dragPosition = null
+                    },
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        text = formatTime(dragPosition ?: position),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                    )
+                    Text(
+                        text = formatTime(state.durationMs),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                    )
+                }
+                Spacer(Modifier.height(18.dp))
+            }
+
+            item {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SpriteButton(Sprites.shuffle, onClick = viewModel.player::toggleShuffle, active = state.shuffle)
+                    PixelSprite(
+                        rows = Sprites.previous,
+                        color = colors.text,
+                        modifier = Modifier.size(28.dp).clickable(onClick = viewModel.player::skipPrevious),
+                    )
+                    PixelSprite(
+                        rows = if (state.isPlaying) Sprites.pause else Sprites.play,
+                        color = colors.accent,
+                        modifier = Modifier.size(40.dp).clickable(onClick = viewModel.player::togglePlayPause),
+                    )
+                    PixelSprite(
+                        rows = Sprites.next,
+                        color = colors.text,
+                        modifier = Modifier.size(28.dp).clickable { viewModel.player.skipNext() },
+                    )
+                    SpriteButton(
+                        rows = Sprites.repeat,
+                        onClick = viewModel.player::cycleRepeat,
+                        active = state.repeatMode != Player.REPEAT_MODE_OFF,
+                    )
+                }
+                if (state.repeatMode == Player.REPEAT_MODE_ONE) {
+                    Text(
+                        text = "повтор одного трека",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                Spacer(Modifier.height(20.dp))
+            }
+
+            lyrics?.let { text ->
+                item { Text("❯ ЛИРИКА", style = PixelSectionLabel, color = colors.accent) }
+                if (text.synced.isNotEmpty()) {
+                    val current = dragPosition ?: position
+                    val activeIndex = text.synced.indexOfLast { it.timeMs <= current }
+                    itemsIndexed(text.synced, key = { index, line -> "$index-${line.timeMs}" }) { index, line ->
+                        Text(
+                            text = line.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (index == activeIndex) colors.accent else colors.textMuted,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.player.seekTo(line.timeMs) }
+                                    .padding(vertical = 3.dp),
+                        )
+                    }
+                } else {
+                    item {
+                        Text(
+                            text = text.plain.orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textMuted,
+                        )
+                    }
+                }
+                item { Spacer(Modifier.height(18.dp)) }
+            }
+
+            item { Text("❯ ОЧЕРЕДЬ", style = PixelSectionLabel, color = colors.accent) }
             itemsIndexed(state.queue, key = { index, item -> "$index-${item.id}" }) { index, item ->
                 val active = index == state.currentIndex
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable { onPlayAt(index) }
+                        .clickable { viewModel.player.playAt(index) }
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -236,6 +282,29 @@ fun PlayerScreen(
                     }
                 }
             }
+            item { Spacer(Modifier.height(30.dp)) }
+        }
+
+        if (showPlaylists) {
+            AddToPlaylistPanel(
+                song = song,
+                playlists = playlists.map { it.id to it.name },
+                newName = newPlaylistName,
+                onNewNameChange = { newPlaylistName = it },
+                onPick = { id ->
+                    viewModel.addToPlaylist(id, song)
+                    showPlaylists = false
+                },
+                onCreate = { name ->
+                    viewModel.createPlaylistWith(name, song)
+                    newPlaylistName = null
+                    showPlaylists = false
+                },
+                onDismiss = {
+                    showPlaylists = false
+                    newPlaylistName = null
+                },
+            )
         }
     }
 }
