@@ -63,6 +63,8 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     var playerExpanded by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
     var loginOpen by remember { mutableStateOf(false) }
+    var loginError by remember { mutableStateOf<String?>(null) }
+    var loginBusy by remember { mutableStateOf(false) }
     val libraryViewModel: LibraryViewModel = hiltViewModel()
 
     // Полноэкранные слои живут поверх оболочки: вкладки и очередь сохраняют
@@ -135,11 +137,23 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             exit = fadeOut(tween(120)),
         ) {
             LoginScreen(
+                busy = loginBusy,
+                error = loginError,
                 onCookie = { cookie ->
-                    libraryViewModel.onSignedIn(cookie)
-                    loginOpen = false
+                    if (!loginBusy) {
+                        loginBusy = true
+                        loginError = null
+                        libraryViewModel.onSignedIn(cookie) { message ->
+                            loginBusy = false
+                            loginError = message
+                            if (message == null) loginOpen = false
+                        }
+                    }
                 },
-                onClose = { loginOpen = false },
+                onClose = {
+                    loginOpen = false
+                    loginError = null
+                },
             )
         }
     }

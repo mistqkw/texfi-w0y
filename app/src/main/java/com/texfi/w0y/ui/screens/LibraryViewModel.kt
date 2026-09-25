@@ -147,8 +147,19 @@ class LibraryViewModel @Inject constructor(
         _accountPlaylists.value = emptyList()
     }
 
-    fun onSignedIn(cookie: String) = viewModelScope.launch {
-        account.signIn(cookie)
-        sync()
+    /**
+     * Проверяет cookie и сообщает наверх, чем кончилось: `null` — вход прошёл,
+     * иначе текст для пользователя. Экран входа закрывается только при успехе,
+     * чтобы не терять уже введённое.
+     */
+    fun onSignedIn(cookie: String, onResult: (String?) -> Unit) = viewModelScope.launch {
+        val result = account.signIn(cookie)
+        result.fold(
+            onSuccess = {
+                onResult(null)
+                sync()
+            },
+            onFailure = { onResult(it.message ?: "YouTube не принял вход") },
+        )
     }
 }

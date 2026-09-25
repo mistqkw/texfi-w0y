@@ -56,11 +56,33 @@ class AccountRepository @Inject constructor(
         if (!stored.isNullOrBlank()) refreshAccountName()
     }
 
-    suspend fun signIn(rawCookie: String) {
+    /**
+     * Принимает cookie — из формы Google или вставленную вручную — и сразу
+     * проверяет её живым запросом к аккаунту.
+     *
+     * Проверка тут не формальность: вручную скопированная строка легко
+     * оказывается обрезанной или от другого домена, и без проверки
+     * приложение молча считало бы себя авторизованным, а библиотека
+     * приходила бы пустой. Неподошедшую cookie не сохраняем.
+     */
+    suspend fun signIn(rawCookie: String): Result<String?> {
         val sanitized = rawCookie.trim()
-        context.accountStore.edit { it[Keys.COOKIE] = sanitized }
+        if (!sanitized.contains("SAPISID")) {
+            return Result.failure(IllegalArgumentException("В строке нет SAPISID — это не cookie входа."))
+        }
         applySession(sanitized)
-        refreshAccountName()
+        val name = runCatching { fetchAccountName() }
+        if (name.isFailure) {
+            applySession(null)
+            Timber.w(name.exceptionOrNull(), "Cookie не подошла")
+            return Result.failure(name.exceptionOrNull() ?: IllegalStateException("YouTube не принял cookie"))
+        }
+        context.accountStore.edit {
+            it[Keys.COOKIE] = sanitized
+            val fetched = name.getOrNull()
+            if (!fetched.isNullOrBlank()) it[Keys.NAME] = fetched else it.remove(Keys.NAME)
+        }
+        return Result.success(name.getOrNull())
     }
 
     suspend fun signOut() {
@@ -102,15 +124,21 @@ class AccountRepository @Inject constructor(
 
     private suspend fun refreshAccountName() {
         val name =
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val menu = innerTube.accountMenu(YouTubeClient.WEB_REMIX).body<JsonObject>()
-                    with(YtJson) { menu.findAll("accountName").firstOrNull()?.firstString("text") }
-                }
-            }.onFailure { Timber.w(it, "Имя аккаунта не получено") }.getOrNull()
+            runCatching { fetchAccountName() }
+                .onFailure { Timber.w(it, "Имя аккаунта не получено") }
+                .getOrNull()
         if (!name.isNullOrBlank()) {
             context.accountStore.edit { it[Keys.NAME] = name }
         }
+    }
+
+    /**
+     * Имя владельца аккаунта. Бросает, если YouTube не принял сессию, —
+     * это и есть проверка cookie на входе.
+     */
+    private suspend fun fetchAccountName(): String? = withContext(Dispatchers.IO) {
+        val menu = innerTube.accountMenu(YouTubeClient.WEB_REMIX).body<JsonObject>()
+        with(YtJson) { menu.findAll("accountName").firstOrNull()?.firstString("text") }
     }
 
     private object Keys {
