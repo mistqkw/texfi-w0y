@@ -27,6 +27,13 @@ BLUE = (74, 125, 251, 255)
 CREAM = (247, 242, 230, 255)
 WHITE = (255, 255, 255, 255)
 
+# Символ занимает столько же холста, сколько в f0kus и m0ney (замерено по
+# их ассетам: 0.56×0.66 у обычной иконки, 0.34×0.40 у адаптивного слоя).
+# В ряду на домашнем экране разный «вес» иконок ломает ощущение семьи
+# сильнее, чем разная форма.
+LEGACY_SCALE = 0.78
+ADAPTIVE_SCALE = 0.48
+
 
 class Art:
     """Силуэт по сетке. Контур и заливка расставляются автоматически:
@@ -183,7 +190,7 @@ def render(concept, px, with_bg=True, mono=False, symbol_scale=1.0, rounded=Fals
 def _shaped(concept, px, shape):
     """Формы, в которых Android показывает иконку: квадрат со скруглением,
     круг (round) и сквиркл адаптивной маски."""
-    icon = render(concept, px, symbol_scale=0.84)
+    icon = render(concept, px, symbol_scale=LEGACY_SCALE)
     mask = Image.new("L", (px, px), 0)
     d = ImageDraw.Draw(mask)
     if shape == "square":
@@ -230,9 +237,9 @@ def apply(concept, res_dir):
     for density, size in DENSITIES.items():
         d = os.path.join(res_dir, f"mipmap-{density}")
         os.makedirs(d, exist_ok=True)
-        render(concept, size, rounded=True, symbol_scale=0.86).save(
+        render(concept, size, rounded=True, symbol_scale=LEGACY_SCALE).save(
             os.path.join(d, "ic_launcher.png"))
-        icon = render(concept, size, symbol_scale=0.86)
+        icon = render(concept, size, symbol_scale=LEGACY_SCALE)
         mask = Image.new("L", (size, size), 0)
         ImageDraw.Draw(mask).ellipse([0, 0, size - 1, size - 1], fill=255)
         icon.putalpha(mask)
@@ -241,9 +248,9 @@ def apply(concept, res_dir):
         d = os.path.join(res_dir, f"mipmap-{density}")
         os.makedirs(d, exist_ok=True)
         # 66% полотна: остальное — safe zone под адаптивные маски.
-        render(concept, size, with_bg=False, symbol_scale=0.66).save(
+        render(concept, size, with_bg=False, symbol_scale=ADAPTIVE_SCALE).save(
             os.path.join(d, "ic_launcher_foreground.png"))
-        render(concept, size, with_bg=False, mono=True, symbol_scale=0.66).save(
+        render(concept, size, with_bg=False, mono=True, symbol_scale=ADAPTIVE_SCALE).save(
             os.path.join(d, "ic_launcher_monochrome.png"))
     print(f"ассеты иконки «{concept}» записаны в {res_dir}")
 
