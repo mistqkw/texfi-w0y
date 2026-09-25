@@ -1,0 +1,122 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    alias(libs.plugins.android.application)
+    // Плагин kotlin.android с AGP 9 не нужен: поддержка Kotlin встроена
+    // в сам AGP, и попытка применить его валит конфигурацию.
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+}
+
+android {
+    namespace = "com.texfi.w0y"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.texfi.w0y"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 1
+        versionName = "0.0.1-beta"
+    }
+
+    // Подпись берётся из переменных окружения — так один и тот же файл
+    // работает и локально, и в Actions, и при этом ни пароля, ни keystore
+    // в репозитории нет. Нет переменных — нет release-конфига, сборка
+    // падает обратно на debug-ключ (такой APK не раздаём).
+    val keystorePath = System.getenv("ANDROID_KEYSTORE_FILE")
+    signingConfigs {
+        if (keystorePath != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("ANDROID_STORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "texfi"
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+                storeType = "PKCS12"
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Отдельный applicationId, чтобы debug и релиз жили на телефоне
+            // рядом: иначе для проверки сборки приходится сносить рабочую.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+            isMinifyEnabled = false
+        }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    kotlin {
+        jvmToolchain(21)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_21)
+        }
+    }
+
+    packaging {
+        resources.excludes += setOf(
+            "META-INF/{AL2.0,LGPL2.1}",
+            "META-INF/DEPENDENCIES",
+        )
+    }
+}
+
+dependencies {
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.util)
+    implementation(libs.compose.animation)
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    implementation(libs.material3)
+
+    implementation(libs.activity.compose)
+    implementation(libs.viewmodel.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.navigation.compose)
+    implementation(libs.splashscreen)
+    implementation(libs.datastore)
+
+    implementation(libs.hilt)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
+    implementation(libs.media3.okhttp)
+
+    implementation(libs.coil)
+    implementation(libs.coil.network.okhttp)
+
+    implementation(libs.innertubex)
+    implementation(libs.ktor.client.core)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.json)
+
+    implementation(libs.timber)
+    testImplementation(libs.junit)
+}

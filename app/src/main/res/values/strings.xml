@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">w0y</string>
+
+    <string name="tab_home">дом</string>
+    <string name="tab_search">поиск</string>
+    <string name="tab_library">моё</string>
+
+    <string name="home_title">w0y</string>
+    <string name="home_empty">Здесь появится то, что ты слушаешь. Пока пусто — начни с поиска.</string>
+    <string name="search_placeholder">Трек, альбом, исполнитель…</string>
+    <string name="search_not_wired">Поиск ещё не подключён к YouTube Music. Это следующий шаг.</string>
+    <string name="library_empty">Своих плейлистов пока нет. Появятся, когда будет что складывать.</string>
+    <string name="skeleton_note">Каркас v%1$s. Дальше: поиск и воспроизведение.</string>
+</resources>

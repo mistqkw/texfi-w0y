@@ -1,0 +1,22 @@
+# Сборка
+build/
+.gradle/
+captures/
+.cxx/
+*.apk
+*.aab
+*.aar
+
+# Локальные пути тулчейна и ключи — никогда в репозиторий
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# Прочее
+.DS_Store
