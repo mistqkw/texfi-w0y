@@ -3,6 +3,8 @@ package com.texfi.w0y.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
     val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val diagnosis by viewModel.diagnosis.collectAsStateWithLifecycle()
 
     Column(
         Modifier
@@ -79,10 +82,26 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                         )
                     }
                     Spacer(Modifier.height(12.dp))
-                    com.texfi.w0y.ui.components.PixelButton(
-                        text = "ЕЩЁ РАЗ",
-                        onClick = viewModel::retry,
-                    )
+                    Row {
+                        com.texfi.w0y.ui.components.PixelButton(
+                            text = "ЕЩЁ РАЗ",
+                            onClick = viewModel::retry,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        com.texfi.w0y.ui.components.PixelButton(
+                            text = "ПРОВЕРКА",
+                            onClick = viewModel::diagnose,
+                        )
+                    }
+                    diagnosis?.let { text ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.text,
+                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                        )
+                    }
                 }
 
             is SearchState.Results ->

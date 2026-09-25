@@ -3,6 +3,7 @@ package com.texfi.w0y.ui.screens
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.texfi.w0y.BuildConfig
+import com.texfi.w0y.data.Diagnostics
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.playback.PlayerConnection
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 sealed interface SearchState {
@@ -34,8 +36,11 @@ sealed interface SearchState {
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: YouTubeRepository,
+    private val diagnostics: Diagnostics,
     val player: PlayerConnection,
 ) : ViewModel() {
+    private val _diagnosis = MutableStateFlow<String?>(null)
+    val diagnosis: StateFlow<String?> = _diagnosis.asStateFlow()
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
@@ -96,6 +101,15 @@ class SearchViewModel @Inject constructor(
 
     fun onQueryChange(value: String) {
         _query.value = value
+    }
+
+    /** Три пробных запроса мимо библиотеки — видно, что именно не нравится YouTube. */
+    fun diagnose() {
+        viewModelScope.launch {
+            _diagnosis.value = "Проверяю…"
+            _diagnosis.value = runCatching { diagnostics.run(_query.value.ifBlank { "музыка" }) }
+                .getOrElse { "Диагностика упала: ${it.message}" }
+        }
     }
 
     /** Повтор того же запроса: сеть на телефоне отваливается чаще, чем код. */

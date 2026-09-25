@@ -50,12 +50,12 @@ object YouTubeModule {
         httpClient: HttpClient,
         @ApplicationContext context: Context,
     ): InnerTube {
-        // Локаль правится ещё раз прямо перед созданием клиента: InnerTube
-        // запоминает её один раз, а системную локаль Android переустанавливает
-        // при смене конфигурации — и тогда порядок вызовов перестаёт быть
-        // очевидным.
-        YouTubeLocaleFix.apply(context)
-        return InnerTube(httpClient = httpClient)
+        return InnerTube(httpClient = httpClient).apply {
+            // Своя локаль вместо системной: библиотека по умолчанию кладёт
+            // в hl полный языковой тег устройства, а на паре вроде en-PL
+            // YouTube отвечает 400 на любой запрос.
+            locale = YouTubeLocaleResolver.forDevice(context)
+        }
     }
 
     @Provides

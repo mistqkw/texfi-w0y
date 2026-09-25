@@ -2,6 +2,7 @@ package com.texfi.w0y
 
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.models.YouTubeClient
+import com.metrolist.innertubex.models.YouTubeLocale
 import com.metrolist.innertubex.models.response.SearchResponse
 import com.texfi.w0y.data.SearchParser
 import io.ktor.client.HttpClient
@@ -9,31 +10,35 @@ import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
-import java.util.Locale
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Какие системные локали YouTube принимает, а на каких отвечает 400. */
+/**
+ * Какие hl/gl YouTube принимает. Тест ходит в сеть и в CI не входит:
+ * `./gradlew testDebugUnitTest --tests '*LocaleProbeTest*'`.
+ *
+ * Зафиксировано ради того, чтобы больше не искать эту ошибку вслепую:
+ * пара «язык + страна» в hl (en-PL) валит любой запрос, язык отдельно —
+ * работает с любой страной в gl.
+ */
 class LocaleProbeTest {
     @Test
-    fun probeLocales() = runBlocking {
-        val tags =
+    fun languageOnlyHlWorksWithAnyCountry() = runBlocking {
+        val cases =
             listOf(
-                "ru-RU",
-                "ru-RU-u-ca-gregory-nu-latn",
-                "ru",
-                "en-US",
+                YouTubeLocale(hl = "en", gl = "PL") to true,
+                YouTubeLocale(hl = "ru", gl = "PL") to true,
+                YouTubeLocale(hl = "en-PL", gl = "PL") to false,
             )
-        val original = Locale.getDefault()
-        for (tag in tags) {
-            Locale.setDefault(Locale.forLanguageTag(tag))
+        for ((locale, shouldWork) in cases) {
             val http =
                 HttpClient(OkHttp) {
                     install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
                 }
-            val innerTube = InnerTube(httpClient = http)
-            val result =
+            val innerTube = InnerTube(httpClient = http).apply { this.locale = locale }
+            val songs =
                 runCatching {
                     innerTube
                         .search(
@@ -41,15 +46,13 @@ class LocaleProbeTest {
                             query = "династия",
                             params = SearchParser.SONGS_FILTER,
                         ).body<SearchResponse>()
-                }
-            val verdict =
-                result.fold(
-                    onSuccess = { "OK, треков: ${SearchParser.songs(it).size}" },
-                    onFailure = { "ПАДАЕТ: ${it.message}" },
-                )
-            println("ЛОКАЛЬ '$tag' (hl=${Locale.getDefault().toLanguageTag()}, gl=${Locale.getDefault().country}) → $verdict")
+                }.map { SearchParser.songs(it) }
+            println("hl=${locale.hl} gl=${locale.gl} → ${songs.map { it.size }}")
             http.close()
+            assertTrue(
+                "hl=${locale.hl} gl=${locale.gl}: ожидали работоспособность=$shouldWork",
+                songs.isSuccess == shouldWork,
+            )
         }
-        Locale.setDefault(original)
     }
 }
