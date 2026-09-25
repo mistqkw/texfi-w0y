@@ -44,6 +44,7 @@ fun MiniPlayer(
     positionProvider: () -> Long,
     onToggle: () -> Unit,
     onNext: () -> Unit,
+    onExpand: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalW0yColors.current
@@ -97,11 +98,16 @@ fun MiniPlayer(
                     modifier =
                         Modifier
                             .size(40.dp)
+                            .clickable(onClick = onExpand)
                             .clip(RoundedCornerShape(4.dp))
                             .background(colors.surface),
                 )
                 Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clickable(onClick = onExpand),
+                ) {
                     Text(
                         text = song.title,
                         style = MaterialTheme.typography.bodyMedium,

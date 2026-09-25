@@ -1,6 +1,10 @@
 package com.texfi.w0y.ui.shell
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,6 +41,7 @@ import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.screens.HomeScreen
 import com.texfi.w0y.ui.screens.LibraryScreen
+import com.texfi.w0y.ui.screens.PlayerScreen
 import com.texfi.w0y.ui.screens.SearchScreen
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
@@ -51,11 +56,16 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
     var tab by remember { mutableStateOf(Tab.HOME) }
     val playerState by viewModel.player.state.collectAsStateWithLifecycle()
+    var playerExpanded by remember { mutableStateOf(false) }
 
+    // Полноэкранный плеер живёт поверх оболочки: вкладки и очередь
+    // сохраняют состояние, пока он открыт, и закрытие ничего не пересобирает.
+    BackHandler(enabled = playerExpanded) { playerExpanded = false }
+
+    Box(Modifier.fillMaxSize().background(colors.background)) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background)
             .statusBarsPadding(),
     ) {
         Box(Modifier.weight(1f)) {
@@ -81,8 +91,29 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             positionProvider = viewModel.player::positionMs,
             onToggle = viewModel.player::togglePlayPause,
             onNext = { viewModel.player.skipNext() },
+            onExpand = { playerExpanded = true },
         )
         PixelNavBar(selected = tab, onSelect = { tab = it })
+    }
+
+    AnimatedVisibility(
+        visible = playerExpanded && playerState.song != null,
+        enter = slideInVertically(tween(220)) { it } + fadeIn(tween(160)),
+        exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
+    ) {
+        PlayerScreen(
+            state = playerState,
+            positionProvider = viewModel.player::positionMs,
+            onCollapse = { playerExpanded = false },
+            onToggle = viewModel.player::togglePlayPause,
+            onNext = { viewModel.player.skipNext() },
+            onPrevious = viewModel.player::skipPrevious,
+            onSeek = viewModel.player::seekTo,
+            onShuffle = viewModel.player::toggleShuffle,
+            onRepeat = viewModel.player::cycleRepeat,
+            onPlayAt = viewModel.player::playAt,
+        )
+    }
     }
 }
 

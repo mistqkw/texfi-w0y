@@ -23,15 +23,19 @@ data class PlayerUiState(
     val isPlaying: Boolean = false,
     val isBuffering: Boolean = false,
     val durationMs: Long = 0L,
+    val queue: List<SongItem> = emptyList(),
+    val currentIndex: Int = 0,
+    val shuffle: Boolean = false,
+    val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val error: String? = null,
 )
 
 /**
  * Мост между интерфейсом и медиа-сессией сервиса.
  *
- * Интерфейс не держит плеер сам: сервис живёт дольше экрана, и всё
- * состояние приходит из сессии — поэтому после сворачивания приложения
- * музыка не прерывается, а вернувшись, экран сразу видит правду.
+ * Состояние собирается из самого плеера, а не из того, что когда-то
+ * отправил экран: сервис живёт дольше экрана, и после сворачивания или
+ * перезапуска активности интерфейс должен видеть правду, а не свою копию.
  */
 @Singleton
 class PlayerConnection @Inject constructor(
@@ -41,7 +45,6 @@ class PlayerConnection @Inject constructor(
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
 
     private var controller: MediaController? = null
-    private var queue: List<SongItem> = emptyList()
 
     private val listener =
         object : Player.Listener {
@@ -66,7 +69,6 @@ class PlayerConnection @Inject constructor(
 
     fun play(songs: List<SongItem>, startIndex: Int) {
         val media = controller ?: return
-        queue = songs
         media.setMediaItems(songs.map(::toMediaItem), startIndex, 0L)
         media.prepare()
         media.play()
@@ -79,20 +81,65 @@ class PlayerConnection @Inject constructor(
 
     fun skipNext() = controller?.seekToNextMediaItem()
 
-    fun skipPrevious() = controller?.seekToPreviousMediaItem()
+    fun skipPrevious() {
+        val media = controller ?: return
+        // Как у всех плееров: первое нажатие возвращает к началу трека,
+        // и только в первые секунды — к предыдущему.
+        if (media.currentPosition > 4_000) media.seekTo(0) else media.seekToPreviousMediaItem()
+    }
+
+    fun seekTo(positionMs: Long) = controller?.seekTo(positionMs) ?: Unit
+
+    fun playAt(index: Int) {
+        val media = controller ?: return
+        media.seekTo(index, 0L)
+        media.play()
+    }
+
+    fun toggleShuffle() {
+        val media = controller ?: return
+        media.shuffleModeEnabled = !media.shuffleModeEnabled
+    }
+
+    fun cycleRepeat() {
+        val media = controller ?: return
+        media.repeatMode =
+            when (media.repeatMode) {
+                Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                else -> Player.REPEAT_MODE_OFF
+            }
+    }
 
     fun positionMs(): Long = controller?.currentPosition ?: 0L
 
     private fun push(player: Player) {
-        val id = player.currentMediaItem?.mediaId
+        val queue =
+            (0 until player.mediaItemCount).map { index ->
+                player.getMediaItemAt(index).toSong()
+            }
+        val index = player.currentMediaItemIndex
         _state.value =
             PlayerUiState(
-                song = queue.firstOrNull { it.id == id } ?: _state.value.song.takeIf { it?.id == id },
+                song = queue.getOrNull(index),
                 isPlaying = player.isPlaying,
                 isBuffering = player.playbackState == Player.STATE_BUFFERING,
                 durationMs = player.duration.takeIf { it > 0 } ?: 0L,
+                queue = queue,
+                currentIndex = index,
+                shuffle = player.shuffleModeEnabled,
+                repeatMode = player.repeatMode,
             )
     }
+
+    private fun MediaItem.toSong(): SongItem =
+        SongItem(
+            id = mediaId,
+            title = mediaMetadata.title?.toString().orEmpty(),
+            artist = mediaMetadata.artist?.toString().orEmpty(),
+            album = mediaMetadata.albumTitle?.toString(),
+            thumbnailUrl = mediaMetadata.artworkUri?.toString(),
+        )
 
     private fun toMediaItem(song: SongItem): MediaItem =
         MediaItem
