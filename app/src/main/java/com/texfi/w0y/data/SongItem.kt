@@ -17,4 +17,8 @@ data class SongItem(
     val album: String? = null,
     val durationText: String? = null,
     val thumbnailUrl: String? = null,
+    /** Канал исполнителя (UC…), если YouTube его отдал: по нему открывается артист. */
+    val artistId: String? = null,
+    /** Альбом (MPRE…), если трек к нему относится. */
+    val albumId: String? = null,
 )

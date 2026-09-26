@@ -1,6 +1,7 @@
 package com.texfi.w0y.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -41,12 +43,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
-import coil3.compose.AsyncImage
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
+import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.nav.BrowseRoute
+import com.texfi.w0y.ui.nav.LocalBrowseNavigator
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import kotlinx.coroutines.delay
@@ -64,8 +70,10 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
+    val navigator = LocalBrowseNavigator.current
     val state by viewModel.player.state.collectAsStateWithLifecycle()
     val liked by viewModel.isLiked.collectAsStateWithLifecycle()
+    val pinned by viewModel.isPinned.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
@@ -118,17 +126,27 @@ fun PlayerScreen(
             }
 
             item {
-                AsyncImage(
-                    model = song.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier =
+                // Обложка на весь экран — единственное место, где нужен
+                // самый крупный вариант картинки.
+                Box(Modifier.fillMaxWidth()) {
+                    Box(
                         Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
+                            .matchParentSize()
+                            .offset(5.dp, 5.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(colors.surfaceHigh),
-                )
+                            .background(colors.shadow),
+                    )
+                    CoverImage(
+                        url = song.thumbnailUrl,
+                        px = Thumbnails.HERO,
+                        corner = 10,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .border(2.dp, colors.border, RoundedCornerShape(10.dp)),
+                    )
+                }
                 Spacer(Modifier.height(18.dp))
             }
 
@@ -150,9 +168,40 @@ fun PlayerScreen(
                     }
                     SpriteButton(Sprites.heart, onClick = { viewModel.toggleLike(song) }, active = liked)
                     Spacer(Modifier.width(14.dp))
+                    SpriteButton(Sprites.pin, onClick = { viewModel.togglePin(song) }, active = pinned)
+                    Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.download, onClick = { viewModel.download(song) })
                     Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.plus, onClick = { showPlaylists = true })
+                }
+                // Переход к артисту и альбому прямо из плеера: из него чаще
+                // всего и хочется уйти «послушать, что ещё у них есть».
+                if (song.artistId != null || song.albumId != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        song.artistId?.let { id ->
+                            PixelButton(
+                                text = "К АРТИСТУ",
+                                fill = colors.surfaceHigh,
+                                onClick = {
+                                    onCollapse()
+                                    navigator.open(BrowseRoute.Artist(id, song.artist, song.thumbnailUrl))
+                                },
+                            )
+                        }
+                        song.albumId?.let { id ->
+                            PixelButton(
+                                text = "К АЛЬБОМУ",
+                                fill = colors.surfaceHigh,
+                                onClick = {
+                                    onCollapse()
+                                    navigator.open(
+                                        BrowseRoute.Album(id, song.album ?: song.title, song.thumbnailUrl),
+                                    )
+                                },
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(16.dp))
             }

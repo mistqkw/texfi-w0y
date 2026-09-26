@@ -1,6 +1,7 @@
 package com.texfi.w0y.data
 
 import com.texfi.w0y.data.db.HistoryEntity
+import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.data.db.SongEntity
 import com.texfi.w0y.data.db.W0yDao
@@ -19,6 +20,12 @@ class LibraryRepository @Inject constructor(
     val recent: Flow<List<SongItem>> = dao.recentSongs().map { list -> list.map(SongEntity::toItem) }
     val downloaded: Flow<List<SongItem>> =
         dao.songsWithDownloadState().map { list -> list.map(SongEntity::toItem) }
+
+    /** Что слушается чаще всего — основа быстрого набора на главной. */
+    val mostPlayed: Flow<List<SongItem>> =
+        dao.mostPlayed().map { list -> list.map { it.song.toItem() } }
+
+    val pins: Flow<List<PinEntity>> = dao.pins()
 
     fun playlist(id: Long) = dao.playlist(id)
 
@@ -67,6 +74,38 @@ class LibraryRepository @Inject constructor(
     }
 
     suspend fun clearHistory() = dao.clearHistory()
+
+    /**
+     * Закрепляет или снимает плитку быстрого набора.
+     *
+     * Снимок хранится целиком: закрепить можно артиста или альбом, которых
+     * в локальной библиотеке нет, а плитка должна рисоваться и без сети.
+     */
+    suspend fun togglePin(
+        kind: String,
+        targetId: String,
+        title: String,
+        subtitle: String? = null,
+        thumbnailUrl: String? = null,
+    ): Boolean {
+        val key = PinEntity.key(kind, targetId)
+        if (dao.isPinned(key) > 0) {
+            dao.unpin(key)
+            return false
+        }
+        dao.pin(
+            PinEntity(
+                key = key,
+                kind = kind,
+                targetId = targetId,
+                title = title,
+                subtitle = subtitle,
+                thumbnailUrl = thumbnailUrl,
+                pinnedAt = now(),
+            ),
+        )
+        return true
+    }
 
     suspend fun markDownload(songId: String, state: Int) = dao.setDownloadState(songId, state)
 

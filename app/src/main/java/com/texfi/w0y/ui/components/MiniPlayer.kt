@@ -29,7 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.playback.PlayerUiState
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import kotlinx.coroutines.delay
@@ -92,15 +92,13 @@ fun MiniPlayer(
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AsyncImage(
-                    model = song.thumbnailUrl,
-                    contentDescription = null,
+                CoverImage(
+                    url = song.thumbnailUrl,
+                    px = Thumbnails.ROW,
                     modifier =
                         Modifier
                             .size(40.dp)
-                            .clickable(onClick = onExpand)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(colors.surface),
+                            .clickable(onClick = onExpand),
                 )
                 Spacer(Modifier.width(10.dp))
                 Column(

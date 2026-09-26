@@ -7,7 +7,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -23,10 +25,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,8 +45,14 @@ import com.texfi.w0y.R
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.nav.BrowseNavigator
+import com.texfi.w0y.ui.nav.BrowseRoute
+import com.texfi.w0y.ui.nav.LocalBrowseNavigator
+import com.texfi.w0y.ui.screens.AlbumScreen
+import com.texfi.w0y.ui.screens.ArtistScreen
 import com.texfi.w0y.ui.screens.HomeScreen
 import com.texfi.w0y.ui.screens.LibraryScreen
+import com.texfi.w0y.ui.screens.LibraryRoute
 import com.texfi.w0y.ui.screens.LibraryViewModel
 import com.texfi.w0y.ui.screens.LoginScreen
 import com.texfi.w0y.ui.screens.PlayerScreen
@@ -66,17 +77,36 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     var loginError by remember { mutableStateOf<String?>(null) }
     var loginBusy by remember { mutableStateOf(false) }
     val libraryViewModel: LibraryViewModel = hiltViewModel()
+    val libraryRoute by libraryViewModel.route.collectAsStateWithLifecycle()
+    val browseStack = remember { mutableStateListOf<BrowseRoute>() }
+    val navigator = remember { BrowseNavigator { route -> browseStack.add(route) } }
+    // Верхний экран стека нужен и во время анимации закрытия, когда стек
+    // уже пуст, — иначе на последнем кадре рисовать нечего.
+    var lastBrowse by remember { mutableStateOf<BrowseRoute?>(null) }
+    browseStack.lastOrNull()?.let { lastBrowse = it }
 
-    // Полноэкранные слои живут поверх оболочки: вкладки и очередь сохраняют
-    // состояние, пока они открыты, и закрытие ничего не пересобирает.
-    BackHandler(enabled = playerExpanded || settingsOpen || loginOpen) {
+    // Одна точка на весь «назад».
+    //
+    // Раньше обработчик стоял только на полноэкранных слоях, и на любом
+    // другом экране системный жест уходил мимо приложения — прямо на рабочий
+    // стол, вместе со всей навигацией. Порядок здесь — это порядок закрытия:
+    // от самого верхнего слоя к вкладкам.
+    BackHandler(
+        enabled =
+            playerExpanded || settingsOpen || loginOpen ||
+                browseStack.isNotEmpty() || libraryRoute != LibraryRoute.Root || tab != Tab.HOME,
+    ) {
         when {
             loginOpen -> loginOpen = false
             settingsOpen -> settingsOpen = false
-            else -> playerExpanded = false
+            playerExpanded -> playerExpanded = false
+            browseStack.isNotEmpty() -> browseStack.removeAt(browseStack.lastIndex)
+            libraryRoute != LibraryRoute.Root -> libraryViewModel.back()
+            else -> tab = Tab.HOME
         }
     }
 
+    CompositionLocalProvider(LocalBrowseNavigator provides navigator) {
     Box(
         Modifier
             .fillMaxSize()
@@ -104,6 +134,15 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                         Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
                     }
                 }
+
+                // Артист и альбом ложатся поверх вкладки, но не поверх
+                // мини-плеера: на этих страницах чаще всего и переключают
+                // трек, прятать управление на них было бы издевательством.
+                BrowseOverlay(
+                    visible = browseStack.isNotEmpty(),
+                    route = lastBrowse,
+                    onBack = { if (browseStack.isNotEmpty()) browseStack.removeAt(browseStack.lastIndex) },
+                )
             }
             MiniPlayer(
                 state = playerState,
@@ -158,6 +197,35 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         }
     }
 }
+}
+
+/**
+ * Слой страниц артиста и альбома.
+ *
+ * Вынесен в отдельную функцию не для красоты: внутри `Column` компилятор
+ * выбирает `ColumnScope.AnimatedVisibility`, а здесь нужен обычный.
+ */
+@Composable
+private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> Unit) {
+    val colors = LocalW0yColors.current
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally(tween(220)) { it / 3 } + fadeIn(tween(160)),
+        exit = slideOutHorizontally(tween(180)) { it / 3 } + fadeOut(tween(140)),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(colors.background),
+        ) {
+            when (route) {
+                is BrowseRoute.Artist -> ArtistScreen(route = route, onBack = onBack)
+                is BrowseRoute.Album -> AlbumScreen(route = route, onBack = onBack)
+                null -> Unit
+            }
+        }
+    }
+}
 
 @Composable
 private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
@@ -196,6 +264,15 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
                         style = MaterialTheme.typography.labelMedium,
                         color = if (active) colors.text else colors.textMuted,
                         modifier = Modifier.padding(top = 4.dp),
+                    )
+                    // Подчёркивание активной вкладки: подсветки иконки мало,
+                    // на ходу разницу цвета не поймать.
+                    Box(
+                        Modifier
+                            .padding(top = 4.dp)
+                            .width(if (active) 20.dp else 0.dp)
+                            .height(3.dp)
+                            .background(colors.accent),
                     )
                 }
             }

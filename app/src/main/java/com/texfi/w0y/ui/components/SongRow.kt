@@ -19,8 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
 /**
@@ -46,14 +46,10 @@ fun SongRow(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncImage(
-                model = song.thumbnailUrl,
-                contentDescription = null,
-                modifier =
-                    Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(colors.surfaceHigh),
+            CoverImage(
+                url = song.thumbnailUrl,
+                px = Thumbnails.ROW,
+                modifier = Modifier.size(48.dp),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

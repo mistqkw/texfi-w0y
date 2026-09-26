@@ -40,9 +40,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.ui.nav.BrowseRoute
+import com.texfi.w0y.ui.nav.LocalBrowseNavigator
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
+import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.PixelChip
+import com.texfi.w0y.ui.components.PixelSprite
+import com.texfi.w0y.ui.components.SkeletonRow
 import com.texfi.w0y.ui.components.SongRow
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
@@ -51,8 +58,10 @@ import com.texfi.w0y.ui.theme.PixelTitle
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
+    val navigator = LocalBrowseNavigator.current
     val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
     val diagnosis by viewModel.diagnosis.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     var pickPlaylistFor by remember { mutableStateOf<SongItem?>(null) }
@@ -67,6 +76,16 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
         Text(stringResource(R.string.tab_search), style = PixelTitle, color = colors.text)
         Spacer(Modifier.height(14.dp))
         SearchField(value = query, onValueChange = viewModel::onQueryChange)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SearchFilter.entries.forEach { entry ->
+                PixelChip(
+                    text = entry.label,
+                    selected = entry == filter,
+                    onClick = { viewModel.onFilterChange(entry) },
+                )
+            }
+        }
         Spacer(Modifier.height(14.dp))
 
         when (val current = state) {
@@ -115,7 +134,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 }
 
             is SearchState.Results ->
-                if (current.songs.isEmpty()) {
+                if (current.isEmpty) {
                     Hint(stringResource(R.string.search_nothing))
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -136,6 +155,32 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                                     SpriteButton(
                                         rows = Sprites.plus,
                                         onClick = { pickPlaylistFor = song },
+                                    )
+                                },
+                            )
+                        }
+                        items(current.albums, key = { it.browseId }) { card ->
+                            CardRow(
+                                title = card.title,
+                                subtitle = card.subtitle ?: if (card.isAlbum) "Альбом" else "Плейлист",
+                                thumbnailUrl = card.thumbnailUrl,
+                                round = false,
+                                onClick = {
+                                    navigator.open(
+                                        BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl),
+                                    )
+                                },
+                            )
+                        }
+                        items(current.artists, key = { it.browseId }) { card ->
+                            CardRow(
+                                title = card.name,
+                                subtitle = card.subtitle ?: "Артист",
+                                thumbnailUrl = card.thumbnailUrl,
+                                round = true,
+                                onClick = {
+                                    navigator.open(
+                                        BrowseRoute.Artist(card.browseId, card.name, card.thumbnailUrl),
                                     )
                                 },
                             )
@@ -164,6 +209,42 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 pickPlaylistFor = null
                 newPlaylistName = null
             },
+        )
+    }
+}
+
+/** Строка альбома или артиста в выдаче: та же высота, что у трека. */
+@Composable
+private fun CardRow(
+    title: String,
+    subtitle: String,
+    thumbnailUrl: String?,
+    round: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CoverImage(
+            url = thumbnailUrl,
+            px = Thumbnails.ROW,
+            corner = if (round) 24 else 4,
+            modifier = Modifier.size(48.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text, maxLines = 1)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
+        }
+        PixelSprite(
+            rows = Sprites.next,
+            color = colors.textMuted,
+            modifier = Modifier.size(16.dp),
         )
     }
 }
@@ -198,36 +279,6 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit) {
     }
 }
 
-@Composable
-private fun SkeletonRow() {
-    val colors = LocalW0yColors.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(colors.surfaceHigh),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Box(
-                Modifier
-                    .fillMaxWidth(0.7f)
-                    .height(12.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.surfaceHigh),
-            )
-            Spacer(Modifier.height(6.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth(0.4f)
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(colors.surface),
-            )
-        }
-    }
-}
 
 @Composable
 private fun Hint(text: String) {

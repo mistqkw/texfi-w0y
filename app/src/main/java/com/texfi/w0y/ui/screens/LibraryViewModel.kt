@@ -7,6 +7,7 @@ import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlayerConnection
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -55,6 +57,77 @@ class LibraryViewModel @Inject constructor(
         account.isSignedIn.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val accountName: StateFlow<String?> =
         account.accountName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Быстрый набор: сначала закреплённое вручную, следом — то, что
+     * слушается чаще всего. Закреплённое не дублируется в хвосте, иначе
+     * один и тот же трек занимал бы две плитки из девяти.
+     */
+    val speedDial: StateFlow<List<DialItem>> =
+        combine(library.pins, library.mostPlayed) { pins, played ->
+            val pinned =
+                pins.map { pin ->
+                    DialItem(
+                        kind = pin.kind,
+                        id = pin.targetId,
+                        title = pin.title,
+                        subtitle = pin.subtitle,
+                        thumbnailUrl = pin.thumbnailUrl,
+                        pinned = true,
+                        // Закреплённый трек играет из самого снимка: он мог
+                        // быть закреплён из поиска и в локальной базе не лежать.
+                        song =
+                            if (pin.kind == PinEntity.KIND_SONG) {
+                                SongItem(
+                                    id = pin.targetId,
+                                    title = pin.title,
+                                    artist = pin.subtitle.orEmpty(),
+                                    thumbnailUrl = pin.thumbnailUrl,
+                                )
+                            } else {
+                                null
+                            },
+                    )
+                }
+            val pinnedSongs = pins.filter { it.kind == PinEntity.KIND_SONG }.map { it.targetId }.toSet()
+            val frequent =
+                played
+                    .filterNot { it.id in pinnedSongs }
+                    .map { song ->
+                        DialItem(
+                            kind = PinEntity.KIND_SONG,
+                            id = song.id,
+                            title = song.title,
+                            subtitle = song.artist.takeIf { it.isNotBlank() },
+                            thumbnailUrl = song.thumbnailUrl,
+                            pinned = false,
+                            song = song,
+                        )
+                    }
+            (pinned + frequent).take(SPEED_DIAL_SIZE)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Треки быстрого набора подряд — чтобы плитка запускала очередь, а не один трек. */
+    fun playDial(item: DialItem) {
+        val queue = speedDial.value.mapNotNull { it.song }
+        val index = queue.indexOfFirst { it.id == item.id }
+        if (index >= 0) player.play(queue, index) else item.song?.let { player.play(listOf(it), 0) }
+    }
+
+    fun togglePin(item: DialItem) = viewModelScope.launch {
+        library.togglePin(item.kind, item.id, item.title, item.subtitle, item.thumbnailUrl)
+    }
+
+    /** Закрепляет трек из любого списка — например прямо из плеера. */
+    fun pinSong(song: SongItem) = viewModelScope.launch {
+        library.togglePin(
+            kind = PinEntity.KIND_SONG,
+            targetId = song.id,
+            title = song.title,
+            subtitle = song.artist.takeIf { it.isNotBlank() },
+            thumbnailUrl = song.thumbnailUrl,
+        )
+    }
 
     private val _route = MutableStateFlow<LibraryRoute>(LibraryRoute.Root)
     val route: StateFlow<LibraryRoute> = _route.asStateFlow()
@@ -163,3 +236,17 @@ class LibraryViewModel @Inject constructor(
         )
     }
 }
+
+/** Плитка быстрого набора: трек, альбом, плейлист или артист. */
+data class DialItem(
+    val kind: String,
+    val id: String,
+    val title: String,
+    val subtitle: String? = null,
+    val thumbnailUrl: String? = null,
+    val pinned: Boolean = false,
+    /** Заполнено только для треков: по нему плитка сразу играет. */
+    val song: SongItem? = null,
+)
+
+private const val SPEED_DIAL_SIZE = 9

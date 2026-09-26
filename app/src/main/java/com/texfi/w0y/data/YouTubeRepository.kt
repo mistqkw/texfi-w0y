@@ -55,6 +55,42 @@ class YouTubeRepository @Inject constructor(
         YtJson.songs(response)
     }
 
+    /** Альбомы в выдаче поиска. */
+    suspend fun searchAlbums(query: String): List<PlaylistCard> = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .search(client = YouTubeClient.WEB_REMIX, query = query, params = ALBUMS_FILTER)
+                .body<JsonObject>()
+        YtJson.playlistCards(response)
+    }
+
+    /** Артисты в выдаче поиска. */
+    suspend fun searchArtists(query: String): List<ArtistCard> = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .search(client = YouTubeClient.WEB_REMIX, query = query, params = ARTISTS_FILTER)
+                .body<JsonObject>()
+        YtJson.artistCards(response)
+    }
+
+    /** Страница артиста: треки, релизы, похожие. */
+    suspend fun artist(browseId: String): ArtistPage = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId)
+                .body<JsonObject>()
+        YtJson.artistPage(response, browseId)
+    }
+
+    /** Страница альбома: обложка, подпись, треклист. */
+    suspend fun album(browseId: String): AlbumPage = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId)
+                .body<JsonObject>()
+        YtJson.albumPage(response, browseId)
+    }
+
     /** Треки плейлиста или альбома по его browseId. */
     suspend fun playlistSongs(browseId: String): List<SongItem> = withContext(Dispatchers.IO) {
         val response =
@@ -139,8 +175,14 @@ class YouTubeRepository @Inject constructor(
     }
 
     companion object {
-        /** Фильтр «только песни» в выдаче поиска. */
+        /**
+         * Фильтры выдачи поиска. Это закодированные protobuf-параметры
+         * самого YouTube: своего API у них нет, значения подобраны и
+         * проверены сообществом и совпадают у всех открытых клиентов.
+         */
         const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"
+        const val ALBUMS_FILTER = "EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D"
+        const val ARTISTS_FILTER = "EgWKAQIgAWoKEAkQChAFEAMQBA%3D%3D"
 
         private val EXPIRY_MARGIN = kotlin.time.Duration.parse("30s")
     }

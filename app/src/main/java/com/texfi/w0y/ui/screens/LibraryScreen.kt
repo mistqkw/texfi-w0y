@@ -33,11 +33,16 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.PixelButton
+import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.SongRow
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.nav.BrowseRoute
+import com.texfi.w0y.ui.nav.LocalBrowseNavigator
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.PixelTitle
@@ -61,6 +66,7 @@ fun LibraryScreen(
 @Composable
 private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
     val colors = LocalW0yColors.current
+    val navigator = LocalBrowseNavigator.current
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
@@ -184,38 +190,76 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         }
 
         items(playlists, key = { it.id }) { playlist ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.open(LibraryRoute.Local(playlist.id)) }
-                    .padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(playlist.name, style = MaterialTheme.typography.bodyLarge, color = colors.text)
-            }
+            CollectionRow(
+                title = playlist.name,
+                subtitle = "Свой плейлист",
+                thumbnailUrl = null,
+                sprite = Sprites.library,
+                onClick = { viewModel.open(LibraryRoute.Local(playlist.id)) },
+            )
         }
 
         if (accountPlaylists.isNotEmpty()) {
             item { Text("❯ ИЗ АККАУНТА", style = PixelSectionLabel, color = colors.accent) }
             items(accountPlaylists, key = { it.browseId }) { card ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { viewModel.open(LibraryRoute.Remote(card)) }
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column {
-                        Text(card.title, style = MaterialTheme.typography.bodyLarge, color = colors.text)
-                        card.subtitle?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                CollectionRow(
+                    title = card.title,
+                    subtitle = card.subtitle ?: if (card.isAlbum) "Альбом" else "Плейлист",
+                    thumbnailUrl = card.thumbnailUrl,
+                    sprite = Sprites.release,
+                    onClick = {
+                        // Альбом открывается своей страницей, плейлист — списком:
+                        // у альбома есть обложка и год, у плейлиста только треки.
+                        if (card.isAlbum) {
+                            navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl))
+                        } else {
+                            viewModel.open(LibraryRoute.Remote(card))
                         }
-                    }
-                }
+                    },
+                )
             }
         }
 
         item { Spacer(Modifier.height(24.dp)) }
+    }
+}
+
+/** Строка коллекции: плейлист, альбом — с обложкой или пиксельной заглушкой. */
+@Composable
+private fun CollectionRow(
+    title: String,
+    subtitle: String,
+    thumbnailUrl: String?,
+    sprite: List<String>,
+    onClick: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (thumbnailUrl != null) {
+            CoverImage(url = thumbnailUrl, px = Thumbnails.ROW, modifier = Modifier.size(44.dp))
+        } else {
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(colors.surfaceHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                PixelSprite(rows = sprite, color = colors.accent, modifier = Modifier.size(20.dp))
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text, maxLines = 1)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
+        }
+        PixelSprite(rows = Sprites.next, color = colors.textMuted, modifier = Modifier.size(16.dp))
     }
 }
 

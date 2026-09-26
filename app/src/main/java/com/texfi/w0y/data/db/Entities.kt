@@ -18,6 +18,8 @@ data class SongEntity(
     val album: String? = null,
     val durationText: String? = null,
     val thumbnailUrl: String? = null,
+    val artistId: String? = null,
+    val albumId: String? = null,
     val liked: Boolean = false,
     val likedAt: Long? = null,
     val downloadState: Int = DOWNLOAD_NONE,
@@ -30,6 +32,8 @@ data class SongEntity(
             album = album,
             durationText = durationText,
             thumbnailUrl = thumbnailUrl,
+            artistId = artistId,
+            albumId = albumId,
         )
 
     companion object {
@@ -45,6 +49,8 @@ data class SongEntity(
                 album = song.album,
                 durationText = song.durationText,
                 thumbnailUrl = song.thumbnailUrl,
+                artistId = song.artistId,
+                albumId = song.albumId,
             )
     }
 }
@@ -75,4 +81,38 @@ data class HistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val songId: String,
     val playedAt: Long,
+)
+
+/**
+ * Закреплённая плитка на главной.
+ *
+ * Хранит не ссылку на трек, а самодостаточный снимок: закрепить можно
+ * альбом или артиста, которых в локальной библиотеке вообще нет, и плитка
+ * должна рисоваться без сети.
+ */
+@Entity(tableName = "pins")
+data class PinEntity(
+    /** «вид:идентификатор» — один объект нельзя закрепить дважды. */
+    @PrimaryKey val key: String,
+    val kind: String,
+    val targetId: String,
+    val title: String,
+    val subtitle: String? = null,
+    val thumbnailUrl: String? = null,
+    val pinnedAt: Long,
+) {
+    companion object {
+        const val KIND_SONG = "song"
+        const val KIND_ALBUM = "album"
+        const val KIND_PLAYLIST = "playlist"
+        const val KIND_ARTIST = "artist"
+
+        fun key(kind: String, targetId: String) = "$kind:$targetId"
+    }
+}
+
+/** Трек вместе с числом прослушиваний — для «часто слушаешь». */
+data class SongPlays(
+    @androidx.room.Embedded val song: SongEntity,
+    val plays: Int,
 )

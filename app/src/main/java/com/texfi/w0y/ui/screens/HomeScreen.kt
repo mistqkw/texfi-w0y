@@ -19,10 +19,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.SongRow
+import com.texfi.w0y.ui.components.SpeedDialTile
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.nav.BrowseRoute
+import com.texfi.w0y.ui.nav.LocalBrowseNavigator
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.PixelTitle
@@ -33,6 +37,8 @@ fun HomeScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
+    val navigator = LocalBrowseNavigator.current
+    val dial by viewModel.speedDial.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
 
@@ -50,18 +56,84 @@ fun HomeScreen(
             }
         }
 
-        if (recent.isEmpty()) {
-            item {
-                PixelCard(label = "СЕЙЧАС", modifier = Modifier.fillMaxWidth()) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "❯ БЫСТРЫЙ НАБОР",
+                    style = PixelSectionLabel,
+                    color = colors.accent,
+                    modifier = Modifier.weight(1f),
+                )
+                if (dial.isNotEmpty()) {
                     Text(
-                        text = "Здесь появится то, что ты слушаешь. Пока пусто — начни с поиска.",
+                        "долгое нажатие — закрепить",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                    )
+                }
+            }
+        }
+
+        if (dial.isEmpty()) {
+            item {
+                PixelCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text =
+                            "Здесь соберётся то, что ты слушаешь чаще всего. " +
+                                "Что-то нужное можно закрепить долгим нажатием — оно останется на первом месте.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textMuted,
                     )
                 }
             }
         } else {
-            item { Text("❯ НЕДАВНО", style = PixelSectionLabel, color = colors.accent) }
+            // Сетка внутри LazyColumn собирается рядами по три: вложенный
+            // LazyVerticalGrid здесь запрещён — бесконечная высота.
+            items(dial.chunked(3), key = { row -> row.first().id }) { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    row.forEach { item ->
+                        SpeedDialTile(
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            thumbnailUrl = item.thumbnailUrl,
+                            pinned = item.pinned,
+                            kindSprite =
+                                when (item.kind) {
+                                    PinEntity.KIND_ARTIST -> Sprites.artist
+                                    PinEntity.KIND_ALBUM, PinEntity.KIND_PLAYLIST -> Sprites.release
+                                    else -> null
+                                },
+                            round = item.kind == PinEntity.KIND_ARTIST,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                when (item.kind) {
+                                    PinEntity.KIND_ARTIST ->
+                                        navigator.open(
+                                            BrowseRoute.Artist(item.id, item.title, item.thumbnailUrl),
+                                        )
+
+                                    PinEntity.KIND_ALBUM, PinEntity.KIND_PLAYLIST ->
+                                        navigator.open(
+                                            BrowseRoute.Album(item.id, item.title, item.thumbnailUrl),
+                                        )
+
+                                    else -> viewModel.playDial(item)
+                                }
+                            },
+                            onLongClick = { viewModel.togglePin(item) },
+                        )
+                    }
+                    // Неполный ряд не должен растягивать плитки: добиваем пустотой.
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+
+        if (recent.isNotEmpty()) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text("❯ НЕДАВНО", style = PixelSectionLabel, color = colors.accent)
+            }
             items(recent.take(20), key = { it.id }) { song ->
                 SongRow(
                     song = song,
@@ -80,6 +152,7 @@ fun HomeScreen(
                 SongRow(song = song, onClick = { viewModel.play(liked, liked.indexOf(song)) })
             }
         }
+
         item { Spacer(Modifier.height(24.dp)) }
     }
 }

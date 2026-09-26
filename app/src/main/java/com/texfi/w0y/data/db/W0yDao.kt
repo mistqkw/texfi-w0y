@@ -98,6 +98,34 @@ interface W0yDao {
     )
     fun recentSongs(limit: Int = 50): Flow<List<SongEntity>>
 
+    /**
+     * Что слушается чаще всего. Сортировка вторым ключом по свежести:
+     * иначе два трека с равным счётом менялись бы местами при каждом
+     * запросе, и плитки на главной прыгали бы без причины.
+     */
+    @Query(
+        """
+        SELECT songs.*, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        GROUP BY songs.id
+        ORDER BY plays DESC, MAX(history.playedAt) DESC
+        LIMIT :limit
+        """,
+    )
+    fun mostPlayed(limit: Int = 12): Flow<List<SongPlays>>
+
     @Query("DELETE FROM history")
     suspend fun clearHistory()
+
+    @Query("SELECT * FROM pins ORDER BY pinnedAt")
+    fun pins(): Flow<List<PinEntity>>
+
+    @Upsert
+    suspend fun pin(pin: PinEntity)
+
+    @Query("DELETE FROM pins WHERE key = :key")
+    suspend fun unpin(key: String)
+
+    @Query("SELECT COUNT(*) FROM pins WHERE key = :key")
+    suspend fun isPinned(key: String): Int
 }

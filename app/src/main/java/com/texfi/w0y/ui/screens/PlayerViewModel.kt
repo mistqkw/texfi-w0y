@@ -8,6 +8,7 @@ import com.texfi.w0y.data.LyricsRepository
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.W0ySettings
+import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlayerConnection
@@ -44,6 +45,25 @@ class PlayerViewModel @Inject constructor(
             .map { it.song?.id }
             .flatMapLatest { id -> if (id == null) MutableStateFlow(false) else library.isLiked(id) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Закреплён ли текущий трек в быстром наборе. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val isPinned: StateFlow<Boolean> =
+        player.state
+            .map { it.song?.id }
+            .flatMapLatest { id ->
+                library.pins.map { pins -> id != null && pins.any { it.key == PinEntity.key(PinEntity.KIND_SONG, id) } }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun togglePin(song: SongItem) = viewModelScope.launch {
+        library.togglePin(
+            kind = PinEntity.KIND_SONG,
+            targetId = song.id,
+            title = song.title,
+            subtitle = song.artist.takeIf { it.isNotBlank() },
+            thumbnailUrl = song.thumbnailUrl,
+        )
+    }
 
     private val _lyrics = MutableStateFlow<Lyrics?>(null)
     val lyrics: StateFlow<Lyrics?> = _lyrics.asStateFlow()
