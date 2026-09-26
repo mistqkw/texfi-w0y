@@ -22,9 +22,10 @@ those:
    recompositions, Baseline Profile, R8. Performance is checked on the
    release build, not on debug.
 3. **There are plenty of settings.** Quality separately for Wi-Fi and
-   mobile, cache and auto-download, gapless, normalisation, equaliser,
-   queue behaviour, theme, media notification, settings export. Every item
-   says plainly what it does.
+   mobile, cache and auto-download, normalisation, equaliser, queue
+   behaviour, seek step, theme, colour scheme, language, settings export.
+   Eleven sections with a search across all of them, and every item says
+   plainly what it does.
 
 ## What already works
 
@@ -53,8 +54,20 @@ those:
   shown on the home screen and in settings. The promise of "fast" can be
   checked.
 
-What's missing: a web version (and none is planned), scrobbling, syncing
-playlists back to the account.
+- **Playlists on YouTube** — create a playlist here and it appears in the
+  account; add or remove a track and the account follows. Nothing is
+  removed from the account behind your back, and a failed write never
+  undoes what you did on the phone: it is reported, with a button to
+  upload the playlist again.
+- **All tracks of an artist** — the same list that sits behind "Show all"
+  on the artist page, fetched in full rather than the first twelve.
+- **Search that answers sooner** — YouTube's own suggestions while you
+  type, an "all" tab that returns tracks, albums and artists in one
+  request, and matches from your own library before the network replies.
+- **Audio outputs** — the outputs the system actually reports, and which
+  one the music is going through.
+
+What's missing: a web version (and none is planned) and scrobbling.
 
 ## Building
 

@@ -53,6 +53,11 @@ class ShellViewModel @Inject constructor(
             .map { it.accent }
             .stateIn(viewModelScope, SharingStarted.Eagerly, Accent.BLUE)
 
+    val haptics: StateFlow<Boolean> =
+        settings.settings
+            .map { it.haptics }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     val theme: StateFlow<ThemeMode> =
         settings.settings
             .map { it.theme }

@@ -2,8 +2,14 @@ package com.texfi.w0y
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.metrolist.innertubex.InnerTube
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
+import com.texfi.w0y.data.AccountRepository
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.YtPlaylistSync
 import com.texfi.w0y.data.db.W0yDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -41,12 +47,26 @@ class LibraryLikesTest {
 
     @Before
     fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         db =
             Room
-                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), W0yDatabase::class.java)
+                .inMemoryDatabaseBuilder(context, W0yDatabase::class.java)
                 .allowMainThreadQueries()
                 .build()
-        library = LibraryRepository(db.dao())
+        // Зеркалирование собрано настоящее, а не заглушкой: без входа в
+        // аккаунт оно обязано ничего не делать, и это тоже часть проверки —
+        // ни один тест здесь в сеть не ходит.
+        val innerTube = InnerTube(httpClient = HttpClient(OkHttp))
+        library =
+            LibraryRepository(
+                dao = db.dao(),
+                sync =
+                    YtPlaylistSync(
+                        innerTube = innerTube,
+                        account = AccountRepository(context, innerTube),
+                        settings = SettingsRepository(context),
+                    ),
+            )
     }
 
     @After

@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 
 /**
@@ -19,6 +20,11 @@ import kotlinx.serialization.json.jsonObject
 object YtJson {
     val json = Json { ignoreUnknownKeys = true }
 
+    /** Рендереры, из которых собирается вся выдача YouTube Music. */
+    const val ROW = "musicResponsiveListItemRenderer"
+    const val TILE = "musicTwoRowItemRenderer"
+    const val SHELF = "musicShelfRenderer"
+
     /** Все объекты с таким ключом на любой глубине. */
     fun JsonElement.findAll(key: String): List<JsonObject> {
         val found = mutableListOf<JsonObject>()
@@ -27,6 +33,31 @@ object YtJson {
                 is JsonObject ->
                     element.forEach { (name, value) ->
                         if (name == key && value is JsonObject) found += value
+                        walk(value)
+                    }
+
+                is JsonArray -> element.forEach(::walk)
+                else -> Unit
+            }
+        }
+        walk(this)
+        return found
+    }
+
+    /**
+     * Все объекты сразу по нескольким ключам — за один обход.
+     *
+     * Ответ поиска — это дерево на пару мегабайт, и раньше по нему ходили
+     * отдельно за треками, отдельно за альбомами, отдельно за артистами:
+     * один и тот же обход три раза за один запрос. Теперь обход один.
+     */
+    fun JsonElement.findAll(keys: Set<String>): Map<String, List<JsonObject>> {
+        val found = keys.associateWith { mutableListOf<JsonObject>() }
+        fun walk(element: JsonElement) {
+            when (element) {
+                is JsonObject ->
+                    element.forEach { (name, value) ->
+                        if (value is JsonObject) found[name]?.add(value)
                         walk(value)
                     }
 
@@ -61,10 +92,18 @@ object YtJson {
         return result
     }
 
+    /**
+     * Строковое значение как есть. Через `jsonPrimitive` нельзя: на месте
+     * строки у YouTube иногда оказывается объект, и обращение бросает
+     * исключение вместо честного null.
+     */
+    fun JsonElement?.asString(): String? = (this as? JsonPrimitive)?.contentOrNull
+
     /** Треки из любой выдачи: поиска, плейлиста, лайков, рекомендаций. */
-    fun songs(root: JsonElement): List<SongItem> =
-        root
-            .findAll("musicResponsiveListItemRenderer")
+    fun songs(root: JsonElement): List<SongItem> = songsOf(root.findAll(ROW))
+
+    fun songsOf(rows: List<JsonObject>): List<SongItem> =
+        rows
             .mapNotNull { obj ->
                 val song =
                     runCatching {
@@ -73,17 +112,23 @@ object YtJson {
                 // Ссылки на артиста и альбом лежат в ранах подписи. Типовая
                 // модель библиотеки их не разбирает, поэтому берём из сырого
                 // объекта: без них не открыть карточку артиста из списка.
+                // Ссылки собираем одним проходом: раньше поддерево строки
+                // обходилось дважды — отдельно за артистом, отдельно за
+                // альбомом, — и это на каждый трек выдачи.
+                val links = obj.browseIds()
                 song.copy(
-                    artistId = obj.browseIds().firstOrNull { it.startsWith("UC") },
-                    albumId = obj.browseIds().firstOrNull { it.startsWith("MPRE") },
+                    artistId = links.firstOrNull { it.startsWith("UC") },
+                    albumId = links.firstOrNull { it.startsWith("MPRE") },
                     explicit = obj.hasExplicitBadge(),
                 )
             }.distinctBy { it.id }
 
     /** Артисты: и строкой в выдаче поиска, и плиткой в «похожих». */
-    fun artistCards(root: JsonElement): List<ArtistCard> {
+    fun artistCards(root: JsonElement): List<ArtistCard> = artistCardsOf(root.findAll(setOf(ROW, TILE)))
+
+    fun artistCardsOf(index: Map<String, List<JsonObject>>): List<ArtistCard> {
         val fromRows =
-            root.findAll("musicResponsiveListItemRenderer").mapNotNull { obj ->
+            index[ROW].orEmpty().mapNotNull { obj ->
                 // У трека есть videoId, у артиста — только канал.
                 if (obj.firstString("videoId") != null) return@mapNotNull null
                 val browseId =
@@ -96,7 +141,7 @@ object YtJson {
                 )
             }
         val fromTiles =
-            root.findAll("musicTwoRowItemRenderer").mapNotNull { obj ->
+            index[TILE].orEmpty().mapNotNull { obj ->
                 val browseId =
                     obj.browseIds().firstOrNull { it.startsWith("UC") } ?: return@mapNotNull null
                 ArtistCard(
@@ -118,20 +163,112 @@ object YtJson {
      * треки, релизы и похожих артистов.
      */
     fun artistPage(root: JsonElement, browseId: String): ArtistPage {
+        // Один обход на всю страницу: шапка, полки, строки и плитки
+        // лежат в одном дереве, и ходить по нему шесть раз незачем.
+        val index =
+            root.findAll(
+                setOf(
+                    ROW,
+                    TILE,
+                    SHELF,
+                    "musicImmersiveHeaderRenderer",
+                    "musicVisualHeaderRenderer",
+                    "musicResponsiveHeaderRenderer",
+                ),
+            )
         val header =
-            root.findAll("musicImmersiveHeaderRenderer").firstOrNull()
-                ?: root.findAll("musicVisualHeaderRenderer").firstOrNull()
-                ?: root.findAll("musicResponsiveHeaderRenderer").firstOrNull()
+            index["musicImmersiveHeaderRenderer"]?.firstOrNull()
+                ?: index["musicVisualHeaderRenderer"]?.firstOrNull()
+                ?: index["musicResponsiveHeaderRenderer"]?.firstOrNull()
+        // «Показать все» под полкой треков ведёт в плейлист со всеми
+        // песнями артиста. Полка на странице не одна, поэтому берём ту,
+        // в которой действительно лежат треки, а не релизы.
+        val songsShelf =
+            index[SHELF].orEmpty().firstOrNull { shelf ->
+                shelf["contents"]?.firstString("videoId") != null
+            }
+        val allSongs =
+            songsShelf?.get("bottomEndpoint")?.findAll("browseEndpoint")?.firstOrNull()
+                ?: songsShelf?.get("title")?.findAll("browseEndpoint")?.firstOrNull()
         return ArtistPage(
             browseId = browseId,
             name = header?.get("title")?.firstString("text") ?: "",
             subtitle = header?.firstString("subscriberCountText") ?: header?.get("subtitle")?.firstString("text"),
             thumbnailUrl = header?.bestThumbnail() ?: root.bestThumbnail(),
-            songs = songs(root),
-            releases = playlistCards(root),
-            similar = artistCards(root).filterNot { it.browseId == browseId },
+            songs = songsOf(index[ROW].orEmpty()),
+            releases = playlistCardsOf(index),
+            similar = artistCardsOf(index).filterNot { it.browseId == browseId },
+            allSongsBrowseId = allSongs?.get("browseId").asString(),
+            allSongsParams = allSongs?.get("params").asString(),
         )
     }
+
+    /**
+     * Треки, альбомы и артисты одной выдачи — за один обход дерева.
+     *
+     * Для вкладки «всё» это не удобство, а разница в ощущении: обход
+     * ответа поиска стоит заметно, и делать его трижды ради одного экрана
+     * было бы той самой «оптимизацией потом».
+     */
+    fun mixed(root: JsonElement): MixedResults {
+        val index = root.findAll(setOf(ROW, TILE))
+        return MixedResults(
+            songs = songsOf(index[ROW].orEmpty()),
+            albums = playlistCardsOf(index),
+            artists = artistCardsOf(index),
+        )
+    }
+
+    /**
+     * Продолжение длинного списка.
+     *
+     * YouTube отдаёт плейлисты порциями по сто треков; без токена
+     * «все песни артиста» обрывались бы на сотой и выглядели бы
+     * как неполный список, а не как порция.
+     */
+    fun continuation(root: JsonElement): String? =
+        root.findAll("continuationItemRenderer").firstNotNullOfOrNull { it.firstString("token") }
+            ?: root.findAll("nextContinuationData").firstNotNullOfOrNull { it.firstString("continuation") }
+
+    /**
+     * Подсказки поиска: полный запрос, а не то, что выделено жирным.
+     *
+     * Текст подсказки приходит разбитым на раны («eminem lo» + «se
+     * yourself»), а целая строка лежит в её endpoint — оттуда и берём,
+     * иначе в поле подставлялся бы обрубок.
+     */
+    fun searchSuggestions(root: JsonElement): List<String> =
+        root
+            .findAll("searchSuggestionRenderer")
+            .mapNotNull { item ->
+                item.findAll("searchEndpoint").firstNotNullOfOrNull { endpoint ->
+                    endpoint["query"].asString()
+                } ?: item["suggestion"]?.textRuns()?.joinToString("")?.takeIf { it.isNotBlank() }
+            }.map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+
+    /**
+     * Пары «трек → его место в плейлисте».
+     *
+     * Удалить трек из плейлиста YouTube по одному videoId нельзя: один и
+     * тот же трек может лежать в плейлисте дважды, и они различают их
+     * через setVideoId. Значение приходит только при чтении своего
+     * плейлиста с аккаунтом.
+     */
+    fun setVideoIds(root: JsonElement): Map<String, String> =
+        root
+            .findAll("playlistItemData")
+            .mapNotNull { data ->
+                val videoId = data["videoId"].asString() ?: return@mapNotNull null
+                val setVideoId = data["playlistSetVideoId"].asString() ?: return@mapNotNull null
+                videoId to setVideoId
+            }.toMap()
+
+    /** Идентификатор только что созданного в аккаунте плейлиста. */
+    fun createdPlaylistId(root: JsonElement): String? =
+        (root as? JsonObject)?.get("playlistId").asString()
+            ?: root.firstString("playlistId")
 
     /** Страница альбома: шапка и треклист. */
     fun albumPage(root: JsonElement, browseId: String): AlbumPage {
@@ -180,6 +317,7 @@ object YtJson {
                         ?.textRuns()
                         ?.filter { it.isNotBlank() && it.trim() != "•" }
                         .orEmpty()
+                val links = obj.browseIds()
                 SongItem(
                     id = videoId,
                     title = title,
@@ -187,8 +325,8 @@ object YtJson {
                     album = byline.getOrNull(1),
                     durationText = obj["lengthText"]?.firstString("text"),
                     thumbnailUrl = obj.bestThumbnail(),
-                    artistId = obj.browseIds().firstOrNull { it.startsWith("UC") },
-                    albumId = obj.browseIds().firstOrNull { it.startsWith("MPRE") },
+                    artistId = links.firstOrNull { it.startsWith("UC") },
+                    albumId = links.firstOrNull { it.startsWith("MPRE") },
                     explicit = obj.hasExplicitBadge(),
                 )
             }.distinctBy { it.id }
@@ -206,9 +344,10 @@ object YtJson {
                     shelf["header"]?.firstString("text")
                         ?: shelf["title"]?.firstString("text")
                         ?: return@mapNotNull null
-                val songs = songs(shelf)
-                val cards = playlistCards(shelf)
-                val artists = artistCards(shelf)
+                val index = shelf.findAll(setOf(ROW, TILE))
+                val songs = songsOf(index[ROW].orEmpty())
+                val cards = playlistCardsOf(index)
+                val artists = artistCardsOf(index)
                 if (songs.isEmpty() && cards.isEmpty() && artists.isEmpty()) return@mapNotNull null
                 Shelf(title = title, songs = songs, cards = cards, artists = artists)
             }.distinctBy { it.title }
@@ -299,9 +438,12 @@ object YtJson {
      * обычные строки списка. Разбираем оба вида: иначе раздел «альбомы»
      * в поиске оказывается пустым, хотя ответ пришёл полный.
      */
-    fun playlistCards(root: JsonElement): List<PlaylistCard> {
+    fun playlistCards(root: JsonElement): List<PlaylistCard> =
+        playlistCardsOf(root.findAll(setOf(ROW, TILE)))
+
+    fun playlistCardsOf(index: Map<String, List<JsonObject>>): List<PlaylistCard> {
         val fromRows =
-            root.findAll("musicResponsiveListItemRenderer").mapNotNull { obj ->
+            index[ROW].orEmpty().mapNotNull { obj ->
                 if (obj.firstString("videoId") != null) return@mapNotNull null
                 val browseId =
                     obj.browseIds().firstOrNull {
@@ -319,12 +461,11 @@ object YtJson {
                     thumbnailUrl = obj.bestThumbnail(),
                 )
             }
-        return (tileCards(root) + fromRows).distinctBy { it.browseId }
+        return (tileCards(index[TILE].orEmpty()) + fromRows).distinctBy { it.browseId }
     }
 
-    private fun tileCards(root: JsonElement): List<PlaylistCard> =
-        root
-            .findAll("musicTwoRowItemRenderer")
+    private fun tileCards(tiles: List<JsonObject>): List<PlaylistCard> =
+        tiles
             .mapNotNull { obj ->
                 val browseId =
                     obj["navigationEndpoint"]
@@ -450,6 +591,9 @@ data class ArtistPage(
     val songs: List<SongItem> = emptyList(),
     val releases: List<PlaylistCard> = emptyList(),
     val similar: List<ArtistCard> = emptyList(),
+    /** Плейлист со всеми треками артиста — тот же, что за «Показать все». */
+    val allSongsBrowseId: String? = null,
+    val allSongsParams: String? = null,
 )
 
 /** Лента на главной: заголовок и то, что в ней лежит. */

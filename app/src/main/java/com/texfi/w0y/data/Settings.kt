@@ -180,6 +180,11 @@ data class W0ySettings(
     val language: Language = Language.SYSTEM,
     val animatedBackground: Boolean = true,
     val accent: Accent = Accent.BLUE,
+    val syncPlaylists: Boolean = true,
+    val searchSuggestions: Boolean = true,
+    val haptics: Boolean = true,
+    val seekStepSec: Int = 10,
+    val playerCoverGlow: Boolean = true,
 )
 
 @Singleton
@@ -223,6 +228,11 @@ class SettingsRepository @Inject constructor(
                     language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
                     animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
                     accent = prefs.enum(Keys.ACCENT, Accent.BLUE),
+                    syncPlaylists = prefs[Keys.SYNC_PLAYLISTS] ?: true,
+                    searchSuggestions = prefs[Keys.SEARCH_SUGGESTIONS] ?: true,
+                    haptics = prefs[Keys.HAPTICS] ?: true,
+                    seekStepSec = prefs[Keys.SEEK_STEP] ?: 10,
+                    playerCoverGlow = prefs[Keys.COVER_GLOW] ?: true,
                 )
             }
 
@@ -293,6 +303,16 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAccent(value: Accent) = put(Keys.ACCENT, value.name)
 
+    suspend fun setSyncPlaylists(value: Boolean) = put(Keys.SYNC_PLAYLISTS, value)
+
+    suspend fun setSearchSuggestions(value: Boolean) = put(Keys.SEARCH_SUGGESTIONS, value)
+
+    suspend fun setHaptics(value: Boolean) = put(Keys.HAPTICS, value)
+
+    suspend fun setSeekStep(seconds: Int) = put(Keys.SEEK_STEP, seconds)
+
+    suspend fun setPlayerCoverGlow(value: Boolean) = put(Keys.COVER_GLOW, value)
+
     /**
      * Язык пишется сразу в двух местах.
      *
@@ -324,6 +344,11 @@ class SettingsRepository @Inject constructor(
             .put("language", current.language.name)
             .put("animatedBackground", current.animatedBackground)
             .put("accent", current.accent.name)
+            .put("syncPlaylists", current.syncPlaylists)
+            .put("searchSuggestions", current.searchSuggestions)
+            .put("haptics", current.haptics)
+            .put("seekStepSec", current.seekStepSec)
+            .put("playerCoverGlow", current.playerCoverGlow)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -346,6 +371,11 @@ class SettingsRepository @Inject constructor(
                 prefs[Keys.ANIMATED_BACKGROUND] = obj.getBoolean("animatedBackground")
             }
             obj.optString("accent").takeIf { it.isNotBlank() }?.let { prefs[Keys.ACCENT] = it }
+            if (obj.has("syncPlaylists")) prefs[Keys.SYNC_PLAYLISTS] = obj.getBoolean("syncPlaylists")
+            if (obj.has("searchSuggestions")) prefs[Keys.SEARCH_SUGGESTIONS] = obj.getBoolean("searchSuggestions")
+            if (obj.has("haptics")) prefs[Keys.HAPTICS] = obj.getBoolean("haptics")
+            if (obj.has("seekStepSec")) prefs[Keys.SEEK_STEP] = obj.getInt("seekStepSec")
+            if (obj.has("playerCoverGlow")) prefs[Keys.COVER_GLOW] = obj.getBoolean("playerCoverGlow")
             // Язык из выгрузки нужно продублировать в синхронное хранилище:
             // именно оттуда его читает attachBaseContext при следующем старте.
             obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
@@ -403,5 +433,10 @@ class SettingsRepository @Inject constructor(
         val LANGUAGE = stringPreferencesKey("language")
         val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")
         val ACCENT = stringPreferencesKey("accent")
+        val SYNC_PLAYLISTS = booleanPreferencesKey("sync_playlists")
+        val SEARCH_SUGGESTIONS = booleanPreferencesKey("search_suggestions")
+        val HAPTICS = booleanPreferencesKey("haptics")
+        val SEEK_STEP = intPreferencesKey("seek_step_sec")
+        val COVER_GLOW = booleanPreferencesKey("player_cover_glow")
     }
 }

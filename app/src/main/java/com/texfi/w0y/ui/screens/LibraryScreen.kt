@@ -84,6 +84,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
     val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
+    val mirrorFailure by viewModel.mirrorFailure.collectAsStateWithLifecycle()
     var newPlaylist by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
@@ -124,6 +125,22 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
                 syncError?.let {
                     Spacer(Modifier.height(8.dp))
                     Text(it, style = MaterialTheme.typography.bodySmall, color = colors.secondary)
+                }
+                // О неудачной записи плейлиста в аккаунт говорим прямо: на
+                // телефоне изменение осталось, а в YouTube — нет, и молчать
+                // об этом значило бы обещать синхронизацию, которой не было.
+                mirrorFailure?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.library_mirror_failed, it),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.secondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        SpriteButton(Sprites.close, onClick = viewModel::clearMirrorFailure, size = 14)
+                    }
                 }
             }
         }
@@ -201,7 +218,15 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         items(playlists, key = { it.id }) { playlist ->
             CollectionRow(
                 title = playlist.name,
-                subtitle = stringResource(R.string.library_own_playlist),
+                // Сразу видно, где плейлист лежит: только на телефоне или
+                // ещё и в аккаунте. Без этой строчки «синхронизация» — слово
+                // из настроек, которое никак не проверить.
+                subtitle =
+                    if (playlist.remoteId != null) {
+                        stringResource(R.string.library_playlist_mirrored)
+                    } else {
+                        stringResource(R.string.library_own_playlist)
+                    },
                 thumbnailUrl = null,
                 sprite = Sprites.library,
                 onClick = { viewModel.open(LibraryRoute.Local(playlist.id)) },
@@ -403,7 +428,10 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.currentPlaylistSongs.collectAsStateWithLifecycle()
     val playlist by viewModel.playlists.collectAsStateWithLifecycle()
-    val name = playlist.firstOrNull { it.id == playlistId }?.name ?: stringResource(R.string.playlist_title)
+    val signedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
+    val pushResult by viewModel.pushResult.collectAsStateWithLifecycle()
+    val entry = playlist.firstOrNull { it.id == playlistId }
+    val name = entry?.name ?: stringResource(R.string.playlist_title)
     Column(
         Modifier
             .fillMaxSize()
@@ -413,6 +441,35 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
             Spacer(Modifier.width(12.dp))
             SpriteButton(Sprites.trash, onClick = { viewModel.deletePlaylist(playlistId) })
+        }
+        if (signedIn) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PixelSprite(
+                    rows = Sprites.sync,
+                    color = if (entry?.remoteId != null) colors.accent else colors.textMuted,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text =
+                        pushResult
+                            ?: if (entry?.remoteId != null) {
+                                stringResource(R.string.playlist_mirrored)
+                            } else {
+                                stringResource(R.string.playlist_not_mirrored)
+                            },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                PixelButton(
+                    text = stringResource(R.string.playlist_push),
+                    onClick = { viewModel.pushPlaylist(playlistId) },
+                    fill = colors.surfaceHigh,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
         }
         if (songs.isEmpty()) {
             Text(

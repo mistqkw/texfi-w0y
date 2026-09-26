@@ -9,6 +9,7 @@ import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.data.YtPlaylistSync
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.playback.DownloadsRepository
@@ -49,6 +50,7 @@ class LibraryViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val account: AccountRepository,
     private val youtube: YouTubeRepository,
+    private val sync: YtPlaylistSync,
     val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
@@ -171,6 +173,16 @@ class LibraryViewModel @Inject constructor(
     private val _syncError = MutableStateFlow<String?>(null)
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
+    /** Последняя неудачная запись плейлиста в аккаунт — её видно в библиотеке. */
+    val mirrorFailure: StateFlow<String?> = sync.failure
+
+    private val _pushResult = MutableStateFlow<String?>(null)
+
+    /** Чем кончилась ручная догрузка плейлиста в аккаунт. */
+    val pushResult: StateFlow<String?> = _pushResult.asStateFlow()
+
+    fun clearMirrorFailure() = sync.clearFailure()
+
     private val _currentPlaylistSongs = MutableStateFlow<List<SongItem>>(emptyList())
     val currentPlaylistSongs: StateFlow<List<SongItem>> = _currentPlaylistSongs.asStateFlow()
 
@@ -212,6 +224,30 @@ class LibraryViewModel @Inject constructor(
 
     fun removeFromPlaylist(playlistId: Long, songId: String) =
         viewModelScope.launch { library.removeFromPlaylist(playlistId, songId) }
+
+    /**
+     * Догрузить плейлист в аккаунт руками.
+     *
+     * Нужно для тех плейлистов, что появились до входа, и на случай, когда
+     * YouTube не принял часть треков: молча оставлять расхождение —
+     * то же самое, что врать о синхронизации.
+     */
+    fun pushPlaylist(id: Long) {
+        _pushResult.value = null
+        viewModelScope.launch {
+            val added = library.pushPlaylist(id)
+            _pushResult.value =
+                when {
+                    added == null -> context.getString(R.string.playlist_push_failed)
+                    added == 0 -> context.getString(R.string.playlist_push_same)
+                    else -> context.getString(R.string.playlist_push_done, added)
+                }
+        }
+    }
+
+    fun consumePushResult() {
+        _pushResult.value = null
+    }
 
     fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
 

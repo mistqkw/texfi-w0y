@@ -174,6 +174,60 @@ class BrowseSmokeTest {
         assertTrue("Ни один трек не помечен как explicit", songs.any { it.explicit })
     }
 
+    /**
+     * У страницы артиста есть ссылка «Показать все» на его треки.
+     *
+     * Без неё кнопка «все треки» в карточке артиста молча ничего не даст, а
+     * ловится эта ссылка обходом дерева — то есть ровно тем, что ломается
+     * от перестановок на стороне YouTube.
+     */
+    @Test
+    fun artistPageCarriesAllSongsLink() = runBlocking {
+        requireLiveNetwork()
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        val artists =
+            YtJson.artistCards(
+                innerTube
+                    .search(
+                        client = YouTubeClient.WEB_REMIX,
+                        query = "eminem",
+                        params = YouTubeRepository.ARTISTS_FILTER,
+                    ).body<JsonObject>(),
+            )
+        val browseId = artists.first().browseId
+        val page =
+            YtJson.artistPage(
+                innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = browseId).body<JsonObject>(),
+                browseId,
+            )
+        println("ВСЕ ТРЕКИ: ${page.allSongsBrowseId} params=${page.allSongsParams}")
+        assertNotNull("У артиста не нашлось ссылки на все треки", page.allSongsBrowseId)
+        assertTrue(
+            "Ссылка на все треки не похожа на плейлист: ${page.allSongsBrowseId}",
+            page.allSongsBrowseId.orEmpty().startsWith("VL"),
+        )
+        http.close()
+    }
+
+    /** Подсказки поиска: нужен целый запрос, а не выделенный жирным огрызок. */
+    @Test
+    fun suggestsWholeQueries() = runBlocking {
+        requireLiveNetwork()
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        val response =
+            innerTube.getSearchSuggestions(YouTubeClient.WEB_REMIX, "eminem lo", false).body<JsonObject>()
+        val suggestions = YtJson.searchSuggestions(response)
+        suggestions.take(5).forEach { println("ПОДСКАЗКА: $it") }
+        http.close()
+        assertTrue("Подсказок не пришло", suggestions.isNotEmpty())
+        assertTrue(
+            "Подсказка короче набранного — значит, склеили не то: $suggestions",
+            suggestions.all { it.length >= "eminem lo".length },
+        )
+    }
+
     /** Размер зашит в саму ссылку — проверяем, что мы просим крупную картинку. */
     @Test
     fun upscalesThumbnails() {

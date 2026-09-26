@@ -40,6 +40,7 @@ fun PixelButton(
     val colors = LocalW0yColors.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val tap = rememberTapHaptic()
     // Тень лежит на +4dp; при нажатии содержимое съезжает ровно на неё.
     val sink = if (pressed) 4 else 0
     val body = fill ?: colors.accent
@@ -62,8 +63,10 @@ fun PixelButton(
                     interactionSource = interaction,
                     indication = null,
                     enabled = enabled,
-                    onClick = onClick,
-                )
+                ) {
+                    tap()
+                    onClick()
+                }
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center,
         ) {

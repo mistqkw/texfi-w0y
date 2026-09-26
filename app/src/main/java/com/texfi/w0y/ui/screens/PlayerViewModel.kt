@@ -12,6 +12,8 @@ import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.data.QueueMode
+import com.texfi.w0y.playback.AudioDevicesRepository
+import com.texfi.w0y.playback.AudioOutput
 import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
@@ -36,7 +38,19 @@ class PlayerViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
+    devices: AudioDevicesRepository,
 ) : ViewModel() {
+    /**
+     * Через что идёт звук прямо сейчас.
+     *
+     * Плеер показывает это только когда выход не сам телефон: «играет
+     * через динамик» — очевидность, а вот «играет через колонку» объясняет
+     * тишину в наушниках.
+     */
+    val activeOutput: StateFlow<AudioOutput?> =
+        devices.outputs
+            .map { outputs -> outputs.firstOrNull { it.active } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     /** Что играет после текущего трека и не подбираются ли сейчас похожие. */
     val queueMode: StateFlow<QueueMode> = playback.mode
     val loadingRadio: StateFlow<Boolean> = playback.loadingRadio
@@ -125,4 +139,7 @@ class PlayerViewModel @Inject constructor(
         }
 
     fun cancelSleepTimer() = player.cancelSleepTimer()
+
+    /** Перемотка на фиксированный шаг — и назад, и вперёд одной функцией. */
+    fun seekBy(deltaMs: Long) = player.seekBy(deltaMs)
 }

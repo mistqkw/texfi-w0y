@@ -58,10 +58,16 @@ fun ArtistScreen(
     val page by viewModel.artist.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val pinned by viewModel.pinnedKeys.collectAsStateWithLifecycle()
+    val allSongs by viewModel.allSongs.collectAsStateWithLifecycle()
+    val loadingAll by viewModel.loadingAllSongs.collectAsStateWithLifecycle()
 
     LaunchedEffect(route.browseId) { viewModel.loadArtist(route.browseId) }
 
-    val songs = page?.songs.orEmpty()
+    // Пока полный список не запрошен, играет и показывается верхушка со
+    // страницы; как только он пришёл — всё дальше идёт по нему, включая
+    // «включить» и «перемешать».
+    val songs = allSongs.ifEmpty { page?.songs.orEmpty() }
+    val hasMore = page?.allSongsBrowseId != null && allSongs.isEmpty()
     val name = page?.name?.takeIf { it.isNotBlank() } ?: route.name
     val isPinned = PinEntity.key(PinEntity.KIND_ARTIST, route.browseId) in pinned
 
@@ -130,14 +136,47 @@ fun ArtistScreen(
         }
 
         if (songs.isNotEmpty()) {
-            item { BrowseSection(stringResource(R.string.artist_songs)) }
-            items(songs.take(12), key = { it.id }) { song ->
+            item {
+                BrowseSection(
+                    // Когда список полный, число в заголовке — это ответ на
+                    // вопрос «сколько их всего», а не украшение.
+                    text =
+                        if (allSongs.isEmpty()) {
+                            stringResource(R.string.artist_songs)
+                        } else {
+                            stringResource(R.string.artist_songs_count, songs.size)
+                        },
+                )
+            }
+            items(
+                items = if (allSongs.isEmpty()) songs.take(PREVIEW_SONGS) else songs,
+                key = { it.id },
+            ) { song ->
                 SongRow(
                     song = song,
                     modifier = Modifier.padding(horizontal = 18.dp),
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
                     actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
                 )
+            }
+            if (hasMore) {
+                item {
+                    PixelButton(
+                        text =
+                            if (loadingAll) {
+                                stringResource(R.string.artist_all_songs_loading)
+                            } else {
+                                stringResource(R.string.artist_all_songs)
+                            },
+                        onClick = viewModel::loadAllSongs,
+                        enabled = !loadingAll,
+                        fill = colors.surfaceHigh,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp, vertical = 12.dp),
+                    )
+                }
             }
         }
 
@@ -250,3 +289,6 @@ private fun BrowseSection(text: String) {
         )
     }
 }
+
+/** Сколько треков показывать до нажатия «все треки». */
+private const val PREVIEW_SONGS = 12

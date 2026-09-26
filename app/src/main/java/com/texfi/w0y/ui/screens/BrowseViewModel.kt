@@ -54,6 +54,14 @@ class BrowseViewModel @Inject constructor(
             .map { pins -> pins.map { it.key }.toSet() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    private val _allSongs = MutableStateFlow<List<SongItem>>(emptyList())
+
+    /** Все треки артиста — пусто, пока их не запросили. */
+    val allSongs: StateFlow<List<SongItem>> = _allSongs.asStateFlow()
+
+    private val _loadingAllSongs = MutableStateFlow(false)
+    val loadingAllSongs: StateFlow<Boolean> = _loadingAllSongs.asStateFlow()
+
     private var loaded: String? = null
 
     /** Загружает страницу один раз на маршрут: возврат назад не дёргает сеть. */
@@ -75,6 +83,28 @@ class BrowseViewModel @Inject constructor(
                 loaded = null
                 _error.value = context.getString(R.string.browse_failed)
             }
+        }
+    }
+
+    /**
+     * Все треки артиста по ссылке «Показать все» с его страницы.
+     *
+     * Своего списка не собираем: поиск по имени приносит чужие треки и
+     * каверы, а страница артиста отдаёт ровно то, что YouTube считает его
+     * песнями. Нет ссылки — значит, полного списка у артиста нет, и
+     * кнопки тоже не будет.
+     */
+    fun loadAllSongs() {
+        val page = _artist.value ?: return
+        if (_loadingAllSongs.value || _allSongs.value.isNotEmpty()) return
+        if (page.allSongsBrowseId == null) return
+        viewModelScope.launch {
+            _loadingAllSongs.value = true
+            _allSongs.value =
+                runCatching { youtube.artistSongs(page) }
+                    .onFailure { Timber.w(it, "Все треки ${page.name} не загрузились") }
+                    .getOrDefault(emptyList())
+            _loadingAllSongs.value = false
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
 import com.texfi.w0y.R
 import com.texfi.w0y.data.Accent
+import com.texfi.w0y.data.AccountRepository
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
@@ -17,6 +18,8 @@ import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.data.W0ySettings
+import com.texfi.w0y.playback.AudioDevicesRepository
+import com.texfi.w0y.playback.AudioOutput
 import com.texfi.w0y.playback.AudioSessionHolder
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.StartupMetrics
@@ -46,8 +49,21 @@ class SettingsViewModel @Inject constructor(
     @param:Named("stream") private val streamCache: SimpleCache,
     private val audioSession: AudioSessionHolder,
     private val playback: PlaybackStarter,
+    private val account: AccountRepository,
+    devices: AudioDevicesRepository,
     startupMetrics: StartupMetrics,
 ) : ViewModel() {
+    /** Выходы звука: то, что система видит подключённым прямо сейчас. */
+    val outputs: StateFlow<List<AudioOutput>> =
+        devices.outputs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val signedIn: StateFlow<Boolean> =
+        account.isSignedIn.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val accountName: StateFlow<String?> =
+        account.accountName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun signOut() = update { account.signOut() }
     /** Замер «нажал → пошёл звук»: главное обещание приложения, измеренное. */
     val startupAverage: StateFlow<Long?> = startupMetrics.average
     val startupLast: StateFlow<Long?> = startupMetrics.last
@@ -143,6 +159,16 @@ class SettingsViewModel @Inject constructor(
     fun setHideExplicit(value: Boolean) = update { repository.setHideExplicit(value) }
 
     fun setMuteSwearLines(value: Boolean) = update { repository.setMuteSwearLines(value) }
+
+    fun setSyncPlaylists(value: Boolean) = update { repository.setSyncPlaylists(value) }
+
+    fun setSearchSuggestions(value: Boolean) = update { repository.setSearchSuggestions(value) }
+
+    fun setHaptics(value: Boolean) = update { repository.setHaptics(value) }
+
+    fun setSeekStep(seconds: Int) = update { repository.setSeekStep(seconds) }
+
+    fun setPlayerCoverGlow(value: Boolean) = update { repository.setPlayerCoverGlow(value) }
 
     suspend fun exportJson(): String = repository.export(repository.settings.first())
 

@@ -284,6 +284,7 @@ fun PixelSegmented(
     onSelect: (Int) -> Unit,
 ) {
     val colors = LocalW0yColors.current
+    val tap = rememberTapHaptic()
     Row(
         modifier
             .fillMaxWidth()
@@ -308,8 +309,10 @@ fun PixelSegmented(
                 Modifier
                     .weight(1f)
                     .background(fill)
-                    .clickable { onSelect(index) }
-                    .padding(vertical = 12.dp),
+                    .clickable {
+                        tap()
+                        onSelect(index)
+                    }.padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

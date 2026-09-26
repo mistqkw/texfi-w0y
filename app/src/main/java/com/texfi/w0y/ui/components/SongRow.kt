@@ -154,6 +154,7 @@ fun SpriteButton(
 ) {
     val colors = LocalW0yColors.current
     val interaction = remember { MutableInteractionSource() }
+    val tap = rememberTapHaptic()
     val color by animateColorAsState(
         targetValue = if (active) colors.accent else colors.textMuted,
         animationSpec = tween(180),
@@ -167,7 +168,10 @@ fun SpriteButton(
                 .size(size.dp)
                 .pressScale(interaction, pressed = 0.82f)
                 .popWhenActivated(active)
-                .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+                .clickable(interactionSource = interaction, indication = null) {
+                    tap()
+                    onClick()
+                },
     )
 }
 

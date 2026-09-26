@@ -157,6 +157,19 @@ class PlayerConnection @Inject constructor(
 
     fun seekTo(positionMs: Long) = controller?.seekTo(positionMs) ?: Unit
 
+    /**
+     * Перемотка на шаг от текущей позиции.
+     *
+     * Границы считаем сами: `seekTo` за пределы трека media3 обрабатывает
+     * по-разному в зависимости от источника, а «перемотал назад в начале
+     * трека — и он начался заново» выглядит как сбой.
+     */
+    fun seekBy(deltaMs: Long) {
+        val media = controller ?: return
+        val duration = media.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        media.seekTo((media.currentPosition + deltaMs).coerceIn(0L, duration))
+    }
+
     fun playAt(index: Int) {
         val media = controller ?: return
         media.seekTo(index, 0L)

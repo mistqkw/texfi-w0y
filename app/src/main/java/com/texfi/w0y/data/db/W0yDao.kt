@@ -115,6 +115,38 @@ interface W0yDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     fun playlist(id: Long): Flow<PlaylistEntity?>
 
+    @Query("SELECT * FROM playlists WHERE id = :id")
+    suspend fun playlistOnce(id: Long): PlaylistEntity?
+
+    /** Ссылка на плейлист в аккаунте: появляется, когда он там создан. */
+    @Query("UPDATE playlists SET remoteId = :remoteId WHERE id = :id")
+    suspend fun setRemoteId(id: Long, remoteId: String?)
+
+    @Query(
+        """
+        SELECT songId FROM playlist_songs
+        WHERE playlistId = :playlistId
+        ORDER BY position
+        """,
+    )
+    suspend fun playlistSongIds(playlistId: Long): List<String>
+
+    /**
+     * Поиск по тому, что уже лежит в библиотеке.
+     *
+     * Нужен в самом поиске: то, что человек уже слушал или лайкнул, он
+     * ищет чаще всего, и ждать ради этого ответа YouTube незачем.
+     */
+    @Query(
+        """
+        SELECT * FROM songs
+        WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%'
+        ORDER BY liked DESC, title
+        LIMIT :limit
+        """,
+    )
+    suspend fun searchLocal(query: String, limit: Int = 6): List<SongEntity>
+
     @Query("SELECT COUNT(*) FROM playlist_songs WHERE playlistId = :id")
     fun playlistSize(id: Long): Flow<Int>
 

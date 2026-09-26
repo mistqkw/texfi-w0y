@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.map
 @Singleton
 class LibraryRepository @Inject constructor(
     private val dao: W0yDao,
+    private val sync: YtPlaylistSync,
 ) {
     val playlists: Flow<List<PlaylistEntity>> = dao.playlists()
     val liked: Flow<List<SongItem>> = dao.likedSongs().map { list -> list.map(SongEntity::toItem) }
@@ -36,18 +37,60 @@ class LibraryRepository @Inject constructor(
 
     fun isLiked(id: String): Flow<Boolean> = dao.likedFlow(id).map { it == true }
 
-    suspend fun createPlaylist(name: String): Long =
-        dao.createPlaylist(PlaylistEntity(name = name.trim(), createdAt = now()))
+    /**
+     * Создаёт плейлист и, если включено зеркалирование, заводит такой же в
+     * аккаунте. Сначала запись на телефон: если YouTube откажет, плейлист
+     * всё равно останется, просто без отражения.
+     */
+    suspend fun createPlaylist(name: String): Long {
+        val clean = name.trim()
+        val id = dao.createPlaylist(PlaylistEntity(name = clean, createdAt = now()))
+        if (sync.enabled()) dao.setRemoteId(id, sync.create(clean))
+        return id
+    }
 
-    suspend fun renamePlaylist(id: Long, name: String) = dao.renamePlaylist(id, name.trim())
+    suspend fun renamePlaylist(id: Long, name: String) {
+        val clean = name.trim()
+        dao.renamePlaylist(id, clean)
+        remoteId(id)?.let { sync.rename(it, clean) }
+    }
 
-    suspend fun deletePlaylist(id: Long) = dao.deletePlaylist(id)
+    suspend fun deletePlaylist(id: Long) {
+        // Ссылку читаем до удаления: после него строки уже нет.
+        val remote = remoteId(id)
+        dao.deletePlaylist(id)
+        remote?.let { sync.delete(it) }
+    }
 
-    suspend fun addToPlaylist(playlistId: Long, song: SongItem) =
+    suspend fun addToPlaylist(playlistId: Long, song: SongItem) {
         dao.addSongToPlaylist(playlistId, SongEntity.from(song), now())
+        remoteId(playlistId)?.let { sync.add(it, song.id) }
+    }
 
-    suspend fun removeFromPlaylist(playlistId: Long, songId: String) =
+    suspend fun removeFromPlaylist(playlistId: Long, songId: String) {
         dao.removeFromPlaylist(playlistId, songId)
+        remoteId(playlistId)?.let { sync.remove(it, songId) }
+    }
+
+    /**
+     * Ручная догрузка плейлиста в аккаунт: для тех, что появились до входа
+     * или когда YouTube не принял часть треков. Возвращает, сколько
+     * добавилось, или null — если не получилось.
+     */
+    suspend fun pushPlaylist(id: Long): Int? {
+        if (!sync.enabled()) return null
+        val playlist = dao.playlistOnce(id) ?: return null
+        val remote = playlist.remoteId ?: sync.create(playlist.name)?.also { dao.setRemoteId(id, it) }
+        remote ?: return null
+        return sync.push(remote, dao.playlistSongIds(id))
+    }
+
+    /** Ищет по тому, что уже есть на телефоне. */
+    suspend fun searchLocal(query: String): List<SongItem> =
+        if (query.isBlank()) emptyList() else dao.searchLocal(query.trim()).map(SongEntity::toItem)
+
+    private suspend fun remoteId(playlistId: Long): String? =
+        if (!sync.enabled()) null else dao.playlistOnce(playlistId)?.remoteId
 
     suspend fun toggleLike(song: SongItem): Boolean {
         val stored = dao.song(song.id)

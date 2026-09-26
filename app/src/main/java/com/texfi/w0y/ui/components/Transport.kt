@@ -36,13 +36,17 @@ fun TransportButton(
 ) {
     val colors = LocalW0yColors.current
     val interaction = remember { MutableInteractionSource() }
+    val tap = rememberTapHaptic()
     PixelSprite(
         rows = rows,
         color = color ?: colors.text,
         modifier =
             Modifier
                 .pressScale(interaction, pressed = 0.78f)
-                .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                .clickable(interactionSource = interaction, indication = null) {
+                    tap()
+                    onClick()
+                }
                 .padding(touchPadding.dp)
                 .size(size.dp),
     )
@@ -65,6 +69,7 @@ fun PlayPauseButton(
 ) {
     val colors = LocalW0yColors.current
     val interaction = remember { MutableInteractionSource() }
+    val tap = rememberSelectHaptic()
     AnimatedContent(
         targetState = isPlaying,
         transitionSpec = {
@@ -79,7 +84,10 @@ fun PlayPauseButton(
             modifier =
                 Modifier
                     .pressScale(interaction, pressed = 0.84f)
-                    .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                    .clickable(interactionSource = interaction, indication = null) {
+                        tap()
+                        onClick()
+                    }
                     .padding(touchPadding.dp)
                     .size(size.dp),
         )

@@ -53,6 +53,15 @@ class YouTubeRepository @Inject constructor(
 
     private val streams = ConcurrentHashMap<String, ExtractedStream>()
     private val locks = ConcurrentHashMap<String, Mutex>()
+
+    /**
+     * Порядок, в котором ссылки попадали в кэш.
+     *
+     * Кэш держит их с оглядкой на срок жизни, но пока он не истёк, запись
+     * не уходит сама. За долгий вечер это сотни ссылок в памяти процесса,
+     * который обещает быть быстрым, — поэтому старое вытесняется.
+     */
+    private val streamOrder = java.util.Collections.synchronizedList(mutableListOf<String>())
     private val prefetchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     suspend fun searchSongs(query: String): List<SongItem> = withContext(Dispatchers.IO) {
@@ -150,13 +159,84 @@ class YouTubeRepository @Inject constructor(
         YtJson.albumPage(response, browseId)
     }
 
-    /** Треки плейлиста или альбома по его browseId. */
-    suspend fun playlistSongs(browseId: String): List<SongItem> = withContext(Dispatchers.IO) {
+    /**
+     * Треки плейлиста или альбома по его browseId.
+     *
+     * Длинные списки YouTube отдаёт порциями по сто треков, поэтому дальше
+     * идём по токену продолжения. Предел в страницах нужен: «все треки»
+     * популярного артиста иначе тянулись бы десятком запросов подряд, и
+     * экран стоял бы всё это время.
+     */
+    suspend fun playlistSongs(
+        browseId: String,
+        params: String? = null,
+        maxPages: Int = 1,
+    ): List<SongItem> = withContext(Dispatchers.IO) {
+        val first =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, params = params, setLogin = true)
+                .body<JsonObject>()
+        val collected = YtJson.songs(first).toMutableList()
+        var token = YtJson.continuation(first)
+        var page = 1
+        while (token != null && page < maxPages) {
+            val next =
+                runCatching {
+                    innerTube
+                        .browse(
+                            client = YouTubeClient.WEB_REMIX,
+                            browseId = null,
+                            continuation = token,
+                            setLogin = true,
+                        ).body<JsonObject>()
+                }.getOrNull() ?: break
+            val more = YtJson.songs(next)
+            if (more.isEmpty()) break
+            collected += more
+            token = YtJson.continuation(next)
+            page++
+        }
+        collected.distinctBy { it.id }
+    }
+
+    /**
+     * Все треки артиста — тот же плейлист, что за «Показать все» на
+     * странице артиста. Если YouTube такой ссылки не дал, у артиста её
+     * просто нет: выдумывать список из поиска по имени не будем, туда
+     * попадают чужие треки.
+     */
+    suspend fun artistSongs(page: ArtistPage): List<SongItem> {
+        val browseId = page.allSongsBrowseId ?: return emptyList()
+        return playlistSongs(browseId, page.allSongsParams, maxPages = ARTIST_SONG_PAGES)
+    }
+
+    /**
+     * Подсказки поиска — те же, что подсказывает сам YouTube Music.
+     *
+     * Своих не придумываем: по трём буквам название трека угадывает только
+     * тот, у кого есть их индекс.
+     */
+    suspend fun searchSuggestions(query: String): List<String> = withContext(Dispatchers.IO) {
         val response =
             innerTube
-                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId)
+                .getSearchSuggestions(YouTubeClient.WEB_REMIX, query, false)
                 .body<JsonObject>()
-        YtJson.songs(response)
+        YtJson.searchSuggestions(response).take(SUGGESTION_LIMIT)
+    }
+
+    /**
+     * Выдача без фильтра: треки, альбомы и артисты одним запросом.
+     *
+     * Раздельные вкладки — это три отдельных запроса к YouTube, и на
+     * «просто поискать» уходит три ожидания вместо одного. Здесь ответ
+     * приходит смешанным, а разбираем мы его по типам сами.
+     */
+    suspend fun searchEverything(query: String): MixedResults = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .search(client = YouTubeClient.WEB_REMIX, query = query)
+                .body<JsonObject>()
+        YtJson.mixed(response)
     }
 
     /**
@@ -179,7 +259,7 @@ class YouTubeRepository @Inject constructor(
                     // удалённое видео). Молчаливое null здесь превратилось бы
                     // в бесконечную «загрузку» в интерфейсе.
                     ) ?: error("YouTube не отдал поток для $videoId")
-                streams[videoId] = extracted
+                remember(videoId, extracted)
                 extracted
             }
         }
@@ -191,6 +271,21 @@ class YouTubeRepository @Inject constructor(
         prefetchScope.launch {
             runCatching { stream(videoId) }
                 .onFailure { Timber.w(it, "Предзагрузка $videoId не удалась") }
+        }
+    }
+
+    private fun remember(videoId: String, stream: ExtractedStream) {
+        streams[videoId] = stream
+        synchronized(streamOrder) {
+            streamOrder.remove(videoId)
+            streamOrder.add(videoId)
+            while (streamOrder.size > STREAM_CACHE_SIZE) {
+                val oldest = streamOrder.removeAt(0)
+                streams.remove(oldest)
+                // Замок снимаем только свободный: занятый значит, что этот
+                // трек прямо сейчас извлекают, и выкидывать его нельзя.
+                locks[oldest]?.takeIf { !it.isLocked }?.let { locks.remove(oldest) }
+            }
         }
     }
 
@@ -244,5 +339,22 @@ class YouTubeRepository @Inject constructor(
         const val ARTISTS_FILTER = "EgWKAQIgAWoKEAkQChAFEAMQBA%3D%3D"
 
         private val EXPIRY_MARGIN = kotlin.time.Duration.parse("30s")
+
+        /** Три страницы — до трёхсот треков: дальше ждать дольше, чем слушать. */
+        private const val ARTIST_SONG_PAGES = 3
+        private const val SUGGESTION_LIMIT = 8
+
+        /**
+         * Сколько ссылок держим. Хватает на длинную очередь с запасом на
+         * возвраты назад, и при этом память не растёт весь вечер.
+         */
+        private const val STREAM_CACHE_SIZE = 80
     }
 }
+
+/** Смешанная выдача одного запроса: всё, что нашлось, по типам. */
+data class MixedResults(
+    val songs: List<SongItem> = emptyList(),
+    val albums: List<PlaylistCard> = emptyList(),
+    val artists: List<ArtistCard> = emptyList(),
+)

@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.ui.components.LocalCompactRows
+import com.texfi.w0y.ui.components.LocalHaptics
 import com.texfi.w0y.ui.components.LocalPlayingSongId
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.pressScale
@@ -108,6 +109,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val welcomeSeen by viewModel.welcomeSeen.collectAsStateWithLifecycle()
     val theme by viewModel.theme.collectAsStateWithLifecycle()
     val animatedBackground by viewModel.animatedBackground.collectAsStateWithLifecycle()
+    val haptics by viewModel.haptics.collectAsStateWithLifecycle()
     // Заставка играет один раз за запуск, а не при каждом повороте экрана.
     var introDone by rememberSaveable { mutableStateOf(false) }
     val libraryRoute by libraryViewModel.route.collectAsStateWithLifecycle()
@@ -142,6 +144,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     CompositionLocalProvider(
         LocalBrowseNavigator provides navigator,
         LocalCompactRows provides compactRows,
+        LocalHaptics provides haptics,
         LocalPlayingSongId provides playerState.song?.id,
     ) {
     Box(
@@ -214,7 +217,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             enter = slideInVertically(tween(200)) { it / 3 } + fadeIn(tween(150)),
             exit = fadeOut(tween(120)),
         ) {
-            SettingsScreen(onClose = { settingsOpen = false })
+            SettingsScreen(
+                onClose = { settingsOpen = false },
+                onOpenLogin = { loginOpen = true },
+            )
         }
 
         // Приветствие поверх всего: на первом запуске за ним ещё нечего
