@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.data.ArtistCard
 import com.texfi.w0y.data.PlaylistCard
+import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
@@ -168,6 +170,42 @@ fun ReleaseTile(card: PlaylistCard, onClick: () -> Unit) {
     }
 }
 
+/** Трек в горизонтальной ленте рекомендаций. */
+@Composable
+fun SongTile(song: SongItem, onClick: () -> Unit) {
+    val colors = LocalW0yColors.current
+    Column(
+        Modifier
+            .width(132.dp)
+            .clickable(onClick = onClick),
+    ) {
+        CoverImage(
+            url = song.thumbnailUrl,
+            px = Thumbnails.TILE,
+            corner = 6,
+            modifier =
+                Modifier
+                    .size(132.dp)
+                    .border(2.dp, colors.border, RoundedCornerShape(6.dp)),
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = song.title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.text,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = song.artist,
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 /** Карточка артиста: круг, как во всех музыкальных сервисах — так её узнают. */
 @Composable
 fun ArtistTile(card: ArtistCard, onClick: () -> Unit) {
@@ -198,23 +236,49 @@ fun ArtistTile(card: ArtistCard, onClick: () -> Unit) {
     }
 }
 
-/** Переключатель раздела выдачи: квадратный, без Material-таблеток. */
+/**
+ * Переключатель разделов: не таблетки в ряд, а равные квадратные секции
+ * во всю ширину. Так видно, что это один переключатель с несколькими
+ * положениями, а не три отдельные кнопки.
+ */
 @Composable
-fun PixelChip(text: String, selected: Boolean, onClick: () -> Unit) {
+fun PixelSegmented(
+    options: List<String>,
+    selectedIndex: Int,
+    modifier: Modifier = Modifier,
+    onSelect: (Int) -> Unit,
+) {
     val colors = LocalW0yColors.current
-    val shape = RoundedCornerShape(6.dp)
-    Box(
-        Modifier
-            .clip(shape)
-            .background(if (selected) colors.accent else colors.surface)
-            .border(2.dp, if (selected) colors.accent else colors.border, shape)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+    Row(
+        modifier
+            .fillMaxWidth()
+            .border(2.dp, colors.border),
     ) {
-        Text(
-            text = text,
-            style = PixelSectionLabel,
-            color = if (selected) colors.background else colors.textMuted,
-        )
+        options.forEachIndexed { index, option ->
+            val active = index == selectedIndex
+            Box(
+                Modifier
+                    .weight(1f)
+                    .background(if (active) colors.accent else colors.surface)
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = option,
+                    style = PixelSectionLabel,
+                    color = if (active) colors.background else colors.textMuted,
+                )
+            }
+            // Разделитель между секциями — тот же бордер, без скруглений.
+            if (index != options.lastIndex) {
+                Box(
+                    Modifier
+                        .width(2.dp)
+                        .height(42.dp)
+                        .background(colors.border),
+                )
+            }
+        }
     }
 }

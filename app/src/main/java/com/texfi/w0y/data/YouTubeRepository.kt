@@ -55,6 +55,41 @@ class YouTubeRepository @Inject constructor(
         YtJson.songs(response)
     }
 
+    /**
+     * Главная страница YouTube Music: готовые ленты рекомендаций.
+     *
+     * С аккаунтом они личные, без него — общие по региону. Своего
+     * «алгоритма» мы не выдумываем: у YouTube он есть, и он лучше.
+     */
+    suspend fun home(): List<Shelf> = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = "FEmusic_home", setLogin = true)
+                .body<JsonObject>()
+        YtJson.shelves(response)
+    }
+
+    /**
+     * Радио по треку: чем YouTube продолжил бы этот трек.
+     *
+     * Идентификатор станции — `RDAMVM` плюс видео; это та же станция,
+     * которую их приложение заводит по кнопке «начать радио».
+     */
+    suspend fun radio(videoId: String): List<SongItem> = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .next(
+                    client = YouTubeClient.WEB_REMIX,
+                    videoId = videoId,
+                    playlistId = "RDAMVM$videoId",
+                    playlistSetVideoId = null,
+                    index = null,
+                    params = null,
+                    continuation = null,
+                ).body<JsonObject>()
+        YtJson.queueSongs(response).filterNot { it.id == videoId }
+    }
+
     /** Альбомы в выдаче поиска. */
     suspend fun searchAlbums(query: String): List<PlaylistCard> = withContext(Dispatchers.IO) {
         val response =

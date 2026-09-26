@@ -43,11 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.PixelButton
+import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
@@ -74,6 +76,8 @@ fun PlayerScreen(
     val state by viewModel.player.state.collectAsStateWithLifecycle()
     val liked by viewModel.isLiked.collectAsStateWithLifecycle()
     val pinned by viewModel.isPinned.collectAsStateWithLifecycle()
+    val queueMode by viewModel.queueMode.collectAsStateWithLifecycle()
+    val radioLoading by viewModel.loadingRadio.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
@@ -267,6 +271,23 @@ fun PlayerScreen(
                         modifier = Modifier.padding(top = 6.dp),
                     )
                 }
+                Spacer(Modifier.height(20.dp))
+            }
+
+            item {
+                Text("❯ ДАЛЬШЕ", style = PixelSectionLabel, color = colors.accent)
+                Spacer(Modifier.height(10.dp))
+                PixelSegmented(
+                    options = QueueMode.entries.map { it.label },
+                    selectedIndex = QueueMode.entries.indexOf(queueMode),
+                    onSelect = { viewModel.setQueueMode(QueueMode.entries[it]) },
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (radioLoading) "Подбираю похожее…" else queueMode.hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (radioLoading) colors.accent else colors.textMuted,
+                )
                 Spacer(Modifier.height(20.dp))
             }
 

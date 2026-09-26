@@ -10,6 +10,7 @@ import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -43,6 +44,7 @@ class LibraryViewModel @Inject constructor(
     private val account: AccountRepository,
     private val youtube: YouTubeRepository,
     val downloads: DownloadsRepository,
+    private val playback: PlaybackStarter,
     val player: PlayerConnection,
 ) : ViewModel() {
     val playlists: StateFlow<List<PlaylistEntity>> =
@@ -111,7 +113,7 @@ class LibraryViewModel @Inject constructor(
     fun playDial(item: DialItem) {
         val queue = speedDial.value.mapNotNull { it.song }
         val index = queue.indexOfFirst { it.id == item.id }
-        if (index >= 0) player.play(queue, index) else item.song?.let { player.play(listOf(it), 0) }
+        if (index >= 0) playback.play(queue, index) else item.song?.let { playback.play(listOf(it), 0) }
     }
 
     fun togglePin(item: DialItem) = viewModelScope.launch {
@@ -186,7 +188,7 @@ class LibraryViewModel @Inject constructor(
     fun removeFromPlaylist(playlistId: Long, songId: String) =
         viewModelScope.launch { library.removeFromPlaylist(playlistId, songId) }
 
-    fun play(songs: List<SongItem>, index: Int) = player.play(songs, index)
+    fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
 
     fun download(song: SongItem) = downloads.download(song)
 

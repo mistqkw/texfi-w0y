@@ -47,7 +47,7 @@ import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
-import com.texfi.w0y.ui.components.PixelChip
+import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SkeletonRow
 import com.texfi.w0y.ui.components.SongRow
@@ -62,6 +62,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val query by viewModel.query.collectAsStateWithLifecycle()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val recentQueries by viewModel.recentQueries.collectAsStateWithLifecycle()
     val diagnosis by viewModel.diagnosis.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     var pickPlaylistFor by remember { mutableStateOf<SongItem?>(null) }
@@ -77,20 +78,43 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
         Spacer(Modifier.height(14.dp))
         SearchField(value = query, onValueChange = viewModel::onQueryChange)
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SearchFilter.entries.forEach { entry ->
-                PixelChip(
-                    text = entry.label,
-                    selected = entry == filter,
-                    onClick = { viewModel.onFilterChange(entry) },
-                )
-            }
-        }
+        PixelSegmented(
+            options = SearchFilter.entries.map { it.label },
+            selectedIndex = SearchFilter.entries.indexOf(filter),
+            onSelect = { viewModel.onFilterChange(SearchFilter.entries[it]) },
+        )
         Spacer(Modifier.height(14.dp))
 
         when (val current = state) {
             SearchState.Idle ->
-                Hint(stringResource(R.string.search_hint))
+                Column {
+                    Hint(stringResource(R.string.search_hint))
+                    if (recentQueries.isNotEmpty()) {
+                        Spacer(Modifier.height(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "❯ НЕДАВНИЕ",
+                                style = PixelSectionLabel,
+                                color = colors.accent,
+                                modifier = Modifier.weight(1f),
+                            )
+                            SpriteButton(Sprites.trash, onClick = viewModel::clearHistory)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        recentQueries.forEach { entry ->
+                            Text(
+                                text = entry,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.text,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { viewModel.onQueryChange(entry) }
+                                        .padding(vertical = 10.dp),
+                            )
+                        }
+                    }
+                }
 
             SearchState.Loading ->
                 // Скелетоны вместо спиннера: экран сразу показывает форму

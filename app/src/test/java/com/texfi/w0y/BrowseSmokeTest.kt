@@ -102,6 +102,46 @@ class BrowseSmokeTest {
         assertTrue("Ни у одного трека нет ссылки на артиста", songs.any { it.artistId != null })
     }
 
+    @Test
+    fun buildsRadioQueue() = runBlocking {
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        // «Instant Crush» — первый попавшийся живой трек, станция строится
+        // по любому: важно, что ответ вообще разбирается.
+        val videoId = "a5uQMwRMHcs"
+        val response =
+            innerTube
+                .next(
+                    client = YouTubeClient.WEB_REMIX,
+                    videoId = videoId,
+                    playlistId = "RDAMVM$videoId",
+                    playlistSetVideoId = null,
+                    index = null,
+                    params = null,
+                    continuation = null,
+                ).body<JsonObject>()
+        val queue = YtJson.queueSongs(response)
+        queue.take(5).forEach { println("РАДИО: ${it.title} — ${it.artist} [${it.id}]") }
+        http.close()
+        assertTrue("Радио вернуло пусто", queue.size > 1)
+    }
+
+    @Test
+    fun readsHomeShelves() = runBlocking {
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        val response =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = "FEmusic_home")
+                .body<JsonObject>()
+        val shelves = YtJson.shelves(response)
+        shelves.take(6).forEach {
+            println("ЛЕНТА: ${it.title} · треков ${it.songs.size} · карточек ${it.cards.size} · артистов ${it.artists.size}")
+        }
+        http.close()
+        assertTrue("Главная не вернула ни одной ленты", shelves.isNotEmpty())
+    }
+
     /** Размер зашит в саму ссылку — проверяем, что мы просим крупную картинку. */
     @Test
     fun upscalesThumbnails() {

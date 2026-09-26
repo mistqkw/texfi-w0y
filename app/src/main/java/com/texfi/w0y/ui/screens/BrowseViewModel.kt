@@ -9,6 +9,7 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -32,6 +33,7 @@ class BrowseViewModel @Inject constructor(
     private val youtube: YouTubeRepository,
     private val library: LibraryRepository,
     private val downloads: DownloadsRepository,
+    private val playback: PlaybackStarter,
     val player: PlayerConnection,
 ) : ViewModel() {
     private val _artist = MutableStateFlow<ArtistPage?>(null)
@@ -77,8 +79,9 @@ class BrowseViewModel @Inject constructor(
         if (isArtist) loadArtist(browseId) else loadAlbum(browseId)
     }
 
-    fun play(songs: List<SongItem>, index: Int) = player.play(songs, index)
+    fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
 
+    /** Явная кнопка «перемешать» сильнее выбранного режима: её только что нажали. */
     fun shuffle(songs: List<SongItem>) {
         if (songs.isEmpty()) return
         player.play(songs.shuffled(), 0)

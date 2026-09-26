@@ -164,6 +164,53 @@ object YtJson {
         )
     }
 
+    /**
+     * Очередь из ответа `next`: радио и автоплейлисты приходят другим
+     * рендерером, не тем, которым отдаются списки и выдача поиска.
+     */
+    fun queueSongs(root: JsonElement): List<SongItem> =
+        root
+            .findAll("playlistPanelVideoRenderer")
+            .mapNotNull { obj ->
+                val videoId = obj.firstString("videoId") ?: return@mapNotNull null
+                val title = obj["title"]?.firstString("text") ?: return@mapNotNull null
+                val byline =
+                    obj["longBylineText"]
+                        ?.textRuns()
+                        ?.filter { it.isNotBlank() && it.trim() != "•" }
+                        .orEmpty()
+                SongItem(
+                    id = videoId,
+                    title = title,
+                    artist = byline.firstOrNull().orEmpty(),
+                    album = byline.getOrNull(1),
+                    durationText = obj["lengthText"]?.firstString("text"),
+                    thumbnailUrl = obj.bestThumbnail(),
+                    artistId = obj.browseIds().firstOrNull { it.startsWith("UC") },
+                    albumId = obj.browseIds().firstOrNull { it.startsWith("MPRE") },
+                )
+            }.distinctBy { it.id }
+
+    /**
+     * Ленты главной страницы YouTube Music, каждая со своим заголовком.
+     *
+     * Заголовок берём как есть — он приходит на языке выдачи, и переводить
+     * его самим значило бы врать о том, что именно рекомендовано.
+     */
+    fun shelves(root: JsonElement): List<Shelf> =
+        (root.findAll("musicCarouselShelfRenderer") + root.findAll("musicShelfRenderer"))
+            .mapNotNull { shelf ->
+                val title =
+                    shelf["header"]?.firstString("text")
+                        ?: shelf["title"]?.firstString("text")
+                        ?: return@mapNotNull null
+                val songs = songs(shelf)
+                val cards = playlistCards(shelf)
+                val artists = artistCards(shelf)
+                if (songs.isEmpty() && cards.isEmpty() && artists.isEmpty()) return@mapNotNull null
+                Shelf(title = title, songs = songs, cards = cards, artists = artists)
+            }.distinctBy { it.title }
+
     /** Все browseId в поддереве — в порядке появления. */
     fun JsonElement.browseIds(): List<String> =
         findAll("browseEndpoint").mapNotNull { (it["browseId"] as? JsonPrimitive)?.content }
@@ -191,7 +238,7 @@ object YtJson {
     }
 
     /** Все текстовые раны поддерева подряд. */
-    private fun JsonElement.textRuns(): List<String> {
+    fun JsonElement.textRuns(): List<String> {
         val texts = mutableListOf<String>()
         fun walk(element: JsonElement) {
             when (element) {
@@ -329,6 +376,14 @@ data class ArtistPage(
     val songs: List<SongItem> = emptyList(),
     val releases: List<PlaylistCard> = emptyList(),
     val similar: List<ArtistCard> = emptyList(),
+)
+
+/** Лента на главной: заголовок и то, что в ней лежит. */
+data class Shelf(
+    val title: String,
+    val songs: List<SongItem> = emptyList(),
+    val cards: List<PlaylistCard> = emptyList(),
+    val artists: List<ArtistCard> = emptyList(),
 )
 
 /** Страница альбома целиком. */

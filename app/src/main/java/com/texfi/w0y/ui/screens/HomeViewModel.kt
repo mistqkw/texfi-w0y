@@ -1,0 +1,64 @@
+package com.texfi.w0y.ui.screens
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.data.Shelf
+import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.playback.PlaybackStarter
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import timber.log.Timber
+
+/**
+ * Рекомендации на главной.
+ *
+ * Отдельно от локальной библиотеки: это единственное на главном экране,
+ * что ходит в сеть, и падать вместе с ней остальная главная не должна.
+ */
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val youtube: YouTubeRepository,
+    private val playback: PlaybackStarter,
+) : ViewModel() {
+    private val _shelves = MutableStateFlow<List<Shelf>>(emptyList())
+    val shelves: StateFlow<List<Shelf>> = _shelves.asStateFlow()
+
+    private val _loading = MutableStateFlow(false)
+    val loading: StateFlow<Boolean> = _loading.asStateFlow()
+
+    private val _failed = MutableStateFlow(false)
+    val failed: StateFlow<Boolean> = _failed.asStateFlow()
+
+    init {
+        refresh()
+    }
+
+    fun refresh() {
+        if (_loading.value) return
+        viewModelScope.launch {
+            _loading.value = true
+            _failed.value = false
+            runCatching { youtube.home() }
+                .onSuccess { shelves ->
+                    // Лент на главной у YouTube бывает под два десятка —
+                    // это ровно та перегруженность, от которой уходили.
+                    _shelves.value = shelves.filter { it.songs.size + it.cards.size + it.artists.size >= 2 }.take(SHELVES)
+                }.onFailure {
+                    Timber.w(it, "Рекомендации не пришли")
+                    _failed.value = true
+                }
+            _loading.value = false
+        }
+    }
+
+    fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
+
+    private companion object {
+        const val SHELVES = 5
+    }
+}

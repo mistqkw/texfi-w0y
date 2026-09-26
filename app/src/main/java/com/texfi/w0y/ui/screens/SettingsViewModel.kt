@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
 import com.texfi.w0y.data.Quality
+import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.playback.AudioSessionHolder
+import com.texfi.w0y.playback.PlaybackStarter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
@@ -26,6 +28,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
     @param:Named("stream") private val streamCache: SimpleCache,
     private val audioSession: AudioSessionHolder,
+    private val playback: PlaybackStarter,
 ) : ViewModel() {
     val audioSessionId: Int get() = audioSession.sessionId
     val settings: StateFlow<W0ySettings> =
@@ -82,6 +85,13 @@ class SettingsViewModel @Inject constructor(
     fun setShowLyrics(value: Boolean) = update { repository.setShowLyrics(value) }
 
     fun setKeepHistory(value: Boolean) = update { repository.setKeepHistory(value) }
+
+    /**
+     * Смена режима идёт через стартер, а не прямо в настройки: он ещё и
+     * перестроит хвост уже играющей очереди, иначе выбор подействовал бы
+     * только на следующий запуск.
+     */
+    fun setQueueMode(value: QueueMode) = playback.applyMode(value)
 
     suspend fun exportJson(): String = repository.export(repository.settings.first())
 

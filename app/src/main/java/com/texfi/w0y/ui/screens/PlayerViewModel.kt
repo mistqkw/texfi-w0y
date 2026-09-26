@@ -10,7 +10,9 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
+import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -32,7 +34,14 @@ class PlayerViewModel @Inject constructor(
     private val lyricsRepository: LyricsRepository,
     private val settingsRepository: SettingsRepository,
     private val downloads: DownloadsRepository,
+    private val playback: PlaybackStarter,
 ) : ViewModel() {
+    /** Что играет после текущего трека и не подбираются ли сейчас похожие. */
+    val queueMode: StateFlow<QueueMode> = playback.mode
+    val loadingRadio: StateFlow<Boolean> = playback.loadingRadio
+
+    fun setQueueMode(mode: QueueMode) = playback.applyMode(mode)
+
     val settings: StateFlow<W0ySettings> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), W0ySettings())
 

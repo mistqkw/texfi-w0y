@@ -114,6 +114,22 @@ interface W0yDao {
     )
     fun mostPlayed(limit: Int = 12): Flow<List<SongPlays>>
 
+    /**
+     * Кого слушают чаще всего. По этому списку рекомендации понимают вкус:
+     * выдачу YouTube мы потом пересортировываем под него.
+     */
+    @Query(
+        """
+        SELECT songs.artist AS artist, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        WHERE songs.artist != ''
+        GROUP BY songs.artist
+        ORDER BY plays DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topArtists(limit: Int = 40): List<ArtistPlays>
+
     @Query("DELETE FROM history")
     suspend fun clearHistory()
 

@@ -10,7 +10,9 @@ import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.db.PlaylistEntity
+import com.texfi.w0y.data.SearchHistoryRepository
 import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -59,8 +61,17 @@ class SearchViewModel @Inject constructor(
     private val diagnostics: Diagnostics,
     private val library: LibraryRepository,
     private val downloads: DownloadsRepository,
+    private val history: SearchHistoryRepository,
+    private val playback: PlaybackStarter,
     val player: PlayerConnection,
 ) : ViewModel() {
+    /** Недавние запросы: и подсказка под пустым полем, и сигнал рекомендациям. */
+    val recentQueries: StateFlow<List<String>> =
+        history.recent.stateIn(
+            viewModelScope,
+            kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
+            emptyList(),
+        )
     val playlists: StateFlow<List<PlaylistEntity>> =
         library.playlists.stateIn(
             viewModelScope,
@@ -131,6 +142,9 @@ class SearchViewModel @Inject constructor(
                         result.fold(
                             onSuccess = {
                                 cache[query to filter] = it
+                                // Запоминаем только то, что действительно
+                                // нашлось: опечатки в подсказках не нужны.
+                                if (!it.isEmpty) viewModelScope.launch { history.remember(query) }
                                 it
                             },
                             onFailure = { error ->
@@ -193,5 +207,7 @@ class SearchViewModel @Inject constructor(
         _query.value = current
     }
 
-    fun playFrom(songs: List<SongItem>, index: Int) = player.play(songs, index)
+    fun playFrom(songs: List<SongItem>, index: Int) = playback.play(songs, index)
+
+    fun clearHistory() = viewModelScope.launch { history.clear() }
 }

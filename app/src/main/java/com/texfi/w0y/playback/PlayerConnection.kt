@@ -2,6 +2,7 @@ package com.texfi.w0y.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -83,6 +84,26 @@ class PlayerConnection @Inject constructor(
         media.setMediaItems(songs.map(::toMediaItem), startIndex, 0L)
         media.prepare()
         media.play()
+    }
+
+    /**
+     * Заменяет всё, что идёт после текущего трека.
+     *
+     * Так работает и переключение режима очереди на ходу: играющий трек
+     * не трогаем — обрывать его ради смены режима нельзя.
+     */
+    fun replaceUpcoming(songs: List<SongItem>) {
+        val media = controller ?: return
+        val from = media.currentMediaItemIndex + 1
+        if (media.mediaItemCount > from) media.removeMediaItems(from, media.mediaItemCount)
+        if (songs.isNotEmpty()) media.addMediaItems(songs.map(::toMediaItem))
+    }
+
+    /** Очередь после текущего трека. */
+    fun upcoming(): List<SongItem> {
+        val media = controller ?: return emptyList()
+        return ((media.currentMediaItemIndex + 1) until media.mediaItemCount)
+            .map { media.getMediaItemAt(it).toSong() }
     }
 
     fun togglePlayPause() {
@@ -173,6 +194,10 @@ class PlayerConnection @Inject constructor(
             artist = mediaMetadata.artist?.toString().orEmpty(),
             album = mediaMetadata.albumTitle?.toString(),
             thumbnailUrl = mediaMetadata.artworkUri?.toString(),
+            // Ссылки на артиста и альбом едут в extras: без них плеер не
+            // смог бы предложить «к артисту», хотя из списка их знали.
+            artistId = mediaMetadata.extras?.getString(EXTRA_ARTIST_ID),
+            albumId = mediaMetadata.extras?.getString(EXTRA_ALBUM_ID),
         )
 
     private fun toMediaItem(song: SongItem): MediaItem =
@@ -190,6 +215,16 @@ class PlayerConnection @Inject constructor(
                     .setArtist(song.artist)
                     .setAlbumTitle(song.album)
                     .setArtworkUri(song.thumbnailUrl?.toUri())
-                    .build(),
+                    .setExtras(
+                        Bundle().apply {
+                            putString(EXTRA_ARTIST_ID, song.artistId)
+                            putString(EXTRA_ALBUM_ID, song.albumId)
+                        },
+                    ).build(),
             ).build()
+
+    private companion object {
+        const val EXTRA_ARTIST_ID = "w0y.artistId"
+        const val EXTRA_ALBUM_ID = "w0y.albumId"
+    }
 }

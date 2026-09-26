@@ -27,6 +27,18 @@ enum class Quality {
     HIGH,
 }
 
+/**
+ * Что играет после выбранного трека.
+ *
+ * Выбор запоминается: это привычка слушателя, а не настройка одного
+ * нажатия, и спрашивать о ней при каждом запуске трека — издевательство.
+ */
+enum class QueueMode(val label: String, val hint: String) {
+    ORDER("ПО ОЧЕРЕДИ", "Дальше идёт список, из которого включили трек."),
+    SHUFFLE("ПЕРЕМЕШАТЬ", "Тот же список, но вперемешку."),
+    RADIO("РЕКОМЕНДАЦИИ β", "Дальше — похожее по звучанию и жанру, с учётом того, что ты уже слушал и искал."),
+}
+
 enum class ThemeMode {
     DARK,
     OLED,
@@ -51,6 +63,7 @@ data class W0ySettings(
     val theme: ThemeMode = ThemeMode.DARK,
     val showLyrics: Boolean = true,
     val keepHistory: Boolean = true,
+    val queueMode: QueueMode = QueueMode.ORDER,
 )
 
 @Singleton
@@ -77,6 +90,7 @@ class SettingsRepository @Inject constructor(
                     theme = prefs.enum(Keys.THEME, ThemeMode.DARK),
                     showLyrics = prefs[Keys.LYRICS] ?: true,
                     keepHistory = prefs[Keys.HISTORY] ?: true,
+                    queueMode = prefs.enum(Keys.QUEUE_MODE, QueueMode.ORDER),
                 )
             }
 
@@ -105,6 +119,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setShowLyrics(value: Boolean) = put(Keys.LYRICS, value)
 
     suspend fun setKeepHistory(value: Boolean) = put(Keys.HISTORY, value)
+
+    suspend fun setQueueMode(value: QueueMode) = put(Keys.QUEUE_MODE, value.name)
 
     /** Экспорт всех настроек одной строкой JSON — её можно сохранить в файл. */
     suspend fun export(current: W0ySettings): String =
@@ -171,5 +187,6 @@ class SettingsRepository @Inject constructor(
         val THEME = stringPreferencesKey("theme")
         val LYRICS = booleanPreferencesKey("show_lyrics")
         val HISTORY = booleanPreferencesKey("keep_history")
+        val QUEUE_MODE = stringPreferencesKey("queue_mode")
     }
 }

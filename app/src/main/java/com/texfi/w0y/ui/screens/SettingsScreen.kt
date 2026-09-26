@@ -36,8 +36,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.Quality
+import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.ui.components.PixelButton
+import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSwitch
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
@@ -212,6 +214,18 @@ fun SettingsScreen(
                 )
             }
             item {
+                ChoiceRow(
+                    title = "Что играет дальше",
+                    description =
+                        "По очереди — список, из которого включили трек. Перемешать — тот же список вразнобой. " +
+                            "Рекомендации (бета) — похожее по жанру и звучанию, с учётом того, что ты слушал и искал.",
+                    options = QueueMode.entries,
+                    selected = settings.queueMode,
+                    label = { it.label },
+                    onSelect = viewModel::setQueueMode,
+                )
+            }
+            item {
                 SwitchRow(
                     title = "Пауза при отключении наушников",
                     description = "Вытащил наушники — музыка не продолжит играть в динамик.",
@@ -357,25 +371,15 @@ private fun <T> ChoiceRow(
     Column(Modifier.padding(vertical = 10.dp)) {
         Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text)
         Text(description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEach { option ->
-                val active = option == selected
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (active) colors.accent else colors.surface)
-                        .clickable { onSelect(option) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        text = label(option),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (active) colors.background else colors.text,
-                    )
-                }
-            }
-        }
+        Spacer(Modifier.height(10.dp))
+        // Квадратный переключатель во всю ширину вместо скруглённых
+        // «таблеток»: Material-овальность здесь чужая, а равные секции
+        // читаются как один переключатель, а не как россыпь кнопок.
+        PixelSegmented(
+            options = options.map(label),
+            selectedIndex = options.indexOf(selected),
+            onSelect = { onSelect(options[it]) },
+        )
     }
 }
 

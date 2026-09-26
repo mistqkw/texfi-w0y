@@ -116,3 +116,9 @@ data class SongPlays(
     @androidx.room.Embedded val song: SongEntity,
     val plays: Int,
 )
+
+/** Исполнитель и сколько его слушали — сигнал вкуса для рекомендаций. */
+data class ArtistPlays(
+    val artist: String,
+    val plays: Int,
+)

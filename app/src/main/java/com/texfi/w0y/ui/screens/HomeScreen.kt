@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,7 +22,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.PixelCard
+import com.texfi.w0y.ui.components.ArtistTile
+import com.texfi.w0y.ui.components.ReleaseTile
 import com.texfi.w0y.ui.components.SongRow
+import com.texfi.w0y.ui.components.SongTile
 import com.texfi.w0y.ui.components.SpeedDialTile
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
@@ -35,12 +39,15 @@ import com.texfi.w0y.ui.theme.PixelTitle
 fun HomeScreen(
     onOpenSettings: () -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
+    home: HomeViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
     val navigator = LocalBrowseNavigator.current
     val dial by viewModel.speedDial.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
+    val shelves by home.shelves.collectAsStateWithLifecycle()
+    val recommendationsFailed by home.failed.collectAsStateWithLifecycle()
 
     LazyColumn(
         Modifier
@@ -89,7 +96,10 @@ fun HomeScreen(
         } else {
             // Сетка внутри LazyColumn собирается рядами по три: вложенный
             // LazyVerticalGrid здесь запрещён — бесконечная высота.
-            items(dial.chunked(3), key = { row -> row.first().id }) { row ->
+            // Ключ с приставкой обязателен: тот же трек лежит и в быстром
+            // наборе, и в «недавно», а одинаковый ключ дважды в одном
+            // списке — это падение, а не просто перерисовка.
+            items(dial.chunked(3), key = { row -> "dial-${row.first().kind}-${row.first().id}" }) { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { item ->
                         SpeedDialTile(
@@ -129,12 +139,64 @@ fun HomeScreen(
             }
         }
 
+        if (shelves.isNotEmpty() || recommendationsFailed) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "❯ РЕКОМЕНДАЦИИ",
+                        style = PixelSectionLabel,
+                        color = colors.accent,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SpriteButton(Sprites.repeat, onClick = home::refresh)
+                }
+            }
+        }
+
+        if (recommendationsFailed) {
+            item {
+                Text(
+                    "Рекомендации не пришли. Нажми обновить или проверь сеть.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
+            }
+        }
+
+        items(shelves, key = { "shelf-${it.title}" }) { shelf ->
+            Column {
+                Text(
+                    text = shelf.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.text,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(shelf.songs, key = { "s-${it.id}" }) { song ->
+                        SongTile(song) { home.play(shelf.songs, shelf.songs.indexOf(song)) }
+                    }
+                    items(shelf.cards, key = { "c-${it.browseId}" }) { card ->
+                        ReleaseTile(card) {
+                            navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl))
+                        }
+                    }
+                    items(shelf.artists, key = { "a-${it.browseId}" }) { card ->
+                        ArtistTile(card) {
+                            navigator.open(BrowseRoute.Artist(card.browseId, card.name, card.thumbnailUrl))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+
         if (recent.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(8.dp))
                 Text("❯ НЕДАВНО", style = PixelSectionLabel, color = colors.accent)
             }
-            items(recent.take(20), key = { it.id }) { song ->
+            items(recent.take(20), key = { "recent-${it.id}" }) { song ->
                 SongRow(
                     song = song,
                     onClick = { viewModel.play(recent, recent.indexOf(song)) },
