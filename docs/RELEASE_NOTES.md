@@ -1,54 +1,57 @@
 # TexFi w0y v0.0.1-beta
 
-Первая бета. Клиент YouTube Music для Android: без рекламы, без
-Premium-ограничений, со своим аккаунтом и загрузкой в память телефона.
+The first beta. A YouTube Music client for Android: no ads, no Premium
+restrictions, with your own account and downloads into phone storage.
 
-## Что внутри
+## What's inside
 
-- Поиск треков, альбомов и артистов; страницы артиста и альбома.
-- Фоновое воспроизведение с медиа-уведомлением, очередь, повтор,
-  перемешивание, sleep-таймер.
-- Вход в аккаунт Google — свои плейлисты, лайки, подписки. Если Google
-  отказывает окну приложения, есть вход вставкой cookie вручную.
-- Загрузки в память телефона: треки, альбомы, плейлисты; очередь с
-  прогрессом, ограничение «только по Wi-Fi».
-- Своё звучание: скорость, тон и реверб на любом треке — SLOWED и SPED UP
-  прямо из оригинального файла.
-- Быстрый набор на главной: что слушаешь чаще, плюс закреплённое вручную.
-- Рекомендации по жанру и звучанию с учётом того, что уже слушали и искали.
-- Итоги прослушивания за неделю, месяц и всё время — считаются на телефоне.
-- Режим без мата: подмена на официальную clean-версию, скрытие или
-  пропуск помеченных «E», заглушение строк по синхронной лирике (бета).
-- Виджет на домашний экран: обложка, название и перемотка.
-- Лирика из LRCLIB, синхронизированная по строкам.
-- Четыре языка: русский, английский, украинский, польский.
+- Search for tracks, albums and artists; artist and album pages.
+- Background playback with a media notification, queue, repeat, shuffle,
+  sleep timer.
+- Sign in to a Google account — your playlists, likes, subscriptions. If
+  Google refuses the app's window, there is sign-in by pasting a cookie
+  by hand.
+- Downloads into phone storage: tracks, albums, playlists; a queue with
+  progress, a "Wi-Fi only" limit.
+- Your own sound: speed, pitch and reverb on any track — SLOWED and SPED
+  UP straight from the original file.
+- Speed dial on the home screen: what you play most, plus whatever you
+  pinned by hand.
+- Recommendations by genre and sound, based on what you have already
+  played and searched for.
+- Listening stats for a week, a month and all time — computed on the phone.
+- Clean mode: swap in the official clean version, hide or skip tracks
+  marked "E", mute lines using synchronised lyrics (beta).
+- A home screen widget: cover, title and transport.
+- Lyrics from LRCLIB, synchronised line by line.
+- Four languages: Russian, English, Ukrainian, Polish.
 
-## Про плавность
+## About smoothness
 
-Проверено на Pixel 9a со включёнными 120 Гц, на release-сборке:
-скролл идёт 5 мс на медиане и 7 мс на 90-м процентиле при бюджете
-8.3 мс, без пропущенных vsync. В покое интерфейс больше не
-перерисовывается на каждом кадре — было 522 кадра за четыре секунды
-простоя, стало 75. Если и это лишнее, в настройках вида есть «живой
-фон»: выключенный фон рисуется один раз, и приложение в покое не
-отдаёт кадров вообще.
+Checked on a Pixel 9a with 120 Hz enabled, on the release build:
+scrolling runs at 5 ms median and 7 ms at the 90th percentile against an
+8.3 ms budget, with no missed vsyncs. At rest the interface no longer
+redraws on every frame — it used to render 522 frames across four idle
+seconds, now it renders 75. If even that is too much, the view settings
+have a "live background" switch: with it off the background is drawn once
+and the app produces no frames at all while idle.
 
-## Честно о границах
+## Honest about the limits
 
-- Вырезать мат из готовой записи нельзя — для этого нужна дорожка без
-  вокала. Приложение подменяет трек официальной чистой версией, если она
-  выложена, и не делает вид, что умеет больше.
-- Заглушение отдельных строк работает только там, где нашлась синхронная
-  лирика, и помечено как бета.
-- Веб-версии нет и не планируется.
-- Часть задержек при старте трека возникает на стороне YouTube. Поэтому
-  время «нажал → пошёл звук» замеряется и показано на главной: это
-  проверяемое число, а не обещание.
+- Words cannot be cut out of a finished recording — that needs a track
+  without vocals. The app swaps in the official clean version when one is
+  published, and does not pretend to do more.
+- Muting individual lines only works where synchronised lyrics were found,
+  and is marked beta.
+- There is no web version and none is planned.
+- Part of the delay when a track starts comes from YouTube's side. That is
+  why the "tap → sound" time is measured and shown on the home screen:
+  a number you can check, not a promise.
 
-## Установка
+## Installing
 
-APK ниже. Подписан ключом проекта: обновления ставятся поверх, данные и
-локальные плейлисты при этом не теряются.
+The APK is below. It is signed with the project key: updates install over
+the top, and local data and playlists survive.
 
-Если вы ставили тестовую сборку до этого релиза — её нужно удалить: у
-неё другая подпись, и поверх она не встанет.
+If you installed a test build before this release, you need to remove it
+first: it has a different signature and will not install over the top.

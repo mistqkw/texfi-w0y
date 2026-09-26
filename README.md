@@ -1,95 +1,108 @@
 # TexFi w0y
 
-Клиент YouTube Music для Android. Без рекламы, без Premium-ограничений,
-с входом в свой аккаунт — своя библиотека, плейлисты, история.
+A YouTube Music client for Android. No ads, no Premium restrictions, and
+you can sign in to your own account — your library, playlists, history.
 
-Часть экосистемы [TexFi](https://texfi-hub.vercel.app): пиксельный
-визуальный язык, тёмная тема по умолчанию, тот же синий `#4a7dfb`.
+Part of the [TexFi](https://texfi-hub.vercel.app) ecosystem: pixel visual
+language, dark theme by default, the same blue `#4a7dfb`.
 
-## Зачем ещё один клиент
+## Why another client
 
-Существующие не устроили по трём пунктам, и w0y делается ровно вокруг них:
+Existing ones fell short on three counts, and w0y is built around exactly
+those:
 
-1. **Трек начинается сразу.** Предзагрузка следующего в очереди, кэш
-   stream-URL с учётом срока жизни, старт с минимальным буфером,
-   параллельные сетевые запросы. В debug-сборке время «нажал → пошёл звук»
-   меряется и пишется в лог — чтобы оптимизации были цифрой, а не ощущением.
-2. **Интерфейс не дёргается.** Стабильные ключи в списках, никаких лишних
-   рекомпозиций, Baseline Profile, R8. Производительность проверяется на
-   release-сборке, а не на debug.
-3. **Настроек много.** Качество отдельно для Wi-Fi и мобильной сети, кэш и
-   авто-скачивание, gapless, нормализация, эквалайзер, поведение очереди,
-   тема, медиа-уведомление, экспорт настроек. У каждого пункта — понятное
-   описание, что он делает.
+1. **The track starts right away.** The next track in the queue is
+   prefetched, stream URLs are cached with their lifetime in mind,
+   playback starts on a minimal buffer, network requests run in parallel.
+   The debug build measures the time from tap to first sound and logs it —
+   so optimisations are a number, not a feeling.
+2. **The interface does not stutter.** Stable keys in lists, no needless
+   recompositions, Baseline Profile, R8. Performance is checked on the
+   release build, not on debug.
+3. **There are plenty of settings.** Quality separately for Wi-Fi and
+   mobile, cache and auto-download, gapless, normalisation, equaliser,
+   queue behaviour, theme, media notification, settings export. Every item
+   says plainly what it does.
 
-## Что уже работает
+## What already works
 
-- **Поиск и воспроизведение** — треки, альбомы, артисты; фоновое
-  воспроизведение с медиа-уведомлением, очередь, повтор, перемешивание.
-- **Свой аккаунт** — вход через Google или вставкой cookie вручную, если
-  Google отказывает окну приложения. Плейлисты, лайки и подписки
-  подтягиваются из аккаунта.
-- **Загрузки** — треки, альбомы и плейлисты в память телефона, очередь с
-  прогрессом, ограничение «только по Wi-Fi».
-- **Своё звучание** — скорость, тон и реверб на любом треке: SLOWED и
-  SPED UP из оригинального файла, без поиска чужой переделки.
-- **Быстрый набор** — что слушаешь чаще, на главной; долгим нажатием
-  закрепляются трек, альбом, плейлист или артист.
-- **Итоги** — минуты, любимые треки и артисты за неделю, месяц или всё
-  время. Считается на телефоне и никуда не уходит.
-- **Режим без мата** — подмена на официальную clean-версию, если она
-  выложена; можно прятать или пропускать помеченные «E». Вырезать слова
-  из готовой записи приложение не умеет и делать вид не будет.
-- **Виджет** на домашний экран: обложка, название и перемотка.
-- **Лирика** из LRCLIB, синхронизированная по строкам.
-- **Четыре языка** — русский, английский, украинский, польский; выбор в
-  настройках сильнее системного.
-- **Замер старта** — среднее время «нажал → пошёл звук» показано на
-  главной и в настройках. Обещание «быстро» можно проверить.
+- **Search and playback** — tracks, albums, artists; background playback
+  with a media notification, queue, repeat, shuffle.
+- **Your account** — sign in through Google, or by pasting a cookie by
+  hand when Google refuses the app's window. Playlists, likes and
+  subscriptions are pulled from the account.
+- **Downloads** — tracks, albums and playlists into phone storage, a queue
+  with progress, a "Wi-Fi only" limit.
+- **Your own sound** — speed, pitch and reverb on any track: SLOWED and
+  SPED UP straight from the original file, no hunting for someone else's
+  edit.
+- **Speed dial** — what you play most, right on the home screen; a long
+  press pins a track, album, playlist or artist.
+- **Stats** — minutes, favourite tracks and artists for a week, a month or
+  all time. Computed on the phone, and it goes nowhere.
+- **Clean mode** — swaps in the official clean version when one exists;
+  tracks marked "E" can be hidden or skipped. The app cannot cut words out
+  of a finished recording, and will not pretend otherwise.
+- **Widget** for the home screen: cover, title and transport.
+- **Lyrics** from LRCLIB, synchronised line by line.
+- **Four languages** — Russian, English, Ukrainian, Polish; the choice in
+  settings overrides the system one.
+- **Start-time measurement** — the average time from tap to first sound is
+  shown on the home screen and in settings. The promise of "fast" can be
+  checked.
 
-Чего нет: веб-версии (и не планируется), скробблинга, синхронизации
-плейлистов обратно в аккаунт.
+What's missing: a web version (and none is planned), scrobbling, syncing
+playlists back to the account.
 
-## Сборка
+## Building
 
-Релизные APK собираются в GitHub Actions по пушу тега `v*`. Локально:
+Release APKs are built in GitHub Actions on a `v*` tag push. Locally:
 
 ```bash
 ./gradlew assembleDebug
 ```
 
-Нужен JDK 21 и Android SDK (compileSdk 37, build-tools 37). Путь к SDK —
-в `local.properties` (файл в `.gitignore`).
+You need JDK 21 and the Android SDK (compileSdk 37, build-tools 37). The
+SDK path goes into `local.properties` (the file is in `.gitignore`).
 
-Часть тестов ходит в настоящий YouTube: разбор их ответов ломается от
-изменений на их стороне, и поймать это можно только живым запросом.
-Локально они идут сами; в CI пропускаются, потому что с IP дата-центра
-YouTube отвечает отказом, и такое падение говорит не о коде. Запустить их
-в CI намеренно — `W0Y_LIVE_TESTS=1`.
+Some tests hit the real YouTube: parsing its responses breaks when things
+change on their side, and only a live request catches that. They run
+locally by default; in CI they are skipped, because from a data-centre IP
+YouTube answers with a refusal, and such a failure says nothing about the
+code. To run them in CI on purpose — `W0Y_LIVE_TESTS=1`.
 
-Ключ подписи в репозитории не лежит и лежать не будет. Секреты Actions:
-`ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`.
+The signing key is not in the repository and never will be. Actions
+secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`,
+`ANDROID_KEY_PASSWORD`. See [docs/RELEASING.md](docs/RELEASING.md).
 
-## Иконка
+## Icon
 
-Иконка генерируется из пиксельной сетки кодом, а не хранится картинками:
+The icon is generated from a pixel grid by code rather than stored as
+images:
 
 ```bash
-python3 tools/make_icons.py preview        # листы концептов в docs/
-python3 tools/make_icons.py apply fork     # все форматы в app/src/main/res
+python3 tools/make_icons.py preview        # concept sheets into docs/
+python3 tools/make_icons.py apply fork     # every format into app/src/main/res
 ```
 
-## Лицензии
+## Licences
 
-Код w0y — [AGPL-3.0](LICENSE).
+w0y's code is [AGPL-3.0](LICENSE).
 
-Доступ к YouTube Music идёт через
+Access to YouTube Music goes through
 [InnerTubeX](https://github.com/MetrolistGroup/innertubex) (GPL-3.0) —
-раздел 13 GPLv3 прямо разрешает объединять GPLv3-работу с AGPLv3 в одно
-целое. Копия лицензии библиотеки: [licenses/GPL-3.0-innertubex.txt](licenses/GPL-3.0-innertubex.txt).
+section 13 of GPLv3 expressly permits combining a GPLv3 work with AGPLv3
+into one whole. A copy of the library's licence:
+[licenses/GPL-3.0-innertubex.txt](licenses/GPL-3.0-innertubex.txt).
 
-Ориентиром по набору возможностей служил
-[Metrolist](https://github.com/MetrolistGroup/Metrolist) (GPL-3.0); его код
-не копировался.
+[Metrolist](https://github.com/MetrolistGroup/Metrolist) (GPL-3.0) served
+as the reference for the feature set; its code was not copied.
 
-Шрифт Press Start 2P — [OFL](licenses/OFL-PressStart2P.txt).
+The Press Start 2P font — [OFL](licenses/OFL-PressStart2P.txt).
+
+## A note on the language
+
+The code comments are in Russian: this is a personal project and they are
+written in the author's own voice. The documentation, the release notes
+and the interface are in English (and in three more languages inside the
+app).

@@ -1,45 +1,46 @@
-# Как выпускается версия
+# How a version is released
 
-Сборка и подпись идут в GitHub Actions
-([build.yml](../.github/workflows/build.yml)), локально собирается только
-debug для проверки кода.
+Building and signing happen in GitHub Actions
+([build.yml](../.github/workflows/build.yml)); locally only the debug
+build is produced, to check the code.
 
-## Секреты подписи
+## Signing secrets
 
-В репозитории заданы три секрета, из них Actions собирает релизный ключ:
+Three secrets are set in the repository, and Actions assembles the release
+key from them:
 
-| Секрет | Что это |
+| Secret | What it is |
 | --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | PKCS12-хранилище `texfi-release.jks` в base64 |
-| `ANDROID_STORE_PASSWORD` | пароль хранилища |
-| `ANDROID_KEY_PASSWORD` | пароль ключа (алиас `texfi`) |
+| `ANDROID_KEYSTORE_BASE64` | the PKCS12 store `texfi-release.jks`, base64 |
+| `ANDROID_STORE_PASSWORD` | store password |
+| `ANDROID_KEY_PASSWORD` | key password (alias `texfi`) |
 
-Ключ тот же, что у остальных приложений TexFi. В репозитории его нет и
-быть не должно: сборка без секретов не падает, но подписывается
-debug-ключом, и такой APK не раздаём.
+It is the same key as the other TexFi apps use. It is not in the
+repository and must never be: a build without the secrets does not fail,
+but it is signed with a debug key, and such an APK is not handed out.
 
-## Выпуск
+## Releasing
 
 ```
 git tag v0.0.1-beta && git push origin v0.0.1-beta
 ```
 
-Дальше workflow сам собирает, подписывает и создаёт GitHub Release с
-описанием из [RELEASE_NOTES.md](RELEASE_NOTES.md).
+From there the workflow builds, signs and creates the GitHub Release with
+the description from [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
-## Две грабли, на которые уже наступили
+## Two rakes already stepped on
 
-**Право на запись у токена Actions.** По умолчанию в аккаунте у
-`GITHUB_TOKEN` стоит только чтение, и шаг «Create release» падает с
-`403 Resource not accessible by integration` — притом что сборка и
-подпись к этому моменту уже прошли успешно. Лечится один раз в
+**Write permission for the Actions token.** By default `GITHUB_TOKEN` is
+read-only in the account, and the "Create release" step fails with
+`403 Resource not accessible by integration` — even though building and
+signing have already succeeded by that point. Fixed once in
 *Settings → Actions → General → Workflow permissions* →
-**Read and write permissions**. Первый выпуск v0.0.1-beta из-за этого
-пришлось создать вручную: APK взят из артефакта ручного запуска и
-выложен командой `gh release create`.
+**Read and write permissions**. Because of this the first v0.0.1-beta
+release had to be created by hand: the APK was taken from a manual run's
+artifact and published with `gh release create`.
 
-**Отметка «pre-release».** Её не ставим, хотя версии бета. Сайт
-texfi-hub читает выпуск через `/releases/latest`, а этот эндпоинт
-пре-релизы пропускает: с отметкой карточка w0y осталась бы без версии
-и без кнопки загрузки. У f0kus, files и m0ney по той же причине
-бета-выпуски идут без неё.
+**The "pre-release" flag.** We do not set it, even though the versions are
+beta. The texfi-hub site reads the release through `/releases/latest`, and
+that endpoint skips pre-releases: with the flag set, the w0y card would be
+left without a version and without a download button. For the same reason
+f0kus, files and m0ney publish their beta releases without it.

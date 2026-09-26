@@ -1,25 +1,25 @@
-# Концепты иконки w0y
+# w0y icon concepts
 
-Три идеи, все в пиксельной сетке 16×16, акцент `#4a7dfb`, вторичный —
-янтарь `#ffb84d`. Ни ноты, ни наушников, ни винила. Лист `concepts.png`
-показывает каждую в трёх масштабах, левый столбец — честные 60×60,
-то есть размер иконки на домашнем экране.
+Three ideas, all on a 16×16 pixel grid, accent `#4a7dfb`, secondary —
+amber `#ffb84d`. No musical note, no headphones, no vinyl. The sheet
+`concepts.png` shows each one at three scales; the left column is an
+honest 60×60, that is, the size an icon actually has on the home screen.
 
-## A — камертон (`fork`)
+## A — tuning fork (`fork`)
 
-Предмет, а не символ звука: две ветви, перекладина, стержень, пятка.
-Простая геометрия, один цельный силуэт, узнаётся мгновенно. Анимация
-запуска: камертон «звенит» — от ветвей расходятся две пиксельные дуги,
-и на их волне собирается главный экран.
+An object rather than a symbol of sound: two prongs, a crossbar, a stem, a
+foot. Simple geometry, one solid silhouette, recognised instantly. Launch
+animation: the fork rings — two pixel arcs spread out from the prongs, and
+the home screen assembles on their wave.
 
-## B — йо-йо (`yoyo`)
+## B — yo-yo (`yoyo`)
 
-Обыгрывает «0» в имени: диск на нити, ось — янтарная. Один доминирующий
-круглый силуэт. Анимация запуска: йо-йо падает на нити, подпрыгивает,
-диск разворачивается в обложку трека.
+Plays on the "0" in the name: a disc on a string, amber axle. One
+dominant round silhouette. Launch animation: the yo-yo drops on its
+string, bounces, and the disc unfolds into the track's cover.
 
-## C — круги по воде (`ripple`)
+## C — ripples (`ripple`)
 
-Ощущение звука как расходящейся волны: камень в центре и два круга.
-Самый абстрактный из трёх и самый рискованный: на 60×60 может читаться
-как мишень или радар.
+Sound as a spreading wave: a stone in the centre and two circles. The most
+abstract of the three and the riskiest: at 60×60 it can read as a target
+or a radar.
