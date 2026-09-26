@@ -36,6 +36,8 @@ sealed interface LibraryRoute {
     data object History : LibraryRoute
 
     data object Downloads : LibraryRoute
+
+    data object Stats : LibraryRoute
 }
 
 @HiltViewModel

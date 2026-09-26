@@ -1,6 +1,7 @@
 package com.texfi.w0y.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,10 @@ import androidx.media3.exoplayer.offline.Download
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.EmptyState
+import com.texfi.w0y.ui.components.Gutter
+import com.texfi.w0y.ui.components.ScreenTitle
+import com.texfi.w0y.ui.components.SectionHeader
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.PixelCard
@@ -60,6 +65,7 @@ fun LibraryScreen(
         LibraryRoute.Liked -> SongList("ЛАЙКИ", viewModel.liked.collectAsStateWithLifecycle().value, viewModel)
         LibraryRoute.History -> SongList("ИСТОРИЯ", viewModel.recent.collectAsStateWithLifecycle().value, viewModel, onClear = viewModel::clearHistory)
         LibraryRoute.Downloads -> DownloadsList(viewModel)
+        LibraryRoute.Stats -> StatsScreen(onBack = viewModel::back)
     }
 }
 
@@ -84,10 +90,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
             .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Spacer(Modifier.height(18.dp))
-            Text("моё", style = PixelTitle, color = colors.text)
-        }
+        item { ScreenTitle(title = "моё", horizontalPadding = 0.dp) }
 
         item {
             PixelCard(label = "АККАУНТ", modifier = Modifier.fillMaxWidth()) {
@@ -124,30 +127,33 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         }
 
         item {
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ShortcutCard("ЛАЙКИ", "${liked.size}", Modifier.weight(1f)) {
-                    viewModel.open(LibraryRoute.Liked)
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ShortcutCard("ЛАЙКИ", "${liked.size}", Sprites.heart, Modifier.weight(1f)) {
+                        viewModel.open(LibraryRoute.Liked)
+                    }
+                    ShortcutCard("ИСТОРИЯ", "${recent.size}", Sprites.timer, Modifier.weight(1f)) {
+                        viewModel.open(LibraryRoute.History)
+                    }
                 }
-                ShortcutCard("ИСТОРИЯ", "${recent.size}", Modifier.weight(1f)) {
-                    viewModel.open(LibraryRoute.History)
-                }
-                ShortcutCard("СКАЧАНО", "${downloaded.size}", Modifier.weight(1f)) {
-                    viewModel.open(LibraryRoute.Downloads)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ShortcutCard("СКАЧАНО", "${downloaded.size}", Sprites.download, Modifier.weight(1f)) {
+                        viewModel.open(LibraryRoute.Downloads)
+                    }
+                    // Итоги — своя статистика по локальной истории, доступная
+                    // в любой день, а не раз в год «рекапом».
+                    ShortcutCard("ИТОГИ", "за неделю", Sprites.stats, Modifier.weight(1f)) {
+                        viewModel.open(LibraryRoute.Stats)
+                    }
                 }
             }
         }
 
         item {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("❯ ПЛЕЙЛИСТЫ", style = PixelSectionLabel, color = colors.accent, modifier = Modifier.weight(1f))
-                SpriteButton(Sprites.plus, onClick = { newPlaylist = "" }, active = true)
-            }
+            SectionHeader(
+                label = "ПЛЕЙЛИСТЫ",
+                action = { SpriteButton(Sprites.plus, onClick = { newPlaylist = "" }, active = true, size = 18) },
+            )
         }
 
         newPlaylist?.let { value ->
@@ -182,9 +188,10 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         if (playlists.isEmpty()) {
             item {
                 Text(
-                    "Своих плейлистов пока нет. Появятся, когда будет что складывать.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Своих плейлистов пока нет. Кнопка «+» создаст первый.",
+                    style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
+                    modifier = Modifier.padding(vertical = 6.dp),
                 )
             }
         }
@@ -200,7 +207,10 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         }
 
         if (accountPlaylists.isNotEmpty()) {
-            item { Text("❯ ИЗ АККАУНТА", style = PixelSectionLabel, color = colors.accent) }
+            item {
+                Spacer(Modifier.height(6.dp))
+                SectionHeader("ИЗ АККАУНТА")
+            }
             items(accountPlaylists, key = { it.browseId }) { card ->
                 CollectionRow(
                     title = card.title,
@@ -259,23 +269,34 @@ private fun CollectionRow(
             Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text, maxLines = 1)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
         }
-        PixelSprite(rows = Sprites.next, color = colors.textMuted, modifier = Modifier.size(16.dp))
+        PixelSprite(rows = Sprites.chevronRight, color = colors.textMuted, modifier = Modifier.size(16.dp))
     }
 }
 
 @Composable
-private fun ShortcutCard(label: String, value: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun ShortcutCard(
+    label: String,
+    value: String,
+    sprite: List<String>,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalW0yColors.current
     Box(
         modifier
             .clip(RoundedCornerShape(8.dp))
             .background(colors.surface)
+            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {
         Column {
-            Text(label, style = PixelSectionLabel, color = colors.accent)
-            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PixelSprite(rows = sprite, color = colors.accent, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(label, style = PixelSectionLabel, color = colors.accent)
+            }
+            Spacer(Modifier.height(10.dp))
             Text(value, style = MaterialTheme.typography.bodyLarge, color = colors.text)
         }
     }
@@ -294,7 +315,7 @@ private fun SongList(
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        Header(title, onBack = viewModel::back) {
+        ScreenTitle(title = title.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp) {
             if (songs.isNotEmpty()) {
                 SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
                 onClear?.let {
@@ -304,7 +325,11 @@ private fun SongList(
             }
         }
         if (songs.isEmpty()) {
-            Text("Пока пусто.", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            EmptyState(
+                sprite = Sprites.library,
+                title = "ПУСТО",
+                text = "Здесь появится то, что ты сюда положишь.",
+            )
             return
         }
         LazyColumn {
@@ -330,7 +355,7 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        Header("ЗАГРУЗКИ", onBack = viewModel::back)
+        ScreenTitle(title = "загрузки", onBack = viewModel::back, horizontalPadding = 0.dp)
         Text(
             text = "Занято: ${viewModel.downloads.usedBytes() / 1024 / 1024} МБ · в очереди: ${pending.size}",
             style = MaterialTheme.typography.bodySmall,
@@ -338,10 +363,10 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
         )
         Spacer(Modifier.height(10.dp))
         if (songs.isEmpty() && pending.isEmpty()) {
-            Text(
-                "Ничего не скачано. Кнопка со стрелкой в списках кладёт трек сюда.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textMuted,
+            EmptyState(
+                sprite = Sprites.download,
+                title = "НИЧЕГО НЕ СКАЧАНО",
+                text = "Кнопка со стрелкой в любом списке кладёт трек сюда — он будет играть без сети.",
             )
             return
         }
@@ -369,7 +394,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        Header(name.uppercase(), onBack = viewModel::back) {
+        ScreenTitle(title = name.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp) {
             SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
             Spacer(Modifier.width(12.dp))
             SpriteButton(Sprites.trash, onClick = { viewModel.deletePlaylist(playlistId) })
@@ -408,7 +433,7 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        Header(route.card.title.uppercase(), onBack = viewModel::back) {
+        ScreenTitle(title = route.card.title.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp) {
             if (songs.isNotEmpty()) SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
         }
         if (songs.isEmpty()) {
@@ -427,18 +452,3 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
     }
 }
 
-@Composable
-private fun Header(title: String, onBack: () -> Unit, actions: @Composable () -> Unit = {}) {
-    val colors = LocalW0yColors.current
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        SpriteButton(Sprites.previous, onClick = onBack)
-        Spacer(Modifier.width(12.dp))
-        Text(title, style = PixelSectionLabel, color = colors.text, modifier = Modifier.weight(1f))
-        actions()
-    }
-}

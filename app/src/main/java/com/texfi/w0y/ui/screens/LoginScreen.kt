@@ -82,7 +82,7 @@ fun LoginScreen(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SpriteButton(Sprites.previous, onClick = onClose)
+            SpriteButton(Sprites.chevronLeft, onClick = onClose)
             Spacer(Modifier.width(12.dp))
             Text("вход", style = PixelTitle, color = colors.text, modifier = Modifier.weight(1f))
             PixelButton(

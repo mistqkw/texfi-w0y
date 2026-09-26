@@ -44,12 +44,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.texfi.w0y.data.QueueMode
+import com.texfi.w0y.data.Reverb
+import com.texfi.w0y.data.SoundPreset
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
+import com.texfi.w0y.ui.components.SectionHeader
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
@@ -76,6 +79,7 @@ fun PlayerScreen(
     val state by viewModel.player.state.collectAsStateWithLifecycle()
     val liked by viewModel.isLiked.collectAsStateWithLifecycle()
     val pinned by viewModel.isPinned.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
     val queueMode by viewModel.queueMode.collectAsStateWithLifecycle()
     val radioLoading by viewModel.loadingRadio.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
@@ -275,7 +279,31 @@ fun PlayerScreen(
             }
 
             item {
-                Text("❯ ДАЛЬШЕ", style = PixelSectionLabel, color = colors.accent)
+                SectionHeader("ЗВУЧАНИЕ")
+                Spacer(Modifier.height(10.dp))
+                PixelSegmented(
+                    options = SoundPreset.entries.map { it.label },
+                    // −1 значит «ни один»: когда значения подкручены руками
+                    // в настройках, подсвечивать готовый пресет было бы враньём.
+                    selectedIndex = SoundPreset.entries.indexOfFirst { it.matches(settings) },
+                    onSelect = { viewModel.setSoundPreset(SoundPreset.entries[it]) },
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text =
+                        buildString {
+                            append("скорость ${settings.speed}×")
+                            if (settings.pitch != 1f) append(" · тон ${settings.pitch}")
+                            if (settings.reverb != Reverb.OFF) append(" · эхо ${settings.reverb.label.lowercase()}")
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
+                Spacer(Modifier.height(20.dp))
+            }
+
+            item {
+                SectionHeader("ДАЛЬШЕ")
                 Spacer(Modifier.height(10.dp))
                 PixelSegmented(
                     options = QueueMode.entries.map { it.label },
@@ -292,7 +320,10 @@ fun PlayerScreen(
             }
 
             lyrics?.let { text ->
-                item { Text("❯ ЛИРИКА", style = PixelSectionLabel, color = colors.accent) }
+                item {
+                    SectionHeader("ЛИРИКА")
+                    Spacer(Modifier.height(8.dp))
+                }
                 if (text.synced.isNotEmpty()) {
                     val current = dragPosition ?: position
                     val activeIndex = text.synced.indexOfLast { it.timeMs <= current }
@@ -320,7 +351,10 @@ fun PlayerScreen(
                 item { Spacer(Modifier.height(18.dp)) }
             }
 
-            item { Text("❯ ОЧЕРЕДЬ", style = PixelSectionLabel, color = colors.accent) }
+            item {
+                SectionHeader("ОЧЕРЕДЬ")
+                Spacer(Modifier.height(8.dp))
+            }
             itemsIndexed(state.queue, key = { index, item -> "$index-${item.id}" }) { index, item ->
                 val active = index == state.currentIndex
                 Row(

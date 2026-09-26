@@ -24,6 +24,12 @@ import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
 /**
+ * Насколько плотно рисуются строки списков. Задаётся один раз в оболочке
+ * из настроек, чтобы каждый список не тащил их через параметры.
+ */
+val LocalCompactRows = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
  * Строка трека — одна на все списки: поиск, плейлист, лайки, загрузки.
  * Действия справа задаёт вызывающий экран, чтобы в загрузках не было
  * кнопки «скачать», а в поиске — «удалить».
@@ -38,18 +44,20 @@ fun SongRow(
     actions: @Composable () -> Unit = {},
 ) {
     val colors = LocalW0yColors.current
+    val compact = LocalCompactRows.current
+    val cover = if (compact) 40.dp else 48.dp
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clickable(onClick = onClick)
-                .padding(vertical = 8.dp),
+                .padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             CoverImage(
                 url = song.thumbnailUrl,
                 px = Thumbnails.ROW,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(cover),
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {

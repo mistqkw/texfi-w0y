@@ -6,6 +6,7 @@ import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.Lyrics
 import com.texfi.w0y.data.LyricsRepository
 import com.texfi.w0y.data.SettingsRepository
+import com.texfi.w0y.data.SoundPreset
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.data.db.PinEntity
@@ -41,6 +42,11 @@ class PlayerViewModel @Inject constructor(
     val loadingRadio: StateFlow<Boolean> = playback.loadingRadio
 
     fun setQueueMode(mode: QueueMode) = playback.applyMode(mode)
+
+    /** Один нажатием меняет скорость, тон и эхо разом. */
+    fun setSoundPreset(preset: SoundPreset) = viewModelScope.launch {
+        settingsRepository.setSoundPreset(preset.speed, preset.pitch, preset.reverb)
+    }
 
     val settings: StateFlow<W0ySettings> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), W0ySettings())

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,10 @@ fun PixelCard(
         )
         Column(
             Modifier
+                // Ширина как у тени: без этого тело карточки сжимается по
+                // содержимому, а тень остаётся во всю ширину — и карточка
+                // выглядит сломанной.
+                .fillMaxWidth()
                 .clip(CardShape)
                 .background(colors.surface)
                 .border(2.dp, colors.border, CardShape)

@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
+import android.media.audiofx.PresetReverb
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
@@ -23,6 +25,7 @@ import androidx.media3.session.MediaSessionService
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.MainActivity
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.W0ySettings
@@ -60,11 +63,15 @@ class W0yPlayerService : MediaSessionService() {
 
     @Inject lateinit var audioSession: AudioSessionHolder
 
+    @Inject lateinit var startupMetrics: StartupMetrics
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val settings = MutableStateFlow(W0ySettings())
     private var session: MediaSession? = null
     private var playRequestedAt: Long = 0L
     private var headsetReceiver: BroadcastReceiver? = null
+    private var reverbEffect: PresetReverb? = null
+    private var reverbSession: Int? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -102,6 +109,11 @@ class W0yPlayerService : MediaSessionService() {
                 settings.value = current
                 player.skipSilenceEnabled = current.skipSilence
                 player.setHandleAudioBecomingNoisy(current.pauseOnHeadphonesOut)
+                // Скорость и тон — отдельные ручки: замедление без сдвига
+                // тона звучит иначе, чем настоящий slowed-эдит, где падает
+                // и то и другое. Пусть выбирает слушатель.
+                player.playbackParameters = PlaybackParameters(current.speed, current.pitch)
+                applyReverb(player.audioSessionId, current.reverb)
                 applyLoudness(player)
             }.launchIn(scope)
 
@@ -115,7 +127,7 @@ class W0yPlayerService : MediaSessionService() {
             },
         )
         player.addListener(TrackListener(player))
-        if (BuildConfig.DEBUG) attachFirstAudioTrace(player)
+        attachFirstAudioTrace(player)
 
         val sessionActivity =
             PendingIntent.getActivity(
@@ -173,6 +185,7 @@ class W0yPlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
         headsetReceiver = null
         scope.cancel()
@@ -182,6 +195,46 @@ class W0yPlayerService : MediaSessionService() {
         }
         session = null
         super.onDestroy()
+    }
+
+    /**
+     * Реверб вешается на аудиосессию плеера как вставка.
+     *
+     * Эффект пересоздаётся при смене сессии: сессия меняется на некоторых
+     * устройствах при переключении вывода, и старый эффект остаётся висеть
+     * на мёртвой сессии — звук тогда просто сухой, без всякой ошибки.
+     */
+    private fun applyReverb(sessionId: Int, reverb: Reverb) {
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
+        if (reverb == Reverb.OFF) {
+            releaseReverb()
+            return
+        }
+        val effect =
+            reverbEffect?.takeIf { reverbSession == sessionId } ?: runCatching {
+                releaseReverb()
+                PresetReverb(REVERB_PRIORITY, sessionId).also {
+                    reverbEffect = it
+                    reverbSession = sessionId
+                }
+            }.onFailure { Timber.w(it, "Реверб недоступен на этом устройстве") }.getOrNull()
+                ?: return
+        runCatching {
+            effect.preset =
+                when (reverb) {
+                    Reverb.ROOM -> PresetReverb.PRESET_MEDIUMROOM
+                    Reverb.HALL -> PresetReverb.PRESET_LARGEHALL
+                    Reverb.CAVE -> PresetReverb.PRESET_PLATE
+                    Reverb.OFF -> PresetReverb.PRESET_NONE
+                }
+            effect.enabled = true
+        }.onFailure { Timber.w(it, "Реверб не применился") }
+    }
+
+    private fun releaseReverb() {
+        runCatching { reverbEffect?.release() }
+        reverbEffect = null
+        reverbSession = null
     }
 
     /**
@@ -256,9 +309,15 @@ class W0yPlayerService : MediaSessionService() {
                     if (playRequestedAt == 0L) return
                     val ms = (System.nanoTime() - playRequestedAt) / 1_000_000
                     playRequestedAt = 0L
-                    Timber.i("Звук пошёл через $ms мс после команды")
+                    startupMetrics.record(ms)
+                    if (BuildConfig.DEBUG) Timber.i("Звук пошёл через $ms мс после команды")
                 }
             },
         )
+    }
+
+    private companion object {
+        /** Приоритет вставки эффекта: выше нуля, чтобы система не вытеснила его чужим. */
+        const val REVERB_PRIORITY = 1
     }
 }

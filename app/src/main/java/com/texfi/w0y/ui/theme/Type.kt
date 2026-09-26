@@ -22,6 +22,13 @@ val PixelTitle = TextStyle(
     lineHeight = 24.sp,
 )
 
+/** Заголовок экрана — крупнее внутренних: он задаёт верх страницы. */
+val PixelScreenTitle = TextStyle(
+    fontFamily = PixelFamily,
+    fontSize = 19.sp,
+    lineHeight = 26.sp,
+)
+
 val PixelSectionLabel = TextStyle(
     fontFamily = PixelFamily,
     fontSize = 9.sp,

@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,13 +77,13 @@ fun MiniPlayer(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(3.dp)
                     .background(colors.border),
             ) {
                 Box(
                     Modifier
                         .fillMaxWidth(progress)
-                        .height(2.dp)
+                        .height(3.dp)
                         .background(colors.secondary),
                 )
             }
@@ -97,7 +98,8 @@ fun MiniPlayer(
                     px = Thumbnails.ROW,
                     modifier =
                         Modifier
-                            .size(40.dp)
+                            .size(42.dp)
+                            .border(2.dp, colors.border, RoundedCornerShape(4.dp))
                             .clickable(onClick = onExpand),
                 )
                 Spacer(Modifier.width(10.dp))
@@ -119,22 +121,25 @@ fun MiniPlayer(
                         maxLines = 1,
                     )
                 }
+                // Кнопки с запасом вокруг: на 22dp в мини-плеере промахнуться
+                // мимо «паузы» проще, чем попасть.
                 PixelSprite(
                     rows = if (state.isPlaying) Sprites.pause else Sprites.play,
+                    color = colors.accent,
+                    modifier =
+                        Modifier
+                            .clickable(onClick = onToggle)
+                            .padding(8.dp)
+                            .size(22.dp),
+                )
+                PixelSprite(
+                    rows = Sprites.next,
                     color = colors.text,
                     modifier =
                         Modifier
-                            .size(22.dp)
-                            .clickable(onClick = onToggle),
-                )
-                Spacer(Modifier.width(16.dp))
-                PixelSprite(
-                    rows = Sprites.next,
-                    color = colors.textMuted,
-                    modifier =
-                        Modifier
-                            .size(22.dp)
-                            .clickable(onClick = onNext),
+                            .clickable(onClick = onNext)
+                            .padding(8.dp)
+                            .size(22.dp),
                 )
             }
         }

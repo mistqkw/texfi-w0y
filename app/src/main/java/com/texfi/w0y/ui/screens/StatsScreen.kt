@@ -1,0 +1,198 @@
+package com.texfi.w0y.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.data.StatsPeriod
+import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.EmptyState
+import com.texfi.w0y.ui.components.Gutter
+import com.texfi.w0y.ui.components.PixelSegmented
+import com.texfi.w0y.ui.components.ScreenTitle
+import com.texfi.w0y.ui.components.SectionHeader
+import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.PixelBigNumber
+import com.texfi.w0y.ui.theme.PixelSectionLabel
+
+/**
+ * Итоги прослушивания.
+ *
+ * Считается прямо на телефоне из локальной истории, поэтому доступно в
+ * любой день, а не раз в год, и не зависит от того, что о тебе думает
+ * сервис.
+ */
+@Composable
+fun StatsScreen(
+    onBack: () -> Unit,
+    viewModel: StatsViewModel = hiltViewModel(),
+) {
+    val colors = LocalW0yColors.current
+    val stats by viewModel.stats.collectAsStateWithLifecycle()
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(colors.background),
+    ) {
+        ScreenTitle(title = "итоги", onBack = onBack)
+        Column(Modifier.padding(horizontal = Gutter)) {
+            PixelSegmented(
+                options = StatsPeriod.entries.map { it.label },
+                selectedIndex = StatsPeriod.entries.indexOf(stats.period),
+                onSelect = { viewModel.setPeriod(StatsPeriod.entries[it]) },
+            )
+            Spacer(Modifier.height(18.dp))
+        }
+
+        if (stats.plays == 0) {
+            EmptyState(
+                sprite = Sprites.stats,
+                title = "ПОКА НЕЧЕГО СЧИТАТЬ",
+                text = "Послушай что-нибудь — и здесь появятся минуты, любимые треки и исполнители за выбранный срок.",
+            )
+            return
+        }
+
+        LazyColumn(Modifier.padding(horizontal = Gutter)) {
+            item {
+                Row(Modifier.fillMaxWidth()) {
+                    Metric("МИНУТ", stats.minutes.toString(), Modifier.weight(1f))
+                    Spacer(Modifier.width(12.dp))
+                    Metric("ВКЛЮЧЕНИЙ", stats.plays.toString(), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(22.dp))
+            }
+
+            if (stats.topArtists.isNotEmpty()) {
+                item {
+                    SectionHeader("ИСПОЛНИТЕЛИ")
+                    Spacer(Modifier.height(10.dp))
+                }
+                itemsIndexed(stats.topArtists, key = { _, it -> "artist-${it.artist}" }) { index, row ->
+                    // Полоса длиной от лидера: видно соотношение, а не только цифру.
+                    val share = row.plays.toFloat() / stats.topArtists.first().plays.toFloat()
+                    Column(Modifier.padding(vertical = 7.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "${index + 1}",
+                                style = PixelSectionLabel,
+                                color = colors.textMuted,
+                                modifier = Modifier.width(24.dp),
+                            )
+                            Text(
+                                row.artist,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.text,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                "${row.plays}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                            )
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Box(
+                            Modifier
+                                .padding(start = 24.dp)
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(colors.surfaceHigh),
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(share)
+                                    .height(4.dp)
+                                    .background(colors.accent),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (stats.topSongs.isNotEmpty()) {
+                item {
+                    Spacer(Modifier.height(20.dp))
+                    SectionHeader("ТРЕКИ")
+                    Spacer(Modifier.height(10.dp))
+                }
+                itemsIndexed(stats.topSongs, key = { _, it -> "song-${it.first.id}" }) { index, (song, plays) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            style = PixelSectionLabel,
+                            color = colors.textMuted,
+                            modifier = Modifier.width(24.dp),
+                        )
+                        CoverImage(song.thumbnailUrl, Thumbnails.ROW, Modifier.width(40.dp).height(40.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                song.title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = colors.text,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                song.artist,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                            )
+                        }
+                        Text(
+                            "×$plays",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.secondary,
+                        )
+                    }
+                }
+            }
+
+            item { Spacer(Modifier.height(28.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun Metric(label: String, value: String, modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    Column(
+        modifier
+            .background(colors.surface)
+            .padding(horizontal = 14.dp, vertical = 16.dp),
+    ) {
+        Text(label, style = PixelSectionLabel, color = colors.accent)
+        Spacer(Modifier.height(10.dp))
+        Text(value, style = PixelBigNumber, color = colors.text)
+    }
+}

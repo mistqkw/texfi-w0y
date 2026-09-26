@@ -219,7 +219,7 @@ private fun Hero(
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp, vertical = 12.dp),
         ) {
-            SpriteButton(Sprites.previous, onClick = onBack, size = 24)
+            SpriteButton(Sprites.chevronLeft, onClick = onBack, size = 24)
         }
         Column(
             Modifier

@@ -8,7 +8,9 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
+import androidx.media3.exoplayer.scheduler.Requirements
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.db.SongEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,7 +23,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Состояние одной загрузки для интерфейса. */
 data class DownloadProgress(
@@ -36,6 +43,7 @@ class DownloadsRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val manager: DownloadManager,
     private val library: LibraryRepository,
+    settings: SettingsRepository,
     @param:Named("download") private val downloadCache: SimpleCache,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -44,6 +52,21 @@ class DownloadsRepository @Inject constructor(
 
     init {
         W0yDownloadService.ensureChannel(context)
+        // Ограничение сети ставится самому менеджеру: он сам придержит
+        // очередь до Wi-Fi и сам продолжит, когда тот появится.
+        settings.settings
+            .map { it.downloadOnWifiOnly }
+            .distinctUntilChanged()
+            .onEach { wifiOnly ->
+                // Менеджер загрузок живёт на главном потоке приложения —
+                // трогать его из фонового значит ловить гонку на пустом месте.
+                withContext(Dispatchers.Main) {
+                    manager.requirements =
+                        Requirements(
+                            if (wifiOnly) Requirements.NETWORK_UNMETERED else Requirements.NETWORK,
+                        )
+                }
+            }.launchIn(scope)
         manager.addListener(
             object : DownloadManager.Listener {
                 override fun onDownloadChanged(

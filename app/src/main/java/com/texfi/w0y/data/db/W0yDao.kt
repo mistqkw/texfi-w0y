@@ -130,6 +130,47 @@ interface W0yDao {
     )
     suspend fun topArtists(limit: Int = 40): List<ArtistPlays>
 
+    @Query("SELECT COUNT(*) FROM history WHERE playedAt >= :since")
+    suspend fun playsSince(since: Long): Int
+
+    @Query(
+        """
+        SELECT songs.*, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        WHERE history.playedAt >= :since
+        GROUP BY songs.id
+        ORDER BY plays DESC, MAX(history.playedAt) DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topSongsSince(since: Long, limit: Int = 10): List<SongPlays>
+
+    @Query(
+        """
+        SELECT songs.artist AS artist, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        WHERE history.playedAt >= :since AND songs.artist != ''
+        GROUP BY songs.artist
+        ORDER BY plays DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun topArtistsSince(since: Long, limit: Int = 10): List<ArtistPlays>
+
+    /** Длительности прослушанного — из них считаются минуты за период. */
+    @Query(
+        """
+        SELECT songs.durationText AS durationText, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        WHERE history.playedAt >= :since
+        GROUP BY songs.id
+        """,
+    )
+    suspend fun playedDurations(since: Long): List<DurationPlays>
+
+    @Query("SELECT MIN(playedAt) FROM history")
+    suspend fun firstPlayAt(): Long?
+
     @Query("DELETE FROM history")
     suspend fun clearHistory()
 

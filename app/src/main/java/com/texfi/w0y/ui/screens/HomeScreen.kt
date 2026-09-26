@@ -1,13 +1,20 @@
 package com.texfi.w0y.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -17,13 +24,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.data.db.PinEntity
-import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.ArtistTile
+import com.texfi.w0y.ui.components.Gutter
 import com.texfi.w0y.ui.components.ReleaseTile
+import com.texfi.w0y.ui.components.ScreenTitle
+import com.texfi.w0y.ui.components.SectionHeader
+import com.texfi.w0y.ui.components.ShelfTitle
+import com.texfi.w0y.ui.components.SkeletonRow
 import com.texfi.w0y.ui.components.SongRow
 import com.texfi.w0y.ui.components.SongTile
 import com.texfi.w0y.ui.components.SpeedDialTile
@@ -33,7 +45,8 @@ import com.texfi.w0y.ui.nav.BrowseRoute
 import com.texfi.w0y.ui.nav.LocalBrowseNavigator
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
-import com.texfi.w0y.ui.theme.PixelTitle
+
+private const val DIAL_COLUMNS = 3
 
 @Composable
 fun HomeScreen(
@@ -47,60 +60,53 @@ fun HomeScreen(
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val liked by viewModel.liked.collectAsStateWithLifecycle()
     val shelves by home.shelves.collectAsStateWithLifecycle()
+    val loadingShelves by home.loading.collectAsStateWithLifecycle()
     val recommendationsFailed by home.failed.collectAsStateWithLifecycle()
+    val showRecommendations by home.showRecommendations.collectAsStateWithLifecycle()
 
-    LazyColumn(
-        Modifier
-            .fillMaxSize()
-            .padding(horizontal = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
+    LazyColumn(Modifier.fillMaxSize()) {
         item {
-            Spacer(Modifier.height(18.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("w0y", style = PixelTitle, color = colors.text, modifier = Modifier.weight(1f))
-                SpriteButton(Sprites.gear, onClick = onOpenSettings)
-            }
+            ScreenTitle(title = "w0y", actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) })
         }
 
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "❯ БЫСТРЫЙ НАБОР",
-                    style = PixelSectionLabel,
-                    color = colors.accent,
-                    modifier = Modifier.weight(1f),
+            Column(Modifier.padding(horizontal = Gutter)) {
+                SectionHeader(
+                    label = "БЫСТРЫЙ НАБОР",
+                    hint = if (dial.isEmpty()) null else "долгое нажатие — закрепить или снять",
                 )
-                if (dial.isNotEmpty()) {
-                    Text(
-                        "долгое нажатие — закрепить",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                    )
-                }
+                Spacer(Modifier.height(12.dp))
             }
         }
 
         if (dial.isEmpty()) {
             item {
-                PixelCard(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(horizontal = Gutter)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        repeat(DIAL_COLUMNS) { GhostTile(Modifier.weight(1f)) }
+                    }
+                    Spacer(Modifier.height(10.dp))
                     Text(
-                        text =
-                            "Здесь соберётся то, что ты слушаешь чаще всего. " +
-                                "Что-то нужное можно закрепить долгим нажатием — оно останется на первом месте.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Сюда попадёт то, что ты слушаешь чаще всего. Долгим нажатием можно закрепить трек, альбом или артиста — они встанут первыми.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                     )
+                    Spacer(Modifier.height(10.dp))
                 }
             }
         } else {
-            // Сетка внутри LazyColumn собирается рядами по три: вложенный
-            // LazyVerticalGrid здесь запрещён — бесконечная высота.
-            // Ключ с приставкой обязателен: тот же трек лежит и в быстром
-            // наборе, и в «недавно», а одинаковый ключ дважды в одном
-            // списке — это падение, а не просто перерисовка.
-            items(dial.chunked(3), key = { row -> "dial-${row.first().kind}-${row.first().id}" }) { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Ряды по три: вложенная сетка внутри LazyColumn запрещена —
+            // у неё бесконечная высота.
+            items(
+                dial.chunked(DIAL_COLUMNS),
+                // Ключ с приставкой обязателен: тот же трек лежит и здесь,
+                // и в «недавно», а одинаковый ключ дважды — это падение.
+                key = { row -> "dial-${row.first().kind}-${row.first().id}" },
+            ) { row ->
+                Row(
+                    Modifier.padding(horizontal = Gutter, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
                     row.forEach { item ->
                         SpeedDialTile(
                             title = item.title,
@@ -118,14 +124,10 @@ fun HomeScreen(
                             onClick = {
                                 when (item.kind) {
                                     PinEntity.KIND_ARTIST ->
-                                        navigator.open(
-                                            BrowseRoute.Artist(item.id, item.title, item.thumbnailUrl),
-                                        )
+                                        navigator.open(BrowseRoute.Artist(item.id, item.title, item.thumbnailUrl))
 
                                     PinEntity.KIND_ALBUM, PinEntity.KIND_PLAYLIST ->
-                                        navigator.open(
-                                            BrowseRoute.Album(item.id, item.title, item.thumbnailUrl),
-                                        )
+                                        navigator.open(BrowseRoute.Album(item.id, item.title, item.thumbnailUrl))
 
                                     else -> viewModel.playDial(item)
                                 }
@@ -133,72 +135,75 @@ fun HomeScreen(
                             onLongClick = { viewModel.togglePin(item) },
                         )
                     }
-                    // Неполный ряд не должен растягивать плитки: добиваем пустотой.
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    // Неполный ряд не должен растягивать плитки.
+                    repeat(DIAL_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
 
-        if (shelves.isNotEmpty() || recommendationsFailed) {
+        if (showRecommendations) {
             item {
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "❯ РЕКОМЕНДАЦИИ",
-                        style = PixelSectionLabel,
-                        color = colors.accent,
-                        modifier = Modifier.weight(1f),
+                Column(Modifier.padding(horizontal = Gutter)) {
+                    Spacer(Modifier.height(22.dp))
+                    SectionHeader(
+                        label = "РЕКОМЕНДАЦИИ",
+                        action = { SpriteButton(Sprites.repeat, onClick = home::refresh, size = 18) },
                     )
-                    SpriteButton(Sprites.repeat, onClick = home::refresh)
+                    Spacer(Modifier.height(4.dp))
                 }
             }
-        }
 
-        if (recommendationsFailed) {
-            item {
-                Text(
-                    "Рекомендации не пришли. Нажми обновить или проверь сеть.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
-                )
+            if (recommendationsFailed) {
+                item {
+                    Text(
+                        text = "Рекомендации не пришли. Нажми обновить или проверь сеть.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(horizontal = Gutter, vertical = 10.dp),
+                    )
+                }
+            } else if (shelves.isEmpty() && loadingShelves) {
+                items(3) { SkeletonRow(Modifier.padding(horizontal = Gutter)) }
             }
-        }
 
-        items(shelves, key = { "shelf-${it.title}" }) { shelf ->
-            Column {
-                Text(
-                    text = shelf.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.text,
-                    modifier = Modifier.padding(bottom = 10.dp),
-                )
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(shelf.songs, key = { "s-${it.id}" }) { song ->
-                        SongTile(song) { home.play(shelf.songs, shelf.songs.indexOf(song)) }
-                    }
-                    items(shelf.cards, key = { "c-${it.browseId}" }) { card ->
-                        ReleaseTile(card) {
-                            navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl))
+            items(shelves, key = { "shelf-${it.title}" }) { shelf ->
+                Column(Modifier.padding(top = 16.dp)) {
+                    ShelfTitle(shelf.title, Modifier.padding(horizontal = Gutter))
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = Gutter),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(shelf.songs, key = { "s-${it.id}" }) { song ->
+                            SongTile(song) { home.play(shelf.songs, shelf.songs.indexOf(song)) }
                         }
-                    }
-                    items(shelf.artists, key = { "a-${it.browseId}" }) { card ->
-                        ArtistTile(card) {
-                            navigator.open(BrowseRoute.Artist(card.browseId, card.name, card.thumbnailUrl))
+                        items(shelf.cards, key = { "c-${it.browseId}" }) { card ->
+                            ReleaseTile(card) {
+                                navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl))
+                            }
+                        }
+                        items(shelf.artists, key = { "a-${it.browseId}" }) { card ->
+                            ArtistTile(card) {
+                                navigator.open(BrowseRoute.Artist(card.browseId, card.name, card.thumbnailUrl))
+                            }
                         }
                     }
                 }
-                Spacer(Modifier.height(6.dp))
             }
         }
 
         if (recent.isNotEmpty()) {
             item {
-                Spacer(Modifier.height(8.dp))
-                Text("❯ НЕДАВНО", style = PixelSectionLabel, color = colors.accent)
+                Column(Modifier.padding(horizontal = Gutter)) {
+                    Spacer(Modifier.height(26.dp))
+                    SectionHeader("НЕДАВНО")
+                    Spacer(Modifier.height(6.dp))
+                }
             }
             items(recent.take(20), key = { "recent-${it.id}" }) { song ->
                 SongRow(
                     song = song,
+                    modifier = Modifier.padding(horizontal = Gutter),
                     onClick = { viewModel.play(recent, recent.indexOf(song)) },
                     actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
                 )
@@ -207,14 +212,47 @@ fun HomeScreen(
 
         if (liked.isNotEmpty()) {
             item {
-                Spacer(Modifier.height(8.dp))
-                Text("❯ ЛАЙКИ", style = PixelSectionLabel, color = colors.accent)
+                Column(Modifier.padding(horizontal = Gutter)) {
+                    Spacer(Modifier.height(26.dp))
+                    SectionHeader("ЛАЙКИ")
+                    Spacer(Modifier.height(6.dp))
+                }
             }
             items(liked.take(10), key = { "liked-${it.id}" }) { song ->
-                SongRow(song = song, onClick = { viewModel.play(liked, liked.indexOf(song)) })
+                SongRow(
+                    song = song,
+                    modifier = Modifier.padding(horizontal = Gutter),
+                    onClick = { viewModel.play(liked, liked.indexOf(song)) },
+                )
             }
         }
 
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(28.dp)) }
+    }
+}
+
+/**
+ * Пустое место быстрого набора.
+ *
+ * Пустой экран с одинокой плиткой выглядит как недогруженный; призрачные
+ * клетки сразу показывают, сколько их будет и что с ними делать.
+ */
+@Composable
+private fun GhostTile(modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .background(colors.surface)
+            .border(2.dp, colors.border),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "+",
+            style = PixelSectionLabel,
+            color = colors.border,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.size(20.dp),
+        )
     }
 }

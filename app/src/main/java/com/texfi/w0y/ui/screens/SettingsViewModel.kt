@@ -5,11 +5,14 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.QueueMode
+import com.texfi.w0y.data.Reverb
+import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.playback.AudioSessionHolder
 import com.texfi.w0y.playback.PlaybackStarter
+import com.texfi.w0y.playback.StartupMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
@@ -29,7 +32,13 @@ class SettingsViewModel @Inject constructor(
     @param:Named("stream") private val streamCache: SimpleCache,
     private val audioSession: AudioSessionHolder,
     private val playback: PlaybackStarter,
+    startupMetrics: StartupMetrics,
 ) : ViewModel() {
+    /** Замер «нажал → пошёл звук»: главное обещание приложения, измеренное. */
+    val startupAverage: StateFlow<Long?> = startupMetrics.average
+    val startupLast: StateFlow<Long?> = startupMetrics.last
+    val startupCount: StateFlow<Int> = startupMetrics.count
+
     val audioSessionId: Int get() = audioSession.sessionId
     val settings: StateFlow<W0ySettings> =
         repository.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), W0ySettings())
@@ -92,6 +101,22 @@ class SettingsViewModel @Inject constructor(
      * только на следующий запуск.
      */
     fun setQueueMode(value: QueueMode) = playback.applyMode(value)
+
+    fun setSpeed(value: Float) = update { repository.setSpeed(value) }
+
+    fun setPitch(value: Float) = update { repository.setPitch(value) }
+
+    fun setReverb(value: Reverb) = update { repository.setReverb(value) }
+
+    fun setShowRecommendations(value: Boolean) = update { repository.setShowRecommendations(value) }
+
+    fun setCompactRows(value: Boolean) = update { repository.setCompactRows(value) }
+
+    fun setSaveSearchHistory(value: Boolean) = update { repository.setSaveSearchHistory(value) }
+
+    fun setDownloadOnWifiOnly(value: Boolean) = update { repository.setDownloadOnWifiOnly(value) }
+
+    fun setStartTab(value: StartTab) = update { repository.setStartTab(value) }
 
     suspend fun exportJson(): String = repository.export(repository.settings.first())
 

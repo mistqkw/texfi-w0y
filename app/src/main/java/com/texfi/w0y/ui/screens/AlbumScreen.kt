@@ -73,7 +73,7 @@ fun AlbumScreen(
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SpriteButton(Sprites.previous, onClick = onBack, size = 24)
+                SpriteButton(Sprites.chevronLeft, onClick = onBack, size = 24)
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = if (page == null) "ЗАГРУЖАЮ" else "АЛЬБОМ",

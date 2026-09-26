@@ -47,6 +47,8 @@ import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.EmptyState
+import com.texfi.w0y.ui.components.ScreenTitle
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SkeletonRow
@@ -73,9 +75,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        Spacer(Modifier.height(18.dp))
-        Text(stringResource(R.string.tab_search), style = PixelTitle, color = colors.text)
-        Spacer(Modifier.height(14.dp))
+        ScreenTitle(title = stringResource(R.string.tab_search), horizontalPadding = 0.dp)
         SearchField(value = query, onValueChange = viewModel::onQueryChange)
         Spacer(Modifier.height(12.dp))
         PixelSegmented(
@@ -159,7 +159,11 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 
             is SearchState.Results ->
                 if (current.isEmpty) {
-                    Hint(stringResource(R.string.search_nothing))
+                    EmptyState(
+                        sprite = Sprites.search,
+                        title = "НИЧЕГО НЕ НАШЛОСЬ",
+                        text = "Попробуй другое написание или переключи раздел выше.",
+                    )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         // Ключ по id: без него Compose пересобирает строки
@@ -266,7 +270,7 @@ private fun CardRow(
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
         }
         PixelSprite(
-            rows = Sprites.next,
+            rows = Sprites.chevronRight,
             color = colors.textMuted,
             modifier = Modifier.size(16.dp),
         )

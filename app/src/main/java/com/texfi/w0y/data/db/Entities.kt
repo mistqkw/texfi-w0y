@@ -122,3 +122,9 @@ data class ArtistPlays(
     val artist: String,
     val plays: Int,
 )
+
+/** Длительность трека и сколько раз его включали — сырьё для «итогов». */
+data class DurationPlays(
+    val durationText: String?,
+    val plays: Int,
+)

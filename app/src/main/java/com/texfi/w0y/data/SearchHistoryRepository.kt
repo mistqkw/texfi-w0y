@@ -25,6 +25,7 @@ private val Context.searchStore: DataStore<Preferences> by preferencesDataStore(
 @Singleton
 class SearchHistoryRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val settings: SettingsRepository,
 ) {
     val recent: Flow<List<String>> =
         context.searchStore.data.map { prefs ->
@@ -32,6 +33,8 @@ class SearchHistoryRepository @Inject constructor(
         }
 
     suspend fun remember(query: String) {
+        // Выключено — значит выключено: ничего не пишем, а не пишем «тихо».
+        if (!settings.settings.first().saveSearchHistory) return
         val trimmed = query.trim()
         if (trimmed.length < MIN_LENGTH) return
         val current = recent.first()

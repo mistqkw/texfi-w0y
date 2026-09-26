@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateListOf
@@ -42,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
+import com.texfi.w0y.data.StartTab
+import com.texfi.w0y.ui.components.LocalCompactRows
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
@@ -70,6 +73,21 @@ private enum class Tab(val labelRes: Int, val sprite: List<String>) {
 fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
     var tab by remember { mutableStateOf(Tab.HOME) }
+    val startTab by viewModel.startTab.collectAsStateWithLifecycle()
+    val compactRows by viewModel.compactRows.collectAsStateWithLifecycle()
+    var startTabApplied by remember { mutableStateOf(false) }
+    // Стартовый экран применяется один раз за запуск: иначе возврат на
+    // «дом» перекидывал бы обратно при каждом чтении настроек.
+    LaunchedEffect(startTab) {
+        if (!startTabApplied && startTab != null) {
+            tab = when (startTab) {
+                StartTab.SEARCH -> Tab.SEARCH
+                StartTab.LIBRARY -> Tab.LIBRARY
+                else -> Tab.HOME
+            }
+            startTabApplied = true
+        }
+    }
     val playerState by viewModel.player.state.collectAsStateWithLifecycle()
     var playerExpanded by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -106,7 +124,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         }
     }
 
-    CompositionLocalProvider(LocalBrowseNavigator provides navigator) {
+    CompositionLocalProvider(
+        LocalBrowseNavigator provides navigator,
+        LocalCompactRows provides compactRows,
+    ) {
     Box(
         Modifier
             .fillMaxSize()

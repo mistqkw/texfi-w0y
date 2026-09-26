@@ -37,6 +37,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.QueueMode
+import com.texfi.w0y.data.Reverb
+import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
@@ -60,6 +62,9 @@ fun SettingsScreen(
 ) {
     val colors = LocalW0yColors.current
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val startupAverage by viewModel.startupAverage.collectAsStateWithLifecycle()
+    val startupLast by viewModel.startupLast.collectAsStateWithLifecycle()
+    val startupCount by viewModel.startupCount.collectAsStateWithLifecycle()
     val cacheBytes by viewModel.cacheBytes.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -101,7 +106,7 @@ fun SettingsScreen(
                 .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SpriteButton(Sprites.previous, onClick = onClose)
+            SpriteButton(Sprites.chevronLeft, onClick = onClose)
             Spacer(Modifier.width(12.dp))
             Text("настройки", style = PixelTitle, color = colors.text)
         }
@@ -152,7 +157,56 @@ fun SettingsScreen(
                 )
             }
 
+            item { Group("ЗВУЧАНИЕ") }
+            item {
+                ChoiceRow(
+                    title = "Скорость",
+                    description =
+                        "Играет быстрее или медленнее оригинала. Замедление с эхом звучит как slowed-переделка, " +
+                            "только из оригинального файла и без потери качества.",
+                    options = listOf(0.75f, 0.85f, 1f, 1.25f, 1.5f),
+                    selected = settings.speed,
+                    label = { "${it}×".replace(".0×", "×") },
+                    onSelect = viewModel::setSpeed,
+                )
+            }
+            item {
+                ChoiceRow(
+                    title = "Тон",
+                    description =
+                        "Насколько ниже или выше звучит голос. Отдельно от скорости: можно замедлить, " +
+                            "не превращая вокал в бас.",
+                    options = listOf(0.9f, 0.95f, 1f, 1.05f, 1.1f),
+                    selected = settings.pitch,
+                    label = { "${it}".replace("1.0", "норма") },
+                    onSelect = viewModel::setPitch,
+                )
+            }
+            item {
+                ChoiceRow(
+                    title = "Эхо",
+                    description = "Реверб поверх трека — от небольшой комнаты до пещеры.",
+                    options = Reverb.entries,
+                    selected = settings.reverb,
+                    label = { it.label },
+                    onSelect = viewModel::setReverb,
+                )
+            }
+
             item { Group("СКОРОСТЬ") }
+            item {
+                InfoRow(
+                    title = "Старт трека",
+                    description =
+                        "Время от нажатия до первого звука, замеренное на этом телефоне. " +
+                            if (startupCount == 0) {
+                                "Появится после первого включения."
+                            } else {
+                                "Среднее за последние $startupCount запусков; последний — ${startupLast ?: 0} мс."
+                            },
+                    value = startupAverage?.let { "$it мс" } ?: "—",
+                )
+            }
             item {
                 SwitchRow(
                     title = "Готовить следующий трек",
@@ -163,6 +217,14 @@ fun SettingsScreen(
             }
 
             item { Group("ХРАНИЛИЩЕ") }
+            item {
+                SwitchRow(
+                    title = "Скачивать только по Wi-Fi",
+                    description = "Загрузки ждут Wi-Fi и не тратят мобильный трафик.",
+                    checked = settings.downloadOnWifiOnly,
+                    onChange = viewModel::setDownloadOnWifiOnly,
+                )
+            }
             item {
                 ChoiceRow(
                     title = "Предел кэша",
@@ -254,6 +316,42 @@ fun SettingsScreen(
 
             item { Group("ВИД") }
             item {
+                SwitchRow(
+                    title = "Ленты рекомендаций",
+                    description = "Блок с подборками YouTube Music на главной. Выключи — останутся только свои списки.",
+                    checked = settings.showRecommendations,
+                    onChange = viewModel::setShowRecommendations,
+                )
+            }
+            item {
+                SwitchRow(
+                    title = "Компактные списки",
+                    description = "Строки треков ниже, на экран помещается больше.",
+                    checked = settings.compactRows,
+                    onChange = viewModel::setCompactRows,
+                )
+            }
+            item {
+                ChoiceRow(
+                    title = "Экран при запуске",
+                    description = "С чего начинать, когда открываешь приложение.",
+                    options = StartTab.entries,
+                    selected = settings.startTab,
+                    label = { it.label },
+                    onSelect = viewModel::setStartTab,
+                )
+            }
+            item {
+                SwitchRow(
+                    title = "Хранить историю поиска",
+                    description =
+                        "Недавние запросы показываются под пустым полем поиска и помогают рекомендациям " +
+                            "угадывать жанр. Выключено — ничего не запоминается.",
+                    checked = settings.saveSearchHistory,
+                    onChange = viewModel::setSaveSearchHistory,
+                )
+            }
+            item {
                 ChoiceRow(
                     title = "Тема",
                     description = "OLED — полностью чёрный фон, экономит батарею на AMOLED.",
@@ -312,7 +410,7 @@ fun SettingsScreen(
 private fun qualityLabel(quality: Quality): String =
     when (quality) {
         Quality.LOW -> "экономно"
-        Quality.MEDIUM -> "автоматически"
+        Quality.MEDIUM -> "авто"
         Quality.HIGH -> "максимум"
     }
 
@@ -355,6 +453,25 @@ private fun SwitchRow(
         }
         Spacer(Modifier.width(12.dp))
         PixelSwitch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** Строка-показание: значение, которое нельзя менять, но важно видеть. */
+@Composable
+private fun InfoRow(title: String, description: String, value: String) {
+    val colors = LocalW0yColors.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text)
+            Text(description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+        }
+        Spacer(Modifier.width(12.dp))
+        Text(value, style = PixelSectionLabel, color = colors.accent)
     }
 }
 

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -39,6 +40,49 @@ enum class QueueMode(val label: String, val hint: String) {
     RADIO("РЕКОМЕНДАЦИИ β", "Дальше — похожее по звучанию и жанру, с учётом того, что ты уже слушал и искал."),
 }
 
+/**
+ * Реверб поверх трека.
+ *
+ * Не «эффект ради эффекта»: львиная доля того, что слушают в этом жанре, —
+ * чужие slowed-переделки одних и тех же песен. Замедление с эхом прямо в
+ * плеере делает такие переделки ненужными: любой оригинал звучит так же,
+ * только без потери качества и без поиска нужной версии.
+ */
+enum class Reverb(val label: String) {
+    OFF("НЕТ"),
+    ROOM("КОМНАТА"),
+    HALL("ЗАЛ"),
+    CAVE("ПЕЩЕРА"),
+}
+
+/**
+ * Готовые сочетания скорости, тона и эха.
+ *
+ * Ровно те два, ради которых слушают чужие переделки: замедленное с эхом
+ * и ускоренное. Тонкая настройка — в настройках, здесь одно нажатие.
+ */
+enum class SoundPreset(
+    val label: String,
+    val speed: Float,
+    val pitch: Float,
+    val reverb: Reverb,
+) {
+    SLOWED("SLOWED", 0.85f, 0.92f, Reverb.HALL),
+    NORMAL("ОБЫЧНО", 1f, 1f, Reverb.OFF),
+    SPED("SPED UP", 1.25f, 1.06f, Reverb.OFF),
+    ;
+
+    fun matches(settings: W0ySettings): Boolean =
+        settings.speed == speed && settings.pitch == pitch && settings.reverb == reverb
+}
+
+/** Куда попадаешь при запуске. */
+enum class StartTab(val label: String) {
+    HOME("ДОМ"),
+    SEARCH("ПОИСК"),
+    LIBRARY("МОЁ"),
+}
+
 enum class ThemeMode {
     DARK,
     OLED,
@@ -64,6 +108,14 @@ data class W0ySettings(
     val showLyrics: Boolean = true,
     val keepHistory: Boolean = true,
     val queueMode: QueueMode = QueueMode.ORDER,
+    val speed: Float = 1f,
+    val pitch: Float = 1f,
+    val reverb: Reverb = Reverb.OFF,
+    val showRecommendations: Boolean = true,
+    val compactRows: Boolean = false,
+    val saveSearchHistory: Boolean = true,
+    val downloadOnWifiOnly: Boolean = true,
+    val startTab: StartTab = StartTab.HOME,
 )
 
 @Singleton
@@ -91,6 +143,14 @@ class SettingsRepository @Inject constructor(
                     showLyrics = prefs[Keys.LYRICS] ?: true,
                     keepHistory = prefs[Keys.HISTORY] ?: true,
                     queueMode = prefs.enum(Keys.QUEUE_MODE, QueueMode.ORDER),
+                    speed = prefs[Keys.SPEED] ?: 1f,
+                    pitch = prefs[Keys.PITCH] ?: 1f,
+                    reverb = prefs.enum(Keys.REVERB, Reverb.OFF),
+                    showRecommendations = prefs[Keys.SHOW_RECOMMENDATIONS] ?: true,
+                    compactRows = prefs[Keys.COMPACT_ROWS] ?: false,
+                    saveSearchHistory = prefs[Keys.SAVE_SEARCHES] ?: true,
+                    downloadOnWifiOnly = prefs[Keys.WIFI_ONLY_DOWNLOADS] ?: true,
+                    startTab = prefs.enum(Keys.START_TAB, StartTab.HOME),
                 )
             }
 
@@ -121,6 +181,31 @@ class SettingsRepository @Inject constructor(
     suspend fun setKeepHistory(value: Boolean) = put(Keys.HISTORY, value)
 
     suspend fun setQueueMode(value: QueueMode) = put(Keys.QUEUE_MODE, value.name)
+
+    suspend fun setSpeed(value: Float) = put(Keys.SPEED, value)
+
+    suspend fun setPitch(value: Float) = put(Keys.PITCH, value)
+
+    suspend fun setReverb(value: Reverb) = put(Keys.REVERB, value.name)
+
+    /** Пресет звучания меняет скорость, тон и эхо разом — как одну ручку. */
+    suspend fun setSoundPreset(speed: Float, pitch: Float, reverb: Reverb) {
+        context.dataStore.edit {
+            it[Keys.SPEED] = speed
+            it[Keys.PITCH] = pitch
+            it[Keys.REVERB] = reverb.name
+        }
+    }
+
+    suspend fun setShowRecommendations(value: Boolean) = put(Keys.SHOW_RECOMMENDATIONS, value)
+
+    suspend fun setCompactRows(value: Boolean) = put(Keys.COMPACT_ROWS, value)
+
+    suspend fun setSaveSearchHistory(value: Boolean) = put(Keys.SAVE_SEARCHES, value)
+
+    suspend fun setDownloadOnWifiOnly(value: Boolean) = put(Keys.WIFI_ONLY_DOWNLOADS, value)
+
+    suspend fun setStartTab(value: StartTab) = put(Keys.START_TAB, value.name)
 
     /** Экспорт всех настроек одной строкой JSON — её можно сохранить в файл. */
     suspend fun export(current: W0ySettings): String =
@@ -168,6 +253,9 @@ class SettingsRepository @Inject constructor(
     private suspend fun put(key: Preferences.Key<String>, value: String) =
         context.dataStore.edit { it[key] = value }.let { }
 
+    private suspend fun put(key: Preferences.Key<Float>, value: Float) =
+        context.dataStore.edit { it[key] = value }.let { }
+
     private inline fun <reified T : Enum<T>> Preferences.enum(
         key: Preferences.Key<String>,
         fallback: T,
@@ -188,5 +276,13 @@ class SettingsRepository @Inject constructor(
         val LYRICS = booleanPreferencesKey("show_lyrics")
         val HISTORY = booleanPreferencesKey("keep_history")
         val QUEUE_MODE = stringPreferencesKey("queue_mode")
+        val SPEED = floatPreferencesKey("speed")
+        val PITCH = floatPreferencesKey("pitch")
+        val REVERB = stringPreferencesKey("reverb")
+        val SHOW_RECOMMENDATIONS = booleanPreferencesKey("show_recommendations")
+        val COMPACT_ROWS = booleanPreferencesKey("compact_rows")
+        val SAVE_SEARCHES = booleanPreferencesKey("save_searches")
+        val WIFI_ONLY_DOWNLOADS = booleanPreferencesKey("wifi_only_downloads")
+        val START_TAB = stringPreferencesKey("start_tab")
     }
 }

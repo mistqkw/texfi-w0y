@@ -4,13 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.texfi.w0y.data.Shelf
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -24,7 +28,14 @@ import timber.log.Timber
 class HomeViewModel @Inject constructor(
     private val youtube: YouTubeRepository,
     private val playback: PlaybackStarter,
+    settings: SettingsRepository,
 ) : ViewModel() {
+    /** Ленты можно выключить совсем — кому-то нужна только своя библиотека. */
+    val showRecommendations: StateFlow<Boolean> =
+        settings.settings
+            .map { it.showRecommendations }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     private val _shelves = MutableStateFlow<List<Shelf>>(emptyList())
     val shelves: StateFlow<List<Shelf>> = _shelves.asStateFlow()
 

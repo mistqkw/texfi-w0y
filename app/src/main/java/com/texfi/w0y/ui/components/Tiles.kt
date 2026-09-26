@@ -28,7 +28,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.texfi.w0y.data.ArtistCard
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
@@ -266,8 +268,14 @@ fun PixelSegmented(
             ) {
                 Text(
                     text = option,
-                    style = PixelSectionLabel,
+                    // Пиксельный шрифт широкий: на трёх-четырёх секциях
+                    // длинное слово переносится посреди буквы и выглядит
+                    // как брак вёрстки. Одна строка и мельче кегль.
+                    style = PixelSectionLabel.copy(fontSize = 8.sp, lineHeight = 12.sp),
                     color = if (active) colors.background else colors.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
                 )
             }
             // Разделитель между секциями — тот же бордер, без скруглений.
