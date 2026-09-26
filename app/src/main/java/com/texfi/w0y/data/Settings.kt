@@ -154,6 +154,7 @@ data class W0ySettings(
     val muteSwearLines: Boolean = false,
     val welcomeSeen: Boolean = false,
     val language: Language = Language.SYSTEM,
+    val animatedBackground: Boolean = true,
 )
 
 @Singleton
@@ -195,6 +196,7 @@ class SettingsRepository @Inject constructor(
                     muteSwearLines = prefs[Keys.MUTE_SWEAR_LINES] ?: false,
                     welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
                     language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
+                    animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
                 )
             }
 
@@ -261,6 +263,8 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setWelcomeSeen(value: Boolean) = put(Keys.WELCOME_SEEN, value)
 
+    suspend fun setAnimatedBackground(value: Boolean) = put(Keys.ANIMATED_BACKGROUND, value)
+
     /**
      * Язык пишется сразу в двух местах.
      *
@@ -290,6 +294,7 @@ class SettingsRepository @Inject constructor(
             .put("showLyrics", current.showLyrics)
             .put("keepHistory", current.keepHistory)
             .put("language", current.language.name)
+            .put("animatedBackground", current.animatedBackground)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -308,6 +313,9 @@ class SettingsRepository @Inject constructor(
             if (obj.has("sleepTimerDefaultMin")) prefs[Keys.SLEEP_MIN] = obj.getInt("sleepTimerDefaultMin")
             if (obj.has("showLyrics")) prefs[Keys.LYRICS] = obj.getBoolean("showLyrics")
             if (obj.has("keepHistory")) prefs[Keys.HISTORY] = obj.getBoolean("keepHistory")
+            if (obj.has("animatedBackground")) {
+                prefs[Keys.ANIMATED_BACKGROUND] = obj.getBoolean("animatedBackground")
+            }
             // Язык из выгрузки нужно продублировать в синхронное хранилище:
             // именно оттуда его читает attachBaseContext при следующем старте.
             obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
@@ -363,5 +371,6 @@ class SettingsRepository @Inject constructor(
         val MUTE_SWEAR_LINES = booleanPreferencesKey("mute_swear_lines")
         val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
         val LANGUAGE = stringPreferencesKey("language")
+        val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")
     }
 }

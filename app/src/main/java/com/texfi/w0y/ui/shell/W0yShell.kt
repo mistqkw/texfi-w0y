@@ -107,6 +107,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val libraryViewModel: LibraryViewModel = hiltViewModel()
     val welcomeSeen by viewModel.welcomeSeen.collectAsStateWithLifecycle()
     val theme by viewModel.theme.collectAsStateWithLifecycle()
+    val animatedBackground by viewModel.animatedBackground.collectAsStateWithLifecycle()
     // Заставка играет один раз за запуск, а не при каждом повороте экрана.
     var introDone by rememberSaveable { mutableStateOf(false) }
     val libraryRoute by libraryViewModel.route.collectAsStateWithLifecycle()
@@ -150,7 +151,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     ) {
         // Фон экосистемы: он виден в промежутках между карточками и
         // строками — как на сайте, где чёрный тоже не пустой.
-        Starfield(Modifier.fillMaxSize())
+        Starfield(Modifier.fillMaxSize(), animated = animatedBackground)
         Column(
             Modifier
                 .fillMaxSize()

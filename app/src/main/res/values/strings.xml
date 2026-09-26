@@ -141,6 +141,8 @@
     <string name="settings_clear_cache_desc">Downloaded tracks aren\'t touched — they\'re stored separately.</string>
     <string name="settings_clear_cache_title">Clear the cache</string>
     <string name="settings_compact_desc">Track rows are shorter, so more of them fit on screen.</string>
+    <string name="settings_live_background_title">Live background</string>
+    <string name="settings_live_background_desc">Stars in the background twinkle slowly. Turn it off and the background is drawn once — a little less battery, a little more frame budget for scrolling.</string>
     <string name="settings_compact_title">Compact lists</string>
     <string name="settings_equalizer_button">OPEN</string>
     <string name="settings_equalizer_desc">Opens the system equalizer for w0y\'s audio — the same one other apps use.</string>

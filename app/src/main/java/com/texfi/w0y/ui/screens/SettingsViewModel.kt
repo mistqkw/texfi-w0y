@@ -125,6 +125,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setCompactRows(value: Boolean) = update { repository.setCompactRows(value) }
 
+    fun setAnimatedBackground(value: Boolean) = update { repository.setAnimatedBackground(value) }
+
     fun setSaveSearchHistory(value: Boolean) = update { repository.setSaveSearchHistory(value) }
 
     fun setDownloadOnWifiOnly(value: Boolean) = update { repository.setDownloadOnWifiOnly(value) }

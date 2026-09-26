@@ -1,14 +1,8 @@
 package com.texfi.w0y.ui.components
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -30,24 +24,22 @@ import kotlin.random.Random
  *
  * Звёзды расставлены по фиксированному зерну: случайные при каждом входе
  * прыгали бы с экрана на экран, и это читалось бы как мусор на матрице.
+ *
+ * [animated] выключает мерцание: тогда фон рисуется один раз и приложение в
+ * покое не отдаёт кадров вообще. Это настройка «живой фон» из раздела «вид».
  */
 @Composable
-fun Starfield(modifier: Modifier = Modifier) {
+fun Starfield(modifier: Modifier = Modifier, animated: Boolean = true) {
     val colors = LocalW0yColors.current
     val stars = remember { generateStars() }
-    val transition = rememberInfiniteTransition(label = "starfield")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(9_000), RepeatMode.Restart),
-        label = "twinkle",
-    )
+    // Фаза читается только внутри лямбды отрисовки (см. rememberAnimationPhase):
+    // иначе весь Starfield пересобирался бы на каждом кадре, и «закэшированная»
+    // сетка из четырёх сотен точек пересчитывалась бы вместе с ним.
+    val phase = rememberAnimationPhase(TWINKLE_PERIOD_MS, TWINKLE_FPS, enabled = animated)
 
     Box(modifier) {
-        // Сетка и свечение вынесены в отдельный слой намеренно: они не
-        // зависят от фазы мерцания, и на общем узле пересчитывались бы
-        // каждый кадр — четыре сотни точек впустую при каждом кадре
-        // анимации. Плавность интерфейса здесь дороже краткости кода.
+        // Сетка и свечение — отдельным слоем: они не зависят от фазы, и этот
+        // слой не перерисовывается вообще, пока не поменялся размер или тема.
         Box(
             Modifier.matchParentSize().drawWithCache {
                 val glow =
@@ -63,10 +55,13 @@ fun Starfield(modifier: Modifier = Modifier) {
             },
         )
         Canvas(Modifier.matchParentSize()) {
+            // В статичном режиме фаза не читается — и канва после первого
+            // кадра больше не перерисовывается.
+            val current = if (animated) phase.floatValue else STILL_PHASE
             stars.forEach { star ->
                 // Мерцание пологое: резкое моргание на пиксельной графике
                 // читается как ошибка отрисовки, а не как звезда.
-                val brightness = 0.35f + 0.65f * abs(sin(phase * star.speed + star.offset))
+                val brightness = 0.35f + 0.65f * abs(sin(current * star.speed + star.offset))
                 drawCircle(
                     color = if (star.accent) colors.accent else Color.White,
                     radius = star.radius * density,
@@ -120,6 +115,18 @@ private fun generateStars(): List<Star> {
 private const val STAR_SEED = 0x7E5F1
 private const val STAR_COUNT = 46
 private const val GRID_ALPHA = 0.30f
+
+/** Полный цикл мерцания. Медленный намеренно: быстрый читается как помеха. */
+private const val TWINKLE_PERIOD_MS = 9_000
+
+/**
+ * Кадров в секунду у мерцания. За девять секунд синус проходит полный круг —
+ * двенадцати обновлений хватает, а бюджет кадра остаётся скроллу.
+ */
+private const val TWINKLE_FPS = 12
+
+/** Фаза статичного фона: подобрана так, чтобы звёзды не были все тусклыми. */
+private const val STILL_PHASE = 1.1f
 
 /** Свечение под заголовком: тот же приём, что у героя на сайте. */
 private const val GLOW_ALPHA = 0.10f

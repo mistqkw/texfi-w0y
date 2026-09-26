@@ -141,6 +141,8 @@
     <string name="settings_clear_cache_desc">Nie dotyka pobranych utworów — są przechowywane osobno.</string>
     <string name="settings_clear_cache_title">Wyczyść pamięć podręczną</string>
     <string name="settings_compact_desc">Wiersze utworów są niższe, więc więcej mieści się na ekranie.</string>
+    <string name="settings_live_background_title">Żywe tło</string>
+    <string name="settings_live_background_desc">Gwiazdy w tle migają powoli. Wyłącz — tło narysuje się raz: trochę mniej baterii i trochę więcej budżetu klatki na przewijanie.</string>
     <string name="settings_compact_title">Kompaktowe listy</string>
     <string name="settings_equalizer_button">OTWÓRZ</string>
     <string name="settings_equalizer_desc">Otwiera systemowy korektor dla dźwięku w0y — ten sam, którego używają inne aplikacje.</string>

@@ -1,13 +1,9 @@
 package com.texfi.w0y.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.texfi.w0y.data.SongItem
@@ -206,32 +204,38 @@ fun ExplicitBadge(modifier: Modifier = Modifier) {
 @Composable
 private fun PlayingMark(modifier: Modifier = Modifier) {
     val colors = LocalW0yColors.current
-    val transition = rememberInfiniteTransition(label = "playingMark")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(1_100), RepeatMode.Restart),
-        label = "bars",
-    )
-    Row(
+    // Столбики рисуются на канве фиксированного размера, а фаза читается
+    // внутри лямбды отрисовки. Раньше высота задавалась через Modifier.height,
+    // то есть строка — а вместе с ней и весь ленивый список — переизмерялась
+    // на каждом кадре, пока играющий трек виден на экране.
+    val phase = rememberAnimationPhase(MARK_PERIOD_MS, MARK_FPS)
+    Canvas(
         modifier
             .background(colors.background.copy(alpha = 0.72f))
-            .padding(horizontal = 2.dp, vertical = 2.dp),
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.spacedBy(1.dp),
+            .size(width = MARK_WIDTH, height = MARK_HEIGHT)
+            .padding(2.dp),
     ) {
+        val bar = 2.dp.toPx()
+        val gap = 1.dp.toPx()
         repeat(MARK_BARS) { index ->
             // Столбики сдвинуты по фазе: в один такт они читались бы как
             // один мигающий прямоугольник.
-            val height = 3f + 6f * abs(sin(phase + index * 0.9f))
-            Box(
-                Modifier
-                    .width(2.dp)
-                    .height(height.dp)
-                    .background(colors.accent),
+            val height = (3f + 6f * abs(sin(phase.floatValue + index * 0.9f))).dp.toPx()
+            drawRect(
+                color = colors.accent,
+                topLeft = Offset(index * (bar + gap), size.height - height),
+                size = Size(bar, height),
             )
         }
     }
 }
+
+/** 3 столбика по 2dp с зазорами 1dp плюс подложка по 2dp с каждой стороны. */
+private val MARK_WIDTH = 12.dp
+private val MARK_HEIGHT = 13.dp
+private const val MARK_PERIOD_MS = 1_100
+
+/** Полоскам эквалайзера хватает 30 кадров: это индикатор, а не анимация. */
+private const val MARK_FPS = 30
 
 private const val MARK_BARS = 3

@@ -400,6 +400,14 @@ fun SettingsScreen(
                 }
                 item {
                     SwitchRow(
+                        title = stringResource(R.string.settings_live_background_title),
+                        description = stringResource(R.string.settings_live_background_desc),
+                        checked = settings.animatedBackground,
+                        onChange = viewModel::setAnimatedBackground,
+                    )
+                }
+                item {
+                    SwitchRow(
                         title = stringResource(R.string.settings_compact_title),
                         description = stringResource(R.string.settings_compact_desc),
                         checked = settings.compactRows,

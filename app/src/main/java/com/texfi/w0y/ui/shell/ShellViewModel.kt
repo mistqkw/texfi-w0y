@@ -42,6 +42,11 @@ class ShellViewModel @Inject constructor(
             .map { it.compactRows }
             .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
+    val animatedBackground: StateFlow<Boolean> =
+        settings.settings
+            .map { it.animatedBackground }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
     val theme: StateFlow<ThemeMode> =
         settings.settings
             .map { it.theme }

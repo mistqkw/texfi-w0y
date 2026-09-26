@@ -141,6 +141,8 @@
     <string name="settings_clear_cache_desc">Завантажені треки не торкається — вони зберігаються окремо.</string>
     <string name="settings_clear_cache_title">Очистити кеш</string>
     <string name="settings_compact_desc">Рядки треків нижчі, на екран уміщається більше.</string>
+    <string name="settings_live_background_title">Живе тло</string>
+    <string name="settings_live_background_desc">Зірки на тлі повільно мерехтять. Вимкніть — тло намалюється один раз: трохи менше витрат батареї і трохи більше запасу кадру на прокрутку.</string>
     <string name="settings_compact_title">Компактні списки</string>
     <string name="settings_equalizer_button">ВІДКРИТИ</string>
     <string name="settings_equalizer_desc">Відкриває системний еквалайзер для звуку w0y — той самий, що й в інших застосунків.</string>

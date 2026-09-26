@@ -141,6 +141,8 @@
     <string name="settings_clear_cache_desc">Скачанные треки не трогает — они хранятся отдельно.</string>
     <string name="settings_clear_cache_title">Очистить кэш</string>
     <string name="settings_compact_desc">Строки треков ниже, на экран помещается больше.</string>
+    <string name="settings_live_background_title">Живой фон</string>
+    <string name="settings_live_background_desc">Звёзды на фоне медленно мерцают. Выключите — фон отрисуется один раз: чуть меньше расхода батареи и чуть больше запаса кадра на скролл.</string>
     <string name="settings_compact_title">Компактные списки</string>
     <string name="settings_equalizer_button">ОТКРЫТЬ</string>
     <string name="settings_equalizer_desc">Открывает системный эквалайзер для звука w0y — тот же, что у остальных приложений.</string>

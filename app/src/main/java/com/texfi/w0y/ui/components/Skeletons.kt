@@ -1,10 +1,5 @@
 package com.texfi.w0y.ui.components
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,34 +12,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import kotlin.math.sin
 
 /**
  * Скелетон строки трека: форма будущего списка вместо пустоты со спиннером.
- * Пульсация медленная (900 мс) — быстрая на пиксельной графике читается
+ * Пульсация медленная — быстрая на пиксельной графике читается
  * как мигание ошибки.
  */
 @Composable
 fun SkeletonRow(modifier: Modifier = Modifier) {
     val colors = LocalW0yColors.current
-    val transition = rememberInfiniteTransition(label = "skeleton")
-    val alpha by transition.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-        label = "pulse",
-    )
+    // Прозрачность меняется в лямбде graphicsLayer, а не в теле composable:
+    // слой обновляется без рекомпозиции и без перерисовки самих прямоугольников.
+    val phase = rememberAnimationPhase(PULSE_PERIOD_MS, PULSE_FPS)
     Row(
         modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .alpha(alpha),
+            .graphicsLayer { alpha = 0.45f + 0.55f * (0.5f + 0.5f * sin(phase.floatValue)) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -73,3 +64,9 @@ fun SkeletonRow(modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** Полный цикл пульсации. Медленный: быстрый читается как мигание ошибки. */
+private const val PULSE_PERIOD_MS = 1_800
+
+/** Скелетон живёт секунду-две, ему хватает двадцати кадров. */
+private const val PULSE_FPS = 20
