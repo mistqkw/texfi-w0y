@@ -273,4 +273,26 @@
     <string name="widget_next">Next track</string>
     <string name="widget_previous">Previous track</string>
     <string name="widget_toggle">Pause or resume</string>
+    <string name="about_title">About</string>
+    <string name="about_section_app">App</string>
+    <string name="about_section_open">Open source</string>
+    <string name="about_section_family">The other apps</string>
+    <string name="about_section_support">Support</string>
+    <string name="about_build">Build %1$d</string>
+    <string name="about_tagline">Music without ads and without Premium</string>
+    <string name="about_blurb">The stream comes from YouTube, the account is yours. No ads, no analytics, no background event reporting: history and stats stay in a database on this phone — check it against the sources.</string>
+    <string name="about_fact_ads">ADS</string>
+    <string name="about_fact_telemetry">TELEMETRY</string>
+    <string name="about_fact_license">LICENCE</string>
+    <string name="about_source_title">Sources on GitHub</string>
+    <string name="about_license_title">GNU AGPL v3 licence</string>
+    <string name="about_license_text">Whoever ships a changed version must open their changes.</string>
+    <string name="about_ecosystem_title">The whole TexFi ecosystem</string>
+    <string name="about_fokus_text">Habits with streaks, focus sessions and the game layer.</string>
+    <string name="about_money_text">Personal finances that never leave the phone.</string>
+    <string name="about_files_text">Send yourself text or a file, pick it up on another device.</string>
+    <string name="about_donate_title">Buy a coffee</string>
+    <string name="about_donate_text">TexFi is made by one person, and every app is free. There are no paid features and there never will be.</string>
+    <string name="settings_about_title">About the app</string>
+    <string name="settings_about_desc">Version, licence, sources and the rest of TexFi.</string>
 </resources>

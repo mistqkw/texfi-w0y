@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -115,6 +116,13 @@ fun SettingsScreen(
             kotlinx.coroutines.delay(2500)
             viewModel.consumeMessage()
         }
+    }
+
+    var aboutOpen by remember { mutableStateOf(false) }
+    if (aboutOpen) {
+        BackHandler { aboutOpen = false }
+        AboutScreen(onBack = { aboutOpen = false })
+        return
     }
 
     Column(
@@ -505,13 +513,17 @@ fun SettingsScreen(
                     )
                 }
                 item {
-                    Text(
-                        text = "TexFi w0y ${BuildConfig.VERSION_NAME} · AGPL-3.0",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textMuted,
-                        modifier = Modifier.padding(vertical = 18.dp),
+                    // Раньше здесь была просто строчка с версией. Теперь это
+                    // вход на экран «о приложении»: там же и лицензия, и
+                    // исходники, и остальные приложения TexFi.
+                    ActionRow(
+                        title = stringResource(R.string.settings_about_title),
+                        description = stringResource(R.string.settings_about_desc),
+                        button = "TexFi w0y ${BuildConfig.VERSION_NAME}",
+                        onClick = { aboutOpen = true },
                     )
                 }
+                item { Spacer(Modifier.height(18.dp)) }
             }
         }
     }

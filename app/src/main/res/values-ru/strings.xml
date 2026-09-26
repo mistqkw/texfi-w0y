@@ -273,4 +273,26 @@
     <string name="widget_next">Следующий трек</string>
     <string name="widget_previous">Предыдущий трек</string>
     <string name="widget_toggle">Пауза или продолжить</string>
+    <string name="about_title">О приложении</string>
+    <string name="about_section_app">Приложение</string>
+    <string name="about_section_open">Открытый код</string>
+    <string name="about_section_family">Остальные приложения</string>
+    <string name="about_section_support">Поддержать</string>
+    <string name="about_build">Сборка %1$d</string>
+    <string name="about_tagline">Музыка без рекламы и без Premium</string>
+    <string name="about_blurb">Поток идёт с YouTube, аккаунт — ваш. Ни рекламы, ни аналитики, ни фоновой отправки «событий»: история и статистика лежат в базе на этом телефоне — проверяется по исходникам.</string>
+    <string name="about_fact_ads">РЕКЛАМЫ</string>
+    <string name="about_fact_telemetry">ТЕЛЕМЕТРИИ</string>
+    <string name="about_fact_license">ЛИЦЕНЗИЯ</string>
+    <string name="about_source_title">Исходники на GitHub</string>
+    <string name="about_license_title">Лицензия GNU AGPL v3</string>
+    <string name="about_license_text">Кто выпустит изменённую версию — обязан открыть свои правки.</string>
+    <string name="about_ecosystem_title">Вся экосистема TexFi</string>
+    <string name="about_fokus_text">Привычки с сериями, фокус-сессии и игровой слой.</string>
+    <string name="about_money_text">Личные финансы, которые никуда не уходят с телефона.</string>
+    <string name="about_files_text">Отправить себе текст или файл и забрать с другого устройства.</string>
+    <string name="about_donate_title">Закинуть на кофе</string>
+    <string name="about_donate_text">TexFi делает один человек, и все приложения бесплатны. Платных функций нет и не будет.</string>
+    <string name="settings_about_title">О приложении</string>
+    <string name="settings_about_desc">Версия, лицензия, исходники и остальной TexFi.</string>
 </resources>

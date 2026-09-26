@@ -273,4 +273,26 @@
     <string name="widget_next">Następny utwór</string>
     <string name="widget_previous">Poprzedni utwór</string>
     <string name="widget_toggle">Pauza lub wznów</string>
+    <string name="about_title">O aplikacji</string>
+    <string name="about_section_app">Aplikacja</string>
+    <string name="about_section_open">Otwarty kod</string>
+    <string name="about_section_family">Pozostałe aplikacje</string>
+    <string name="about_section_support">Wesprzyj</string>
+    <string name="about_build">Kompilacja %1$d</string>
+    <string name="about_tagline">Muzyka bez reklam i bez Premium</string>
+    <string name="about_blurb">Strumień idzie z YouTube, konto jest twoje. Żadnych reklam, analityki ani wysyłania zdarzeń w tle: historia i statystyki leżą w bazie na tym telefonie — sprawdzisz to w źródłach.</string>
+    <string name="about_fact_ads">REKLAM</string>
+    <string name="about_fact_telemetry">TELEMETRII</string>
+    <string name="about_fact_license">LICENCJA</string>
+    <string name="about_source_title">Źródła na GitHubie</string>
+    <string name="about_license_title">Licencja GNU AGPL v3</string>
+    <string name="about_license_text">Kto wyda zmienioną wersję — musi otworzyć swoje zmiany.</string>
+    <string name="about_ecosystem_title">Cały ekosystem TexFi</string>
+    <string name="about_fokus_text">Nawyki z seriami, sesje skupienia i warstwa gry.</string>
+    <string name="about_money_text">Finanse osobiste, które nie opuszczają telefonu.</string>
+    <string name="about_files_text">Wyślij sobie tekst albo plik i odbierz na innym urządzeniu.</string>
+    <string name="about_donate_title">Postaw kawę</string>
+    <string name="about_donate_text">TexFi robi jedna osoba, a wszystkie aplikacje są darmowe. Płatnych funkcji nie ma i nie będzie.</string>
+    <string name="settings_about_title">O aplikacji</string>
+    <string name="settings_about_desc">Wersja, licencja, źródła i reszta TexFi.</string>
 </resources>
