@@ -1,7 +1,9 @@
 package com.texfi.w0y.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.R
 import com.texfi.w0y.data.AccountRepository
 import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
@@ -13,6 +15,7 @@ import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -42,6 +45,7 @@ sealed interface LibraryRoute {
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val library: LibraryRepository,
     private val account: AccountRepository,
     private val youtube: YouTubeRepository,
@@ -121,7 +125,7 @@ class LibraryViewModel @Inject constructor(
                         kind = PinEntity.KIND_PLAYLIST,
                         id = playlist.id.toString(),
                         title = playlist.name,
-                        subtitle = "Свой плейлист",
+                        subtitle = context.getString(R.string.library_own_playlist),
                         localPlaylistId = playlist.id,
                     )
                 }
@@ -232,7 +236,7 @@ class LibraryViewModel @Inject constructor(
                 liked
             }.onFailure {
                 Timber.w(it, "Синхронизация не удалась")
-                _syncError.value = "Не получилось забрать данные аккаунта: ${it.message}"
+                _syncError.value = context.getString(R.string.library_sync_failed, it.message.orEmpty())
             }
             _syncing.value = false
         }
@@ -255,7 +259,7 @@ class LibraryViewModel @Inject constructor(
                 onResult(null)
                 sync()
             },
-            onFailure = { onResult(it.message ?: "YouTube не принял вход") },
+            onFailure = { onResult(it.message ?: context.getString(R.string.library_login_rejected)) },
         )
     }
 }

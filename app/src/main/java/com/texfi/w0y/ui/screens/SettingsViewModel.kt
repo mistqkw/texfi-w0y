@@ -1,13 +1,16 @@
 package com.texfi.w0y.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
+import com.texfi.w0y.R
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.StartTab
+import com.texfi.w0y.data.Language
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.data.W0ySettings
@@ -15,6 +18,7 @@ import com.texfi.w0y.playback.AudioSessionHolder
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.StartupMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Named
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +33,7 @@ import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: SettingsRepository,
     @param:Named("stream") private val streamCache: SimpleCache,
     private val audioSession: AudioSessionHolder,
@@ -66,7 +71,7 @@ class SettingsViewModel @Inject constructor(
                 }
             }
             refreshCacheSize()
-            _message.value = "Кэш очищен"
+            _message.value = context.getString(R.string.settings_cache_cleared)
         }
     }
 
@@ -132,13 +137,26 @@ class SettingsViewModel @Inject constructor(
     fun importJson(json: String) =
         update {
             runCatching { repository.import(json) }
-                .onSuccess { _message.value = "Настройки загружены" }
-                .onFailure { _message.value = "Файл не разобрался: ${it.message}" }
+                .onSuccess { _message.value = context.getString(R.string.settings_imported) }
+                .onFailure { _message.value = context.getString(R.string.settings_import_failed, it.message.orEmpty()) }
         }
 
     fun reportNoEqualizer() {
-        _message.value = "На этом телефоне нет системного эквалайзера"
+        _message.value = context.getString(R.string.settings_no_equalizer)
     }
+
+    /**
+     * Смена языка.
+     *
+     * Ресурсы читаются при создании экрана, поэтому после записи настройки
+     * активити пересоздаётся — иначе половина экрана осталась бы на старом
+     * языке до следующего запуска.
+     */
+    fun setLanguage(value: Language, onApplied: () -> Unit) =
+        update {
+            repository.setLanguage(value)
+            onApplied()
+        }
 
     fun consumeMessage() {
         _message.value = null

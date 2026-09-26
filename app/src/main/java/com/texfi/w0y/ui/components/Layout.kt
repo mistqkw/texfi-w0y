@@ -80,11 +80,21 @@ fun SectionHeader(
     label: String,
     modifier: Modifier = Modifier,
     hint: String? = null,
+    /** Номер раздела — та же нумерация, что на сайте TexFi. */
+    index: Int? = null,
     action: @Composable () -> Unit = {},
 ) {
     val colors = LocalW0yColors.current
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            if (index != null) {
+                Text(
+                    text = index.toString().padStart(2, '0'),
+                    style = PixelSectionLabel,
+                    color = colors.textMuted,
+                )
+                Spacer(Modifier.width(8.dp))
+            }
             Text("❯ $label", style = PixelSectionLabel, color = colors.accent)
             Spacer(Modifier.width(10.dp))
             Box(

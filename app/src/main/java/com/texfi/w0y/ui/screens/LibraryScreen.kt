@@ -29,10 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
+import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.CoverImage
@@ -62,8 +64,8 @@ fun LibraryScreen(
         LibraryRoute.Root -> LibraryRoot(viewModel, onOpenLogin)
         is LibraryRoute.Local -> LocalPlaylist(current.playlistId, viewModel)
         is LibraryRoute.Remote -> RemotePlaylist(current, viewModel)
-        LibraryRoute.Liked -> SongList("ЛАЙКИ", viewModel.liked.collectAsStateWithLifecycle().value, viewModel)
-        LibraryRoute.History -> SongList("ИСТОРИЯ", viewModel.recent.collectAsStateWithLifecycle().value, viewModel, onClear = viewModel::clearHistory)
+        LibraryRoute.Liked -> SongList(stringResource(R.string.library_likes), viewModel.liked.collectAsStateWithLifecycle().value, viewModel)
+        LibraryRoute.History -> SongList(stringResource(R.string.library_history), viewModel.recent.collectAsStateWithLifecycle().value, viewModel, onClear = viewModel::clearHistory)
         LibraryRoute.Downloads -> DownloadsList(viewModel)
         LibraryRoute.Stats -> StatsScreen(onBack = viewModel::back)
     }
@@ -90,34 +92,34 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
             .padding(horizontal = 18.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { ScreenTitle(title = "моё", horizontalPadding = 0.dp) }
+        item { ScreenTitle(title = stringResource(R.string.library_title), horizontalPadding = 0.dp) }
 
         item {
-            PixelCard(label = "АККАУНТ", modifier = Modifier.fillMaxWidth()) {
+            PixelCard(label = stringResource(R.string.library_account), modifier = Modifier.fillMaxWidth()) {
                 if (signedIn) {
                     Text(
-                        text = accountName ?: "Вход выполнен",
+                        text = accountName ?: stringResource(R.string.library_signed_in),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.text,
                     )
                     Spacer(Modifier.height(10.dp))
                     Row {
                         PixelButton(
-                            text = if (syncing) "СИНХРОНИЗАЦИЯ…" else "ОБНОВИТЬ",
+                            text = if (syncing) stringResource(R.string.library_syncing) else stringResource(R.string.library_sync),
                             onClick = viewModel::sync,
                             enabled = !syncing,
                         )
                         Spacer(Modifier.width(10.dp))
-                        PixelButton(text = "ВЫЙТИ", onClick = viewModel::signOut, fill = colors.surfaceHigh)
+                        PixelButton(text = stringResource(R.string.library_sign_out), onClick = viewModel::signOut, fill = colors.surfaceHigh)
                     }
                 } else {
                     Text(
-                        text = "Войди в аккаунт Google, чтобы подтянуть свои плейлисты и лайки.",
+                        text = stringResource(R.string.library_sign_in_hint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textMuted,
                     )
                     Spacer(Modifier.height(10.dp))
-                    PixelButton(text = "ВОЙТИ", onClick = onOpenLogin)
+                    PixelButton(text = stringResource(R.string.library_sign_in), onClick = onOpenLogin)
                 }
                 syncError?.let {
                     Spacer(Modifier.height(8.dp))
@@ -129,20 +131,20 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShortcutCard("ЛАЙКИ", "${liked.size}", Sprites.heart, Modifier.weight(1f)) {
+                    ShortcutCard(stringResource(R.string.library_likes), "${liked.size}", Sprites.heart, Modifier.weight(1f)) {
                         viewModel.open(LibraryRoute.Liked)
                     }
-                    ShortcutCard("ИСТОРИЯ", "${recent.size}", Sprites.timer, Modifier.weight(1f)) {
+                    ShortcutCard(stringResource(R.string.library_history), "${recent.size}", Sprites.timer, Modifier.weight(1f)) {
                         viewModel.open(LibraryRoute.History)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ShortcutCard("СКАЧАНО", "${downloaded.size}", Sprites.download, Modifier.weight(1f)) {
+                    ShortcutCard(stringResource(R.string.library_downloaded), "${downloaded.size}", Sprites.download, Modifier.weight(1f)) {
                         viewModel.open(LibraryRoute.Downloads)
                     }
                     // Итоги — своя статистика по локальной истории, доступная
                     // в любой день, а не раз в год «рекапом».
-                    ShortcutCard("ИТОГИ", "за неделю", Sprites.stats, Modifier.weight(1f)) {
+                    ShortcutCard(stringResource(R.string.library_stats), stringResource(R.string.library_stats_hint), Sprites.stats, Modifier.weight(1f)) {
                         viewModel.open(LibraryRoute.Stats)
                     }
                 }
@@ -151,7 +153,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
 
         item {
             SectionHeader(
-                label = "ПЛЕЙЛИСТЫ",
+                label = stringResource(R.string.library_playlists),
                 action = { SpriteButton(Sprites.plus, onClick = { newPlaylist = "" }, active = true, size = 18) },
             )
         }
@@ -159,7 +161,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         newPlaylist?.let { value ->
             item {
                 PixelCard(modifier = Modifier.fillMaxWidth()) {
-                    Text("Название плейлиста", style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                    Text(stringResource(R.string.library_playlist_name), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                     Spacer(Modifier.height(8.dp))
                     BasicTextField(
                         value = value,
@@ -172,14 +174,14 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
                     Spacer(Modifier.height(10.dp))
                     Row {
                         PixelButton(
-                            text = "СОЗДАТЬ",
+                            text = stringResource(R.string.library_create),
                             onClick = {
                                 if (value.isNotBlank()) viewModel.createPlaylist(value)
                                 newPlaylist = null
                             },
                         )
                         Spacer(Modifier.width(10.dp))
-                        PixelButton(text = "ОТМЕНА", onClick = { newPlaylist = null }, fill = colors.surfaceHigh)
+                        PixelButton(text = stringResource(R.string.library_cancel), onClick = { newPlaylist = null }, fill = colors.surfaceHigh)
                     }
                 }
             }
@@ -188,7 +190,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         if (playlists.isEmpty()) {
             item {
                 Text(
-                    "Своих плейлистов пока нет. Кнопка «+» создаст первый.",
+                    stringResource(R.string.library_no_playlists),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
                     modifier = Modifier.padding(vertical = 6.dp),
@@ -199,7 +201,7 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         items(playlists, key = { it.id }) { playlist ->
             CollectionRow(
                 title = playlist.name,
-                subtitle = "Свой плейлист",
+                subtitle = stringResource(R.string.library_own_playlist),
                 thumbnailUrl = null,
                 sprite = Sprites.library,
                 onClick = { viewModel.open(LibraryRoute.Local(playlist.id)) },
@@ -209,12 +211,12 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         if (accountPlaylists.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(6.dp))
-                SectionHeader("ИЗ АККАУНТА")
+                SectionHeader(stringResource(R.string.library_from_account))
             }
             items(accountPlaylists, key = { it.browseId }) { card ->
                 CollectionRow(
                     title = card.title,
-                    subtitle = card.subtitle ?: if (card.isAlbum) "Альбом" else "Плейлист",
+                    subtitle = card.subtitle ?: if (card.isAlbum) stringResource(R.string.card_album) else stringResource(R.string.card_playlist),
                     thumbnailUrl = card.thumbnailUrl,
                     sprite = Sprites.release,
                     onClick = {
@@ -327,8 +329,8 @@ private fun SongList(
         if (songs.isEmpty()) {
             EmptyState(
                 sprite = Sprites.library,
-                title = "ПУСТО",
-                text = "Здесь появится то, что ты сюда положишь.",
+                title = stringResource(R.string.library_empty_title),
+                text = stringResource(R.string.library_empty_text),
             )
             return
         }
@@ -337,6 +339,10 @@ private fun SongList(
                 SongRow(
                     song = song,
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    // Трек уезжает из списка сам: после нажатия «удалить»
+                    // должно быть видно, что удалилось именно это, а не
+                    // что список перерисовался целиком.
+                    modifier = Modifier.animateItem(),
                     actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
                 )
             }
@@ -355,9 +361,14 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        ScreenTitle(title = "загрузки", onBack = viewModel::back, horizontalPadding = 0.dp)
+        ScreenTitle(title = stringResource(R.string.downloads_title), onBack = viewModel::back, horizontalPadding = 0.dp)
         Text(
-            text = "Занято: ${viewModel.downloads.usedBytes() / 1024 / 1024} МБ · в очереди: ${pending.size}",
+            text =
+                stringResource(
+                    R.string.downloads_usage,
+                    (viewModel.downloads.usedBytes() / 1024 / 1024).toInt(),
+                    pending.size,
+                ),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
         )
@@ -365,8 +376,8 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
         if (songs.isEmpty() && pending.isEmpty()) {
             EmptyState(
                 sprite = Sprites.download,
-                title = "НИЧЕГО НЕ СКАЧАНО",
-                text = "Кнопка со стрелкой в любом списке кладёт трек сюда — он будет играть без сети.",
+                title = stringResource(R.string.downloads_empty_title),
+                text = stringResource(R.string.downloads_empty_text),
             )
             return
         }
@@ -376,6 +387,7 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
                     song = song,
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
                     progressPercent = progress[song.id]?.percent,
+                    modifier = Modifier.animateItem(),
                     actions = { SpriteButton(Sprites.trash, onClick = { viewModel.cancelDownload(song.id) }) },
                 )
             }
@@ -388,7 +400,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.currentPlaylistSongs.collectAsStateWithLifecycle()
     val playlist by viewModel.playlists.collectAsStateWithLifecycle()
-    val name = playlist.firstOrNull { it.id == playlistId }?.name ?: "ПЛЕЙЛИСТ"
+    val name = playlist.firstOrNull { it.id == playlistId }?.name ?: stringResource(R.string.playlist_title)
     Column(
         Modifier
             .fillMaxSize()
@@ -401,7 +413,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
         }
         if (songs.isEmpty()) {
             Text(
-                "Плейлист пуст. Добавляй треки кнопкой «+» в поиске.",
+                stringResource(R.string.playlist_empty),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textMuted,
             )
@@ -412,6 +424,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
                 SongRow(
                     song = song,
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    modifier = Modifier.animateItem(),
                     actions = {
                         SpriteButton(
                             Sprites.trash,
@@ -437,7 +450,7 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
             if (songs.isNotEmpty()) SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
         }
         if (songs.isEmpty()) {
-            Text("Загружаю треки плейлиста…", style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
+            Text(stringResource(R.string.playlist_loading), style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
             return
         }
         LazyColumn {
@@ -445,6 +458,10 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
                 SongRow(
                     song = song,
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    // Трек уезжает из списка сам: после нажатия «удалить»
+                    // должно быть видно, что удалилось именно это, а не
+                    // что список перерисовался целиком.
+                    modifier = Modifier.animateItem(),
                     actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
                 )
             }

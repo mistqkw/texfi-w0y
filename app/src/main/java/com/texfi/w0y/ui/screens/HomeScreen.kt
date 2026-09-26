@@ -28,9 +28,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.R
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.ArtistTile
 import com.texfi.w0y.ui.components.Gutter
@@ -73,14 +75,15 @@ fun HomeScreen(
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            ScreenTitle(title = "w0y", actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) })
+            ScreenTitle(title = stringResource(R.string.app_name), actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) })
         }
 
         item {
             Column(Modifier.padding(horizontal = Gutter)) {
                 SectionHeader(
-                    label = "БЫСТРЫЙ НАБОР",
-                    hint = if (dial.isEmpty()) null else "долгое нажатие — закрепить или снять",
+                    index = 1,
+                    label = stringResource(R.string.home_dial),
+                    hint = if (dial.isEmpty()) null else stringResource(R.string.home_dial_hint),
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -94,7 +97,7 @@ fun HomeScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        text = "Сюда попадёт то, что ты слушаешь чаще всего. Долгим нажатием можно закрепить трек, альбом или артиста — они встанут первыми.",
+                        text = stringResource(R.string.home_dial_empty),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                     )
@@ -131,7 +134,8 @@ fun HomeScreen(
                 Column(Modifier.padding(horizontal = Gutter)) {
                     Spacer(Modifier.height(22.dp))
                     SectionHeader(
-                        label = "РЕКОМЕНДАЦИИ",
+                        index = 2,
+                        label = stringResource(R.string.home_recommendations),
                         action = { SpriteButton(Sprites.repeat, onClick = home::refresh, size = 18) },
                     )
                     Spacer(Modifier.height(4.dp))
@@ -141,7 +145,7 @@ fun HomeScreen(
             if (recommendationsFailed) {
                 item {
                     Text(
-                        text = "Рекомендации не пришли. Нажми обновить или проверь сеть.",
+                        text = stringResource(R.string.home_recommendations_failed),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         modifier = Modifier.padding(horizontal = Gutter, vertical = 10.dp),
@@ -181,7 +185,7 @@ fun HomeScreen(
             item {
                 Column(Modifier.padding(horizontal = Gutter)) {
                     Spacer(Modifier.height(26.dp))
-                    SectionHeader("НЕДАВНО")
+                    SectionHeader(stringResource(R.string.home_recent), index = 3)
                     Spacer(Modifier.height(6.dp))
                 }
             }
@@ -199,7 +203,7 @@ fun HomeScreen(
             item {
                 Column(Modifier.padding(horizontal = Gutter)) {
                     Spacer(Modifier.height(26.dp))
-                    SectionHeader("ЛАЙКИ")
+                    SectionHeader(stringResource(R.string.library_likes), index = 4)
                     Spacer(Modifier.height(6.dp))
                 }
             }

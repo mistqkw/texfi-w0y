@@ -3,6 +3,13 @@ package com.texfi.w0y.ui.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -22,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,8 +38,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.texfi.w0y.R
 import com.texfi.w0y.data.ArtistCard
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
@@ -62,11 +73,21 @@ fun SpeedDialTile(
 ) {
     val colors = LocalW0yColors.current
     val shape = if (round) CircleShape else TileShape
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    // Отклик плитки — офсетная тень уезжает под неё: плитка вдавливается,
+    // как физическая кнопка. Это фирменный отклик TexFi, и он отличается
+    // от отклика иконки, которая просто сжимается.
+    val shadowOffset by animateDpAsState(
+        targetValue = if (pressed) 0.dp else 3.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "tileShadow",
+    )
     Box(modifier) {
         Box(
             Modifier
                 .matchParentSize()
-                .offset(3.dp, 3.dp)
+                .offset(shadowOffset, shadowOffset)
                 .clip(shape)
                 .background(colors.shadow),
         )
@@ -74,10 +95,16 @@ fun SpeedDialTile(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
+                .offset(shadowOffset / 2, shadowOffset / 2)
                 .clip(shape)
                 .background(colors.surface)
                 .border(2.dp, colors.border, shape)
-                .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+                .combinedClickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ),
         ) {
             CoverImage(
                 url = thumbnailUrl,
@@ -140,10 +167,12 @@ fun SpeedDialTile(
 @Composable
 fun ReleaseTile(card: PlaylistCard, onClick: () -> Unit) {
     val colors = LocalW0yColors.current
+    val interaction = remember { MutableInteractionSource() }
     Column(
         Modifier
             .width(132.dp)
-            .clickable(onClick = onClick),
+            .pressScale(interaction, pressed = 0.95f)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
     ) {
         CoverImage(
             url = card.thumbnailUrl,
@@ -163,7 +192,7 @@ fun ReleaseTile(card: PlaylistCard, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
         Text(
-            text = card.subtitle ?: if (card.isAlbum) "Альбом" else "Плейлист",
+            text = card.subtitle ?: if (card.isAlbum) stringResource(R.string.card_album) else stringResource(R.string.card_playlist),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
             maxLines = 1,
@@ -176,10 +205,12 @@ fun ReleaseTile(card: PlaylistCard, onClick: () -> Unit) {
 @Composable
 fun SongTile(song: SongItem, onClick: () -> Unit) {
     val colors = LocalW0yColors.current
+    val interaction = remember { MutableInteractionSource() }
     Column(
         Modifier
             .width(132.dp)
-            .clickable(onClick = onClick),
+            .pressScale(interaction, pressed = 0.95f)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
     ) {
         CoverImage(
             url = song.thumbnailUrl,
@@ -212,10 +243,12 @@ fun SongTile(song: SongItem, onClick: () -> Unit) {
 @Composable
 fun ArtistTile(card: ArtistCard, onClick: () -> Unit) {
     val colors = LocalW0yColors.current
+    val interaction = remember { MutableInteractionSource() }
     Column(
         Modifier
             .width(104.dp)
-            .clickable(onClick = onClick),
+            .pressScale(interaction, pressed = 0.95f)
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         CoverImage(
@@ -258,10 +291,23 @@ fun PixelSegmented(
     ) {
         options.forEachIndexed { index, option ->
             val active = index == selectedIndex
+            // Выбор переключателя — заливка переезжает цветом за 160 мс.
+            // Мгновенная перекраска читается как перерисовка экрана,
+            // плавная — как ответ именно на этот тап.
+            val fill by animateColorAsState(
+                targetValue = if (active) colors.accent else colors.surface,
+                animationSpec = tween(160),
+                label = "segmentFill",
+            )
+            val label by animateColorAsState(
+                targetValue = if (active) colors.background else colors.text,
+                animationSpec = tween(160),
+                label = "segmentLabel",
+            )
             Box(
                 Modifier
                     .weight(1f)
-                    .background(if (active) colors.accent else colors.surface)
+                    .background(fill)
                     .clickable { onSelect(index) }
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center,
@@ -272,7 +318,7 @@ fun PixelSegmented(
                     // читают, а на 8sp пиксельные буквы просто не видно.
                     // Пиксельный остаётся на заголовках — там его и разглядывают.
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (active) colors.background else colors.text,
+                    color = label,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

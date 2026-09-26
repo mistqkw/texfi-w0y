@@ -26,9 +26,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.R
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.CoverImage
@@ -76,7 +78,7 @@ fun AlbumScreen(
                 SpriteButton(Sprites.chevronLeft, onClick = onBack, size = 24)
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = if (page == null) "ЗАГРУЖАЮ" else "АЛЬБОМ",
+                    text = if (page == null) stringResource(R.string.common_loading_caps) else stringResource(R.string.album_title),
                     style = PixelSectionLabel,
                     color = colors.textMuted,
                 )
@@ -123,12 +125,12 @@ fun AlbumScreen(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     PixelButton(
-                        text = "ВКЛЮЧИТЬ",
+                        text = stringResource(R.string.album_play),
                         onClick = { viewModel.play(songs, 0) },
                         enabled = songs.isNotEmpty(),
                     )
                     PixelButton(
-                        text = "ПЕРЕМЕШАТЬ",
+                        text = stringResource(R.string.queue_mode_shuffle),
                         onClick = { viewModel.shuffle(songs) },
                         enabled = songs.isNotEmpty(),
                         fill = colors.surfaceHigh,
@@ -163,7 +165,7 @@ fun AlbumScreen(
                 Column(Modifier.padding(horizontal = 18.dp)) {
                     Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = colors.secondary)
                     Spacer(Modifier.height(10.dp))
-                    PixelButton(text = "ЕЩЁ РАЗ", onClick = { viewModel.retry(route.browseId, isArtist = false) })
+                    PixelButton(text = stringResource(R.string.common_retry), onClick = { viewModel.retry(route.browseId, isArtist = false) })
                 }
             }
         } else if (page == null) {

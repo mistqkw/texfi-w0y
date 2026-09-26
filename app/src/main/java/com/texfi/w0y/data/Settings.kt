@@ -1,6 +1,7 @@
 package com.texfi.w0y.data
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -10,6 +11,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.texfi.w0y.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
 import javax.inject.Inject
@@ -34,10 +36,13 @@ enum class Quality {
  * Выбор запоминается: это привычка слушателя, а не настройка одного
  * нажатия, и спрашивать о ней при каждом запуске трека — издевательство.
  */
-enum class QueueMode(val label: String, val hint: String) {
-    ORDER("ПО ОЧЕРЕДИ", "Дальше идёт список, из которого включили трек."),
-    SHUFFLE("ПЕРЕМЕШАТЬ", "Тот же список, но вперемешку."),
-    RADIO("РЕКОМЕНДАЦИИ β", "Дальше — похожее по звучанию и жанру, с учётом того, что ты уже слушал и искал."),
+enum class QueueMode(
+    @StringRes val label: Int,
+    @StringRes val hint: Int,
+) {
+    ORDER(R.string.queue_mode_order, R.string.queue_mode_order_hint),
+    SHUFFLE(R.string.queue_mode_shuffle, R.string.queue_mode_shuffle_hint),
+    RADIO(R.string.queue_mode_radio, R.string.queue_mode_radio_hint),
 }
 
 /**
@@ -48,11 +53,11 @@ enum class QueueMode(val label: String, val hint: String) {
  * плеере делает такие переделки ненужными: любой оригинал звучит так же,
  * только без потери качества и без поиска нужной версии.
  */
-enum class Reverb(val label: String) {
-    OFF("НЕТ"),
-    ROOM("КОМНАТА"),
-    HALL("ЗАЛ"),
-    CAVE("ПЕЩЕРА"),
+enum class Reverb(@StringRes val label: Int) {
+    OFF(R.string.reverb_none),
+    ROOM(R.string.reverb_room),
+    HALL(R.string.reverb_hall),
+    CAVE(R.string.reverb_cave),
 }
 
 /**
@@ -62,14 +67,14 @@ enum class Reverb(val label: String) {
  * и ускоренное. Тонкая настройка — в настройках, здесь одно нажатие.
  */
 enum class SoundPreset(
-    val label: String,
+    @StringRes val label: Int,
     val speed: Float,
     val pitch: Float,
     val reverb: Reverb,
 ) {
-    SLOWED("SLOWED", 0.85f, 0.92f, Reverb.HALL),
-    NORMAL("ОБЫЧНО", 1f, 1f, Reverb.OFF),
-    SPED("SPED UP", 1.25f, 1.06f, Reverb.OFF),
+    SLOWED(R.string.preset_slowed, 0.85f, 0.92f, Reverb.HALL),
+    NORMAL(R.string.preset_normal, 1f, 1f, Reverb.OFF),
+    SPED(R.string.preset_sped, 1.25f, 1.06f, Reverb.OFF),
     ;
 
     fun matches(settings: W0ySettings): Boolean =
@@ -82,16 +87,32 @@ enum class SoundPreset(
  * Вырезать отдельное слово из готовой записи приложение не умеет и делать
  * вид, что умеет, не будет: выбор честный — играть как есть или пропустить.
  */
-enum class ExplicitFallback(val label: String) {
-    PLAY("ИГРАТЬ"),
-    SKIP("ПРОПУСТИТЬ"),
+enum class ExplicitFallback(@StringRes val label: Int) {
+    PLAY(R.string.explicit_play),
+    SKIP(R.string.explicit_skip),
 }
 
 /** Куда попадаешь при запуске. */
-enum class StartTab(val label: String) {
-    HOME("ДОМ"),
-    SEARCH("ПОИСК"),
-    LIBRARY("МОЁ"),
+enum class StartTab(@StringRes val label: Int) {
+    HOME(R.string.start_tab_home),
+    SEARCH(R.string.start_tab_search),
+    LIBRARY(R.string.start_tab_library),
+}
+
+/**
+ * Язык приложения.
+ *
+ * SYSTEM — как на телефоне; остальное — явный выбор, который сильнее
+ * системного. Тег хранится рядом с остальными настройками, но дублируется
+ * в SharedPreferences: локаль нужна ещё до того, как успеет прочитаться
+ * DataStore, в attachBaseContext (см. [LocalePrefs]).
+ */
+enum class Language(@StringRes val label: Int, val tag: String?) {
+    SYSTEM(R.string.language_system, null),
+    EN(R.string.language_en, "en"),
+    RU(R.string.language_ru, "ru"),
+    UK(R.string.language_uk, "uk"),
+    PL(R.string.language_pl, "pl"),
 }
 
 enum class ThemeMode {
@@ -132,6 +153,7 @@ data class W0ySettings(
     val hideExplicit: Boolean = false,
     val muteSwearLines: Boolean = false,
     val welcomeSeen: Boolean = false,
+    val language: Language = Language.SYSTEM,
 )
 
 @Singleton
@@ -172,6 +194,7 @@ class SettingsRepository @Inject constructor(
                     hideExplicit = prefs[Keys.HIDE_EXPLICIT] ?: false,
                     muteSwearLines = prefs[Keys.MUTE_SWEAR_LINES] ?: false,
                     welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
+                    language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
                 )
             }
 
@@ -238,6 +261,18 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setWelcomeSeen(value: Boolean) = put(Keys.WELCOME_SEEN, value)
 
+    /**
+     * Язык пишется сразу в двух местах.
+     *
+     * DataStore — источник истины для экрана настроек, SharedPreferences —
+     * потому что локаль нужна в `attachBaseContext`, где нельзя ждать
+     * корутину: там читают [LocalePrefs].
+     */
+    suspend fun setLanguage(value: Language) {
+        LocalePrefs.save(context, value)
+        put(Keys.LANGUAGE, value.name)
+    }
+
     /** Экспорт всех настроек одной строкой JSON — её можно сохранить в файл. */
     suspend fun export(current: W0ySettings): String =
         JSONObject()
@@ -254,6 +289,7 @@ class SettingsRepository @Inject constructor(
             .put("theme", current.theme.name)
             .put("showLyrics", current.showLyrics)
             .put("keepHistory", current.keepHistory)
+            .put("language", current.language.name)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -272,6 +308,12 @@ class SettingsRepository @Inject constructor(
             if (obj.has("sleepTimerDefaultMin")) prefs[Keys.SLEEP_MIN] = obj.getInt("sleepTimerDefaultMin")
             if (obj.has("showLyrics")) prefs[Keys.LYRICS] = obj.getBoolean("showLyrics")
             if (obj.has("keepHistory")) prefs[Keys.HISTORY] = obj.getBoolean("keepHistory")
+            // Язык из выгрузки нужно продублировать в синхронное хранилище:
+            // именно оттуда его читает attachBaseContext при следующем старте.
+            obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
+                prefs[Keys.LANGUAGE] = name
+                Language.entries.firstOrNull { it.name == name }?.let { LocalePrefs.save(context, it) }
+            }
         }
     }
 
@@ -320,5 +362,6 @@ class SettingsRepository @Inject constructor(
         val HIDE_EXPLICIT = booleanPreferencesKey("hide_explicit")
         val MUTE_SWEAR_LINES = booleanPreferencesKey("mute_swear_lines")
         val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
+        val LANGUAGE = stringPreferencesKey("language")
     }
 }

@@ -344,6 +344,36 @@ object YtJson {
                 )
             }.distinctBy { it.browseId }
 
+    /** Режет раны подписи на куски по разделителю «•». */
+    private fun splitByBullet(runs: List<String>): List<String> {
+        val chunks = mutableListOf<String>()
+        val current = StringBuilder()
+        runs.forEach { run ->
+            if (run.trim() == "•") {
+                chunks += current.toString().trim()
+                current.clear()
+            } else {
+                current.append(run)
+            }
+        }
+        chunks += current.toString().trim()
+        return chunks.filter { it.isNotBlank() }
+    }
+
+    /**
+     * Похоже ли на счётчик прослушиваний.
+     *
+     * Слово зависит от языка выдачи, поэтому смотрим на все варианты, а не
+     * только на английский: в русской выдаче это «прослушиваний».
+     */
+    private fun looksLikePlays(text: String): Boolean {
+        val lower = text.lowercase()
+        return PLAY_WORDS.any { lower.contains(it) }
+    }
+
+    private val PLAY_WORDS =
+        listOf("play", "прослуш", "просмотр", "view", "odtworze", "переглянь", "прослухов")
+
     private fun MusicResponsiveListItemRenderer.toSong(): SongItem? {
         val videoId =
             playlistItemData?.videoId
@@ -354,22 +384,25 @@ object YtJson {
                 column.musicResponsiveListItemFlexColumnRenderer.text?.runs
             }
         val title = columns.firstOrNull()?.firstOrNull()?.text ?: return null
-        // Вторая колонка — «исполнитель • альбом • длительность», разделители
-        // приходят отдельными ранами, поэтому фильтруем их, а не режем строку.
-        val details =
-            columns
-                .getOrNull(1)
-                ?.map { it.text }
-                ?.filter { it.isNotBlank() && it != " • " }
-                .orEmpty()
-        val duration = details.lastOrNull()?.takeIf { it.contains(':') }
-        val meaningful = details.filterNot { it == duration }
+        // Вторая колонка — «исполнитель • альбом • длительность», но это
+        // не три рана, а произвольное их число: соисполнители разделяются
+        // запятой и союзом, а сами разделители приходят отдельными ранами.
+        // Поэтому режем колонку по «•» и разбираем уже куски, иначе в поле
+        // альбома оседает то запятая, то второй исполнитель.
+        val chunks = splitByBullet(columns.getOrNull(1).orEmpty().map { it.text })
+        val artists = chunks.firstOrNull().orEmpty()
+        val rest = chunks.drop(1)
+        val duration = rest.firstOrNull { it.contains(':') && it.any(Char::isDigit) }
+        val plays = rest.firstOrNull(::looksLikePlays)
+        val album = rest.firstOrNull { it != duration && it != plays }
+
         return SongItem(
             id = videoId,
             title = title,
-            artist = meaningful.firstOrNull().orEmpty(),
-            album = meaningful.getOrNull(1),
+            artist = artists,
+            album = album,
             durationText = duration,
+            plays = plays,
             thumbnailUrl =
                 thumbnail
                     ?.musicThumbnailRenderer

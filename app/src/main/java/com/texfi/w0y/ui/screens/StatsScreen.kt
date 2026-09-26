@@ -19,9 +19,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.R
 import com.texfi.w0y.data.StatsPeriod
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.CoverImage
@@ -55,10 +57,10 @@ fun StatsScreen(
             .fillMaxSize()
             .background(colors.background),
     ) {
-        ScreenTitle(title = "итоги", onBack = onBack)
+        ScreenTitle(title = stringResource(R.string.stats_title), onBack = onBack)
         Column(Modifier.padding(horizontal = Gutter)) {
             PixelSegmented(
-                options = StatsPeriod.entries.map { it.label },
+                options = StatsPeriod.entries.map { stringResource(it.label) },
                 selectedIndex = StatsPeriod.entries.indexOf(stats.period),
                 onSelect = { viewModel.setPeriod(StatsPeriod.entries[it]) },
             )
@@ -68,8 +70,8 @@ fun StatsScreen(
         if (stats.plays == 0) {
             EmptyState(
                 sprite = Sprites.stats,
-                title = "ПОКА НЕЧЕГО СЧИТАТЬ",
-                text = "Послушай что-нибудь — и здесь появятся минуты, любимые треки и исполнители за выбранный срок.",
+                title = stringResource(R.string.stats_empty_title),
+                text = stringResource(R.string.stats_empty_text),
             )
             return
         }
@@ -77,16 +79,16 @@ fun StatsScreen(
         LazyColumn(Modifier.padding(horizontal = Gutter)) {
             item {
                 Row(Modifier.fillMaxWidth()) {
-                    Metric("МИНУТ", stats.minutes.toString(), Modifier.weight(1f))
+                    Metric(stringResource(R.string.stats_minutes), stats.minutes.toString(), Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
-                    Metric("ВКЛЮЧЕНИЙ", stats.plays.toString(), Modifier.weight(1f))
+                    Metric(stringResource(R.string.stats_plays), stats.plays.toString(), Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(22.dp))
             }
 
             if (stats.topArtists.isNotEmpty()) {
                 item {
-                    SectionHeader("ИСПОЛНИТЕЛИ")
+                    SectionHeader(stringResource(R.string.stats_artists))
                     Spacer(Modifier.height(10.dp))
                 }
                 itemsIndexed(stats.topArtists, key = { _, it -> "artist-${it.artist}" }) { index, row ->
@@ -136,7 +138,7 @@ fun StatsScreen(
             if (stats.topSongs.isNotEmpty()) {
                 item {
                     Spacer(Modifier.height(20.dp))
-                    SectionHeader("ТРЕКИ")
+                    SectionHeader(stringResource(R.string.artist_songs))
                     Spacer(Modifier.height(10.dp))
                 }
                 itemsIndexed(stats.topSongs, key = { _, it -> "song-${it.first.id}" }) { index, (song, plays) ->

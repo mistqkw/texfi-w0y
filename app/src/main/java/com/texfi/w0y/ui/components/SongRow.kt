@@ -1,7 +1,10 @@
 package com.texfi.w0y.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,11 +52,15 @@ fun SongRow(
     val colors = LocalW0yColors.current
     val compact = LocalCompactRows.current
     val cover = if (compact) 40.dp else 48.dp
+    val rowInteraction = remember { MutableInteractionSource() }
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick)
+                // Строка сжимается слабее плитки: в длинном списке сильный
+                // отклик выглядит как дёрганье всего списка.
+                .pressScale(rowInteraction, pressed = 0.975f)
+                .clickable(interactionSource = rowInteraction, indication = null, onClick = onClick)
                 .padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -76,7 +85,7 @@ fun SongRow(
                 }
                 Text(
                     text =
-                        listOfNotNull(song.artist.takeIf { it.isNotBlank() }, song.album)
+                        listOfNotNull(song.artist.takeIf { it.isNotBlank() }, song.album, song.plays)
                             .joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
@@ -108,7 +117,12 @@ fun SongRow(
     }
 }
 
-/** Пиксельная кнопка-иконка: одинаковая во всех списках. */
+/**
+ * Пиксельная кнопка-иконка.
+ *
+ * Нажатие вдавливает, включение — подбрасывает: у лайка и у закрепления
+ * должен быть виден сам момент, иначе непонятно, сработало или нет.
+ */
 @Composable
 fun SpriteButton(
     rows: List<String>,
@@ -117,13 +131,21 @@ fun SpriteButton(
     size: Int = 20,
 ) {
     val colors = LocalW0yColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val color by animateColorAsState(
+        targetValue = if (active) colors.accent else colors.textMuted,
+        animationSpec = tween(180),
+        label = "spriteColor",
+    )
     PixelSprite(
         rows = rows,
-        color = if (active) colors.accent else colors.textMuted,
+        color = color,
         modifier =
             Modifier
                 .size(size.dp)
-                .clickable(onClick = onClick),
+                .pressScale(interaction, pressed = 0.82f)
+                .popWhenActivated(active)
+                .clickable(interactionSource = interaction, indication = null, onClick = onClick),
     )
 }
 

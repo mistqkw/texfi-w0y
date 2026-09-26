@@ -97,7 +97,7 @@ class BrowseSmokeTest {
                     params = YouTubeRepository.SONGS_FILTER,
                 ).body<JsonObject>()
         val songs = YtJson.songs(response)
-        songs.take(5).forEach { println("ТРЕК: ${it.title} · артист=${it.artistId} · альбом=${it.albumId}") }
+        songs.take(5).forEach { println("ТРЕК: ${it.title} · альбом=${it.album} · прослушиваний=${it.plays}") }
         http.close()
         assertTrue("Ни у одного трека нет ссылки на артиста", songs.any { it.artistId != null })
     }

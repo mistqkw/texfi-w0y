@@ -1,7 +1,10 @@
 package com.texfi.w0y.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.annotation.StringRes
+import com.texfi.w0y.R
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.Diagnostics
 import com.texfi.w0y.data.ArtistCard
@@ -16,6 +19,7 @@ import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -35,10 +39,10 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 /** Раздел выдачи. Один запрос к YouTube на раздел — фильтры у них разные. */
-enum class SearchFilter(val label: String) {
-    SONGS("ТРЕКИ"),
-    ALBUMS("АЛЬБОМЫ"),
-    ARTISTS("АРТИСТЫ"),
+enum class SearchFilter(@StringRes val label: Int) {
+    SONGS(R.string.search_filter_songs),
+    ALBUMS(R.string.search_filter_albums),
+    ARTISTS(R.string.search_filter_artists),
 }
 
 sealed interface SearchState {
@@ -59,6 +63,7 @@ sealed interface SearchState {
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val repository: YouTubeRepository,
     private val diagnostics: Diagnostics,
     private val library: LibraryRepository,
@@ -159,7 +164,7 @@ class SearchViewModel @Inject constructor(
                             onFailure = { error ->
                                 Timber.w(error, "Поиск «$query» не удался")
                                 SearchState.Failed(
-                                    message = "Не получилось спросить YouTube Music.",
+                                    message = context.getString(R.string.search_failed),
                                     // В debug показываем настоящую причину прямо
                                     // на экране: телефон у пользователя, логи
                                     // читать неоткуда, а «проверь сеть» скрывает
@@ -202,9 +207,9 @@ class SearchViewModel @Inject constructor(
     /** Три пробных запроса мимо библиотеки — видно, что именно не нравится YouTube. */
     fun diagnose() {
         viewModelScope.launch {
-            _diagnosis.value = "Проверяю…"
-            _diagnosis.value = runCatching { diagnostics.run(_query.value.ifBlank { "музыка" }) }
-                .getOrElse { "Диагностика упала: ${it.message}" }
+            _diagnosis.value = context.getString(R.string.search_checking)
+            _diagnosis.value = runCatching { diagnostics.run(_query.value.ifBlank { context.getString(R.string.search_query_fallback) }) }
+                .getOrElse { context.getString(R.string.search_diagnostics_failed, it.message.orEmpty()) }
         }
     }
 

@@ -18,7 +18,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
@@ -45,7 +47,7 @@ fun AddToPlaylistPanel(
         contentAlignment = Alignment.Center,
     ) {
         PixelCard(
-            label = "В ПЛЕЙЛИСТ",
+            label = stringResource(R.string.add_to_playlist_title),
             modifier = Modifier.padding(24.dp),
         ) {
             Text(
@@ -57,7 +59,7 @@ fun AddToPlaylistPanel(
             Spacer(Modifier.height(10.dp))
             if (playlists.isEmpty() && newName == null) {
                 Text(
-                    "Плейлистов ещё нет.",
+                    stringResource(R.string.add_to_playlist_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.textMuted,
                 )
@@ -87,11 +89,11 @@ fun AddToPlaylistPanel(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 )
                 PixelButton(
-                    text = "СОЗДАТЬ И ДОБАВИТЬ",
+                    text = stringResource(R.string.add_to_playlist_create),
                     onClick = { if (newName.isNotBlank()) onCreate(newName) },
                 )
             } else {
-                PixelButton(text = "НОВЫЙ ПЛЕЙЛИСТ", onClick = { onNewNameChange("") })
+                PixelButton(text = stringResource(R.string.add_to_playlist_new), onClick = { onNewNameChange("") })
             }
         }
     }

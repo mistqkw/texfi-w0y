@@ -31,8 +31,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.texfi.w0y.R
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.SpriteButton
@@ -84,9 +86,9 @@ fun LoginScreen(
         ) {
             SpriteButton(Sprites.chevronLeft, onClick = onClose)
             Spacer(Modifier.width(12.dp))
-            Text("вход", style = PixelTitle, color = colors.text, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.login_title), style = PixelTitle, color = colors.text, modifier = Modifier.weight(1f))
             PixelButton(
-                text = if (manualMode) "ФОРМА" else "COOKIE",
+                text = if (manualMode) stringResource(R.string.login_tab_form) else "COOKIE",
                 onClick = { manualMode = !manualMode },
                 fill = colors.surfaceHigh,
             )
@@ -102,7 +104,7 @@ fun LoginScreen(
         }
         if (busy) {
             Text(
-                text = "Проверяю вход…",
+                text = stringResource(R.string.login_checking),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.accent,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
@@ -131,8 +133,7 @@ private fun GoogleForm(onCookie: (String) -> Unit) {
     val submitted = remember { booleanArrayOf(false) }
 
     Text(
-        text = "Это страница Google. Пароль вводится только на ней — приложение видит лишь результат входа.\n" +
-            "Если Google скажет «этот браузер небезопасен» — нажми COOKIE сверху, там путь в обход.",
+        text = stringResource(R.string.login_google_note) + stringResource(R.string.login_google_blocked),
         style = MaterialTheme.typography.bodySmall,
         color = colors.textMuted,
         modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
@@ -190,18 +191,9 @@ private fun ManualCookie(
             .imePadding()
             .padding(18.dp),
     ) {
-        PixelCard(label = "COOKIE ВРУЧНУЮ", modifier = Modifier.fillMaxWidth()) {
+        PixelCard(label = stringResource(R.string.login_tab_cookie), modifier = Modifier.fillMaxWidth()) {
             Text(
-                text =
-                    "Если Google отказывает окну приложения, войди в music.youtube.com " +
-                        "в обычном браузере на компьютере и скопируй заголовок Cookie:\n\n" +
-                        "1. Открой music.youtube.com уже под своим аккаунтом\n" +
-                        "2. F12 → вкладка Network → обнови страницу\n" +
-                        "3. Нажми на любой запрос к music.youtube.com\n" +
-                        "4. В Request Headers найди строку Cookie и скопируй её целиком\n" +
-                        "5. Вставь сюда\n\n" +
-                        "Эта строка — ключ от аккаунта. Она хранится только на телефоне " +
-                        "и уходит исключительно на серверы YouTube.",
+                text = stringResource(R.string.login_cookie_howto),
                 style = MaterialTheme.typography.bodyMedium,
                 color = colors.textMuted,
             )
@@ -221,14 +213,14 @@ private fun ManualCookie(
         )
         Spacer(Modifier.height(14.dp))
         PixelButton(
-            text = "ВОЙТИ",
+            text = stringResource(R.string.library_sign_in),
             onClick = onSubmit,
             enabled = !busy && value.contains("SAPISID"),
         )
         if (value.isNotBlank() && !value.contains("SAPISID")) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "В строке нет SAPISID — похоже, скопирована не та часть или вход не выполнен.",
+                text = stringResource(R.string.login_no_sapisid),
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.secondary,
             )

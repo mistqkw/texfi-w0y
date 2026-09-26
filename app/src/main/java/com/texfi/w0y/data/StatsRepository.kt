@@ -1,15 +1,17 @@
 package com.texfi.w0y.data
 
+import androidx.annotation.StringRes
+import com.texfi.w0y.R
 import com.texfi.w0y.data.db.ArtistPlays
 import com.texfi.w0y.data.db.W0yDao
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /** За какой срок считаем итоги. */
-enum class StatsPeriod(val label: String, val days: Int?) {
-    WEEK("НЕДЕЛЯ", 7),
-    MONTH("МЕСЯЦ", 30),
-    ALL("ВСЁ ВРЕМЯ", null),
+enum class StatsPeriod(@StringRes val label: Int, val days: Int?) {
+    WEEK(R.string.stats_period_week, 7),
+    MONTH(R.string.stats_period_month, 30),
+    ALL(R.string.stats_period_all, null),
 }
 
 /** Итоги прослушивания за период. */

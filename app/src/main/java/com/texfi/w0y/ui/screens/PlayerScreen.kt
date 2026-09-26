@@ -1,5 +1,9 @@
 package com.texfi.w0y.ui.screens
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,10 +43,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import com.texfi.w0y.R
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SoundPreset
@@ -55,6 +61,8 @@ import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.SectionHeader
 import com.texfi.w0y.ui.components.PixelSprite
+import com.texfi.w0y.ui.components.PlayPauseButton
+import com.texfi.w0y.ui.components.TransportButton
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.nav.BrowseRoute
@@ -119,7 +127,7 @@ fun PlayerScreen(
                 ) {
                     SpriteButton(Sprites.collapse, onClick = onCollapse)
                     Spacer(Modifier.width(14.dp))
-                    Text("❯ ИГРАЕТ", style = PixelSectionLabel, color = colors.accent, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.player_now_playing), style = PixelSectionLabel, color = colors.accent, modifier = Modifier.weight(1f))
                     SpriteButton(
                         rows = Sprites.timer,
                         onClick = { if (sleepLeft == null) viewModel.startSleepTimer() else viewModel.cancelSleepTimer() },
@@ -128,14 +136,14 @@ fun PlayerScreen(
                 }
                 if (findingClean) {
                     Text(
-                        text = "Ищу чистую версию…",
+                        text = stringResource(R.string.player_finding_clean),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.accent,
                     )
                 }
                 sleepLeft?.let {
                     Text(
-                        text = "Таймер сна: ${it / 60_000} мин ${(it / 1000) % 60} с",
+                        text = stringResource(R.string.player_sleep_timer, it / 60_000, (it / 1000) % 60),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.secondary,
                     )
@@ -202,7 +210,7 @@ fun PlayerScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         song.artistId?.let { id ->
                             PixelButton(
-                                text = "К АРТИСТУ",
+                                text = stringResource(R.string.player_to_artist),
                                 fill = colors.surfaceHigh,
                                 onClick = {
                                     onCollapse()
@@ -212,7 +220,7 @@ fun PlayerScreen(
                         }
                         song.albumId?.let { id ->
                             PixelButton(
-                                text = "К АЛЬБОМУ",
+                                text = stringResource(R.string.player_to_album),
                                 fill = colors.surfaceHigh,
                                 onClick = {
                                     onCollapse()
@@ -259,21 +267,13 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     SpriteButton(Sprites.shuffle, onClick = viewModel.player::toggleShuffle, active = state.shuffle)
-                    PixelSprite(
-                        rows = Sprites.previous,
-                        color = colors.text,
-                        modifier = Modifier.size(28.dp).clickable(onClick = viewModel.player::skipPrevious),
+                    TransportButton(Sprites.previous, size = 28, onClick = viewModel.player::skipPrevious)
+                    PlayPauseButton(
+                        isPlaying = state.isPlaying,
+                        size = 40,
+                        onClick = viewModel.player::togglePlayPause,
                     )
-                    PixelSprite(
-                        rows = if (state.isPlaying) Sprites.pause else Sprites.play,
-                        color = colors.accent,
-                        modifier = Modifier.size(40.dp).clickable(onClick = viewModel.player::togglePlayPause),
-                    )
-                    PixelSprite(
-                        rows = Sprites.next,
-                        color = colors.text,
-                        modifier = Modifier.size(28.dp).clickable { viewModel.player.skipNext() },
-                    )
+                    TransportButton(Sprites.next, size = 28, onClick = viewModel.player::skipNext)
                     SpriteButton(
                         rows = Sprites.repeat,
                         onClick = viewModel.player::cycleRepeat,
@@ -282,7 +282,7 @@ fun PlayerScreen(
                 }
                 if (state.repeatMode == Player.REPEAT_MODE_ONE) {
                     Text(
-                        text = "повтор одного трека",
+                        text = stringResource(R.string.player_repeat_one),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         modifier = Modifier.padding(top = 6.dp),
@@ -292,10 +292,10 @@ fun PlayerScreen(
             }
 
             item {
-                SectionHeader("ЗВУЧАНИЕ")
+                SectionHeader(stringResource(R.string.player_sound))
                 Spacer(Modifier.height(10.dp))
                 PixelSegmented(
-                    options = SoundPreset.entries.map { it.label },
+                    options = SoundPreset.entries.map { stringResource(it.label) },
                     // −1 значит «ни один»: когда значения подкручены руками
                     // в настройках, подсвечивать готовый пресет было бы враньём.
                     selectedIndex = SoundPreset.entries.indexOfFirst { it.matches(settings) },
@@ -305,9 +305,20 @@ fun PlayerScreen(
                 Text(
                     text =
                         buildString {
-                            append("скорость ${settings.speed}×")
-                            if (settings.pitch != 1f) append(" · тон ${settings.pitch}")
-                            if (settings.reverb != Reverb.OFF) append(" · эхо ${settings.reverb.label.lowercase()}")
+                            append(stringResource(R.string.player_sound_speed, settings.speed.toString()))
+                            if (settings.pitch != 1f) {
+                                append(" ")
+                                append(stringResource(R.string.player_sound_pitch, settings.pitch.toString()))
+                            }
+                            if (settings.reverb != Reverb.OFF) {
+                                append(" ")
+                                append(
+                                    stringResource(
+                                        R.string.player_sound_reverb,
+                                        stringResource(settings.reverb.label).lowercase(),
+                                    ),
+                                )
+                            }
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textMuted,
@@ -316,16 +327,16 @@ fun PlayerScreen(
             }
 
             item {
-                SectionHeader("ДАЛЬШЕ")
+                SectionHeader(stringResource(R.string.player_next_up))
                 Spacer(Modifier.height(10.dp))
                 PixelSegmented(
-                    options = QueueMode.entries.map { it.label },
+                    options = QueueMode.entries.map { stringResource(it.label) },
                     selectedIndex = QueueMode.entries.indexOf(queueMode),
                     onSelect = { viewModel.setQueueMode(QueueMode.entries[it]) },
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = if (radioLoading) "Подбираю похожее…" else queueMode.hint,
+                    text = if (radioLoading) stringResource(R.string.player_finding_similar) else stringResource(queueMode.hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (radioLoading) colors.accent else colors.textMuted,
                 )
@@ -334,7 +345,7 @@ fun PlayerScreen(
 
             lyrics?.let { text ->
                 item {
-                    SectionHeader("ЛИРИКА")
+                    SectionHeader(stringResource(R.string.player_lyrics))
                     Spacer(Modifier.height(8.dp))
                 }
                 if (text.synced.isNotEmpty()) {
@@ -365,7 +376,7 @@ fun PlayerScreen(
             }
 
             item {
-                SectionHeader("ОЧЕРЕДЬ")
+                SectionHeader(stringResource(R.string.player_queue))
                 Spacer(Modifier.height(8.dp))
             }
             itemsIndexed(state.queue, key = { index, item -> "$index-${item.id}" }) { index, item ->
@@ -373,6 +384,7 @@ fun PlayerScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .animateItem()
                         .clickable { viewModel.player.playAt(index) }
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -436,7 +448,21 @@ private fun Seekbar(
     val colors = LocalW0yColors.current
     val density = LocalDensity.current
     var widthPx by remember { mutableStateOf(1) }
+    var dragging by remember { mutableStateOf(false) }
     val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    // Своя анимация на перемотку: пока тянут, бегунок и полоса вырастают.
+    // Палец закрывает бегунок собой, и без этого непонятно, ведёшь ты
+    // перемотку или просто скроллишь экран.
+    val thumb by animateDpAsState(
+        targetValue = if (dragging) 18.dp else 12.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "seekThumb",
+    )
+    val track by animateDpAsState(
+        targetValue = if (dragging) 8.dp else 6.dp,
+        animationSpec = tween(140),
+        label = "seekTrack",
+    )
 
     Box(
         Modifier
@@ -447,8 +473,15 @@ private fun Seekbar(
             .onSizeChanged { widthPx = it.width }
             .pointerInput(durationMs) {
                 detectHorizontalDragGestures(
-                    onDragEnd = onDragEnd,
-                    onDragCancel = onDragEnd,
+                    onDragStart = { dragging = true },
+                    onDragEnd = {
+                        dragging = false
+                        onDragEnd()
+                    },
+                    onDragCancel = {
+                        dragging = false
+                        onDragEnd()
+                    },
                 ) { change, _ ->
                     if (durationMs > 0) {
                         val ratio = (change.position.x / size.width).coerceIn(0f, 1f)
@@ -461,13 +494,13 @@ private fun Seekbar(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(6.dp)
+                .height(track)
                 .background(colors.surfaceHigh),
         )
         Box(
             Modifier
                 .fillMaxWidth(progress)
-                .height(6.dp)
+                .height(track)
                 .background(colors.secondary),
         )
         // Квадратный бегунок вместо круглой Material-ручки: круг здесь
@@ -475,7 +508,7 @@ private fun Seekbar(
         Box(
             Modifier
                 .padding(start = with(density) { (widthPx * progress).toDp() })
-                .size(12.dp)
+                .size(thumb)
                 .background(colors.text),
         )
     }

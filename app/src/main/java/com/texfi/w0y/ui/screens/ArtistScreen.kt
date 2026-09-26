@@ -25,9 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.R
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.ArtistTile
@@ -85,13 +87,13 @@ fun ArtistScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PixelButton(
-                    text = "ВКЛЮЧИТЬ",
+                    text = stringResource(R.string.album_play),
                     onClick = { viewModel.play(songs, 0) },
                     enabled = songs.isNotEmpty(),
                 )
                 Spacer(Modifier.width(10.dp))
                 PixelButton(
-                    text = "ПЕРЕМЕШАТЬ",
+                    text = stringResource(R.string.queue_mode_shuffle),
                     onClick = { viewModel.shuffle(songs) },
                     enabled = songs.isNotEmpty(),
                     fill = colors.surfaceHigh,
@@ -120,7 +122,7 @@ fun ArtistScreen(
                 Column(Modifier.padding(horizontal = 18.dp)) {
                     Text(error.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = colors.secondary)
                     Spacer(Modifier.height(10.dp))
-                    PixelButton(text = "ЕЩЁ РАЗ", onClick = { viewModel.retry(route.browseId, isArtist = true) })
+                    PixelButton(text = stringResource(R.string.common_retry), onClick = { viewModel.retry(route.browseId, isArtist = true) })
                 }
             }
         } else if (page == null) {
@@ -128,7 +130,7 @@ fun ArtistScreen(
         }
 
         if (songs.isNotEmpty()) {
-            item { BrowseSection("ТРЕКИ") }
+            item { BrowseSection(stringResource(R.string.artist_songs)) }
             items(songs.take(12), key = { it.id }) { song ->
                 SongRow(
                     song = song,
@@ -141,7 +143,7 @@ fun ArtistScreen(
 
         page?.releases?.takeIf { it.isNotEmpty() }?.let { releases ->
             item {
-                BrowseSection("РЕЛИЗЫ")
+                BrowseSection(stringResource(R.string.artist_releases))
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 18.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -159,7 +161,7 @@ fun ArtistScreen(
 
         page?.similar?.takeIf { it.isNotEmpty() }?.let { similar ->
             item {
-                BrowseSection("ПОХОЖИЕ")
+                BrowseSection(stringResource(R.string.artist_similar))
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 18.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),

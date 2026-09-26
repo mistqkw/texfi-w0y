@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Image
 import com.texfi.w0y.R
@@ -76,7 +77,7 @@ fun WelcomeScreen(
         ) {
             Spacer(Modifier.weight(1f))
             Text(
-                text = "ПРОПУСТИТЬ",
+                text = stringResource(R.string.welcome_skip),
                 style = PixelSectionLabel,
                 color = colors.textMuted,
                 modifier =
@@ -117,7 +118,7 @@ fun WelcomeScreen(
             }
             Spacer(Modifier.weight(1f))
             PixelButton(
-                text = if (state.currentPage == 2) "ПОЕХАЛИ" else "ДАЛЬШЕ",
+                text = if (state.currentPage == 2) stringResource(R.string.welcome_start) else stringResource(R.string.welcome_next),
                 onClick = {
                     if (state.currentPage == 2) {
                         onDone()
@@ -145,7 +146,7 @@ private fun Hello() {
             contentDescription = null,
             modifier = Modifier.size(230.dp),
         )
-        Text("w0y", style = PixelScreenTitle, color = colors.text)
+        Text(stringResource(R.string.app_name), style = PixelScreenTitle, color = colors.text)
         Spacer(Modifier.height(12.dp))
         Box(
             Modifier
@@ -155,9 +156,7 @@ private fun Hello() {
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            text =
-                "Музыка с YouTube без рекламы и ограничений. " +
-                    "Со своим аккаунтом, своими плейлистами и загрузкой на телефон.",
+            text = stringResource(R.string.welcome_intro),
             style = MaterialTheme.typography.bodyLarge,
             color = colors.textMuted,
         )
@@ -174,32 +173,32 @@ private fun Features() {
             .padding(horizontal = Gutter),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("что тут своего", style = PixelScreenTitle, color = colors.text)
+        Text(stringResource(R.string.welcome_own_title), style = PixelScreenTitle, color = colors.text)
         Spacer(Modifier.height(20.dp))
         Feature(
             Sprites.sliders,
-            "Звучание",
-            "SLOWED и SPED UP на любом треке: скорость, тон и эхо. Не нужно искать чужую переделку.",
+            stringResource(R.string.welcome_sound_title),
+            stringResource(R.string.welcome_sound_text),
         )
         Feature(
             Sprites.stats,
-            "Итоги",
-            "Минуты, любимые треки и артисты за неделю или месяц. Считается на телефоне, никуда не уходит.",
+            stringResource(R.string.welcome_stats_title),
+            stringResource(R.string.welcome_stats_text),
         )
         Feature(
             Sprites.check,
-            "Без мата",
-            "Подмена на официальную чистую версию, если она выложена. Вырезать слова из записи нельзя — и мы не делаем вид.",
+            stringResource(R.string.welcome_clean_title),
+            stringResource(R.string.welcome_clean_text),
         )
         Feature(
             Sprites.pin,
-            "Быстрый набор",
-            "Что слушаешь чаще — на главной. Долгим нажатием можно закрепить нужное.",
+            stringResource(R.string.welcome_dial_title),
+            stringResource(R.string.welcome_dial_text),
         )
         Feature(
             Sprites.timer,
-            "Быстрый старт",
-            "Время от нажатия до звука замеряется и показано в настройках — обещание можно проверить.",
+            stringResource(R.string.welcome_fast_title),
+            stringResource(R.string.welcome_fast_text),
         )
     }
 }
@@ -234,39 +233,39 @@ private fun FirstSettings(
             .padding(horizontal = Gutter),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("под себя", style = PixelScreenTitle, color = colors.text)
+        Text(stringResource(R.string.welcome_tune_title), style = PixelScreenTitle, color = colors.text)
         Spacer(Modifier.height(24.dp))
 
-        Text("Тема", style = MaterialTheme.typography.bodyLarge, color = colors.text)
+        Text(stringResource(R.string.settings_theme_title), style = MaterialTheme.typography.bodyLarge, color = colors.text)
         Text(
-            "Чёрная — для OLED-экрана: пиксели просто не светятся.",
+            stringResource(R.string.welcome_theme_text),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
         )
         Spacer(Modifier.height(10.dp))
         PixelSegmented(
-            options = listOf("ТЁМНАЯ", "ЧЁРНАЯ", "СВЕТЛАЯ"),
+            options = listOf(stringResource(R.string.welcome_theme_dark), stringResource(R.string.welcome_theme_oled), stringResource(R.string.welcome_theme_light)),
             selectedIndex = themes.indexOf(theme),
             onSelect = { onTheme(themes[it]) },
         )
 
         Spacer(Modifier.height(24.dp))
-        Text("Экран при запуске", style = MaterialTheme.typography.bodyLarge, color = colors.text)
+        Text(stringResource(R.string.settings_start_tab_title), style = MaterialTheme.typography.bodyLarge, color = colors.text)
         Spacer(Modifier.height(10.dp))
         PixelSegmented(
-            options = StartTab.entries.map { it.label },
+            options = StartTab.entries.map { stringResource(it.label) },
             selectedIndex = StartTab.entries.indexOf(startTab),
             onSelect = { onStartTab(StartTab.entries[it]) },
         )
 
         Spacer(Modifier.height(28.dp))
-        Text("Аккаунт", style = MaterialTheme.typography.bodyLarge, color = colors.text)
+        Text(stringResource(R.string.welcome_account_title), style = MaterialTheme.typography.bodyLarge, color = colors.text)
         Text(
-            "Нужен только для своих плейлистов и лайков. Поиск и воспроизведение работают и без него.",
+            stringResource(R.string.welcome_account_text),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
         )
         Spacer(Modifier.height(12.dp))
-        PixelButton(text = "ВОЙТИ", onClick = onSignIn, fill = colors.surfaceHigh)
+        PixelButton(text = stringResource(R.string.library_sign_in), onClick = onSignIn, fill = colors.surfaceHigh)
     }
 }

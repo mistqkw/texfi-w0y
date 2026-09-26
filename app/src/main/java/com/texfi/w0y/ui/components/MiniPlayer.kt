@@ -29,7 +29,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.texfi.w0y.R
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.playback.PlayerUiState
 import com.texfi.w0y.ui.theme.LocalW0yColors
@@ -115,7 +117,7 @@ fun MiniPlayer(
                         maxLines = 1,
                     )
                     Text(
-                        text = if (state.isBuffering) "Загружаю…" else song.artist,
+                        text = if (state.isBuffering) stringResource(R.string.common_loading) else song.artist,
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.textMuted,
                         maxLines = 1,
@@ -123,24 +125,8 @@ fun MiniPlayer(
                 }
                 // Кнопки с запасом вокруг: на 22dp в мини-плеере промахнуться
                 // мимо «паузы» проще, чем попасть.
-                PixelSprite(
-                    rows = if (state.isPlaying) Sprites.pause else Sprites.play,
-                    color = colors.accent,
-                    modifier =
-                        Modifier
-                            .clickable(onClick = onToggle)
-                            .padding(8.dp)
-                            .size(22.dp),
-                )
-                PixelSprite(
-                    rows = Sprites.next,
-                    color = colors.text,
-                    modifier =
-                        Modifier
-                            .clickable(onClick = onNext)
-                            .padding(8.dp)
-                            .size(22.dp),
-                )
+                PlayPauseButton(isPlaying = state.isPlaying, size = 22, onClick = onToggle, touchPadding = 8)
+                TransportButton(Sprites.next, size = 22, onClick = onNext, touchPadding = 8)
             }
         }
     }

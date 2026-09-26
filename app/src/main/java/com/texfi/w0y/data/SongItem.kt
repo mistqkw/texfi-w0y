@@ -23,4 +23,6 @@ data class SongItem(
     val albumId: String? = null,
     /** Метка «E» — YouTube помечает ею записи с ненормативной лексикой. */
     val explicit: Boolean = false,
+    /** Сколько раз трек слушали — строкой в том виде, как её отдал YouTube. */
+    val plays: String? = null,
 )

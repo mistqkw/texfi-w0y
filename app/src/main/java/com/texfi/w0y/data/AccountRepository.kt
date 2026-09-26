@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.models.YouTubeClient
+import com.texfi.w0y.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ktor.client.call.body
 import javax.inject.Inject
@@ -68,14 +69,14 @@ class AccountRepository @Inject constructor(
     suspend fun signIn(rawCookie: String): Result<String?> {
         val sanitized = rawCookie.trim()
         if (!sanitized.contains("SAPISID")) {
-            return Result.failure(IllegalArgumentException("В строке нет SAPISID — это не cookie входа."))
+            return Result.failure(IllegalArgumentException(context.getString(R.string.account_no_sapisid)))
         }
         applySession(sanitized)
         val name = runCatching { fetchAccountName() }
         if (name.isFailure) {
             applySession(null)
             Timber.w(name.exceptionOrNull(), "Cookie не подошла")
-            return Result.failure(name.exceptionOrNull() ?: IllegalStateException("YouTube не принял cookie"))
+            return Result.failure(name.exceptionOrNull() ?: IllegalStateException(context.getString(R.string.account_cookie_rejected)))
         }
         context.accountStore.edit {
             it[Keys.COOKIE] = sanitized

@@ -1,7 +1,9 @@
 package com.texfi.w0y.ui.screens
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.R
 import com.texfi.w0y.data.AlbumPage
 import com.texfi.w0y.data.ArtistPage
 import com.texfi.w0y.data.LibraryRepository
@@ -12,6 +14,7 @@ import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +33,7 @@ import timber.log.Timber
  */
 @HiltViewModel
 class BrowseViewModel @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val youtube: YouTubeRepository,
     private val library: LibraryRepository,
     private val downloads: DownloadsRepository,
@@ -69,7 +73,7 @@ class BrowseViewModel @Inject constructor(
             runCatching { block() }.onFailure {
                 Timber.w(it, "Страница $browseId не открылась")
                 loaded = null
-                _error.value = "Не получилось открыть страницу. Попробуй ещё раз."
+                _error.value = context.getString(R.string.browse_failed)
             }
         }
     }

@@ -80,7 +80,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
         SearchField(value = query, onValueChange = viewModel::onQueryChange)
         Spacer(Modifier.height(12.dp))
         PixelSegmented(
-            options = SearchFilter.entries.map { it.label },
+            options = SearchFilter.entries.map { stringResource(it.label) },
             selectedIndex = SearchFilter.entries.indexOf(filter),
             onSelect = { viewModel.onFilterChange(SearchFilter.entries[it]) },
         )
@@ -94,7 +94,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                         Spacer(Modifier.height(18.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "❯ НЕДАВНИЕ",
+                                stringResource(R.string.search_recent),
                                 style = PixelSectionLabel,
                                 color = colors.accent,
                                 modifier = Modifier.weight(1f),
@@ -138,12 +138,12 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                     Spacer(Modifier.height(12.dp))
                     Row {
                         com.texfi.w0y.ui.components.PixelButton(
-                            text = "ЕЩЁ РАЗ",
+                            text = stringResource(R.string.common_retry),
                             onClick = viewModel::retry,
                         )
                         Spacer(Modifier.width(12.dp))
                         com.texfi.w0y.ui.components.PixelButton(
-                            text = "ПРОВЕРКА",
+                            text = stringResource(R.string.search_diagnostics),
                             onClick = viewModel::diagnose,
                         )
                     }
@@ -165,8 +165,8 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 if (current.isEmpty) {
                     EmptyState(
                         sprite = Sprites.search,
-                        title = "НИЧЕГО НЕ НАШЛОСЬ",
-                        text = "Попробуй другое написание или переключи раздел выше.",
+                        title = stringResource(R.string.search_nothing_title),
+                        text = stringResource(R.string.search_nothing_text),
                     )
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -195,7 +195,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                         items(current.albums, key = { it.browseId }) { card ->
                             CardRow(
                                 title = card.title,
-                                subtitle = card.subtitle ?: if (card.isAlbum) "Альбом" else "Плейлист",
+                                subtitle = card.subtitle ?: if (card.isAlbum) stringResource(R.string.card_album) else stringResource(R.string.card_playlist),
                                 thumbnailUrl = card.thumbnailUrl,
                                 round = false,
                                 onClick = {
@@ -208,7 +208,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                         items(current.artists, key = { it.browseId }) { card ->
                             CardRow(
                                 title = card.name,
-                                subtitle = card.subtitle ?: "Артист",
+                                subtitle = card.subtitle ?: stringResource(R.string.card_artist),
                                 thumbnailUrl = card.thumbnailUrl,
                                 round = true,
                                 onClick = {

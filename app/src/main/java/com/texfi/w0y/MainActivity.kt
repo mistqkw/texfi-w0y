@@ -2,11 +2,13 @@ package com.texfi.w0y
 
 import android.Manifest
 import android.os.Build
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import com.texfi.w0y.data.LocalePrefs
 import com.texfi.w0y.playback.PlayerConnection
 import javax.inject.Inject
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -21,6 +23,13 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var playerConnection: PlayerConnection
+
+    // Язык подставляется до создания экрана: ресурсы читаются уже при
+    // первом кадре, и менять их позже — значит показать один кадр на
+    // системном языке, а следующий на выбранном.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocalePrefs.wrap(newBase))
+    }
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { }

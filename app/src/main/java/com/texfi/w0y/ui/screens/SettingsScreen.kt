@@ -1,9 +1,24 @@
 package com.texfi.w0y.ui.screens
 
+import android.app.Activity
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.texfi.w0y.ui.components.pressScale
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,10 +46,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.BuildConfig
+import com.texfi.w0y.R
+import com.texfi.w0y.data.Language
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
@@ -70,6 +88,10 @@ fun SettingsScreen(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // Вкладки вместо одной простыни на девяносто пунктов: «много настроек»
+    // ценно, только если нужную можно найти. Выбранная вкладка живёт до
+    // закрытия экрана — возвращаясь, попадаешь туда, где был.
+    var tab by remember { mutableStateOf(SettingsTab.SOUND) }
 
     val exportLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -109,370 +131,470 @@ fun SettingsScreen(
         ) {
             SpriteButton(Sprites.chevronLeft, onClick = onClose)
             Spacer(Modifier.width(12.dp))
-            Text("настройки", style = PixelTitle, color = colors.text)
+            Text(stringResource(R.string.settings_title), style = PixelTitle, color = colors.text)
         }
         message?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = colors.secondary)
             Spacer(Modifier.height(6.dp))
         }
 
+        SettingsTabs(selected = tab, onSelect = { tab = it })
+        Spacer(Modifier.height(14.dp))
+
         LazyColumn(
             Modifier.navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            item { Group("ЗВУК") }
-            item {
-                ChoiceRow(
-                    title = "Качество по Wi-Fi",
-                    description = "Какой поток просить, когда телефон в Wi-Fi.",
-                    options = Quality.entries,
-                    selected = settings.qualityWifi,
-                    label = ::qualityLabel,
-                    onSelect = viewModel::setQualityWifi,
-                )
+            if (tab == SettingsTab.SOUND) {
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_quality_wifi_title),
+                        description = stringResource(R.string.settings_quality_wifi_desc),
+                        options = Quality.entries,
+                        selected = settings.qualityWifi,
+                        label = { qualityLabel(it) },
+                        onSelect = viewModel::setQualityWifi,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_quality_mobile_title),
+                        description = stringResource(R.string.settings_quality_mobile_desc),
+                        options = Quality.entries,
+                        selected = settings.qualityMobile,
+                        label = { qualityLabel(it) },
+                        onSelect = viewModel::setQualityMobile,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_normalize_title),
+                        description = stringResource(R.string.settings_normalize_desc),
+                        checked = settings.normalizeVolume,
+                        onChange = viewModel::setNormalize,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_skip_silence_title),
+                        description = stringResource(R.string.settings_skip_silence_desc),
+                        checked = settings.skipSilence,
+                        onChange = viewModel::setSkipSilence,
+                    )
+                }
             }
-            item {
-                ChoiceRow(
-                    title = "Качество в мобильной сети",
-                    description = "Отдельно от Wi-Fi: экономит трафик и ускоряет старт.",
-                    options = Quality.entries,
-                    selected = settings.qualityMobile,
-                    label = ::qualityLabel,
-                    onSelect = viewModel::setQualityMobile,
-                )
+            if (tab == SettingsTab.TONE) {
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_speed_title),
+                        description = stringResource(R.string.settings_speed_desc),
+                        options = listOf(0.75f, 0.85f, 1f, 1.25f, 1.5f),
+                        selected = settings.speed,
+                        label = { "${it}×".replace(".0×", "×") },
+                        onSelect = viewModel::setSpeed,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_pitch_title),
+                        description = stringResource(R.string.settings_pitch_desc),
+                        options = listOf(0.9f, 0.95f, 1f, 1.05f, 1.1f),
+                        selected = settings.pitch,
+                        label = { it.toString().replace("1.0", stringResource(R.string.settings_pitch_normal)) },
+                        onSelect = viewModel::setPitch,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_reverb_title),
+                        description = stringResource(R.string.settings_reverb_desc),
+                        options = Reverb.entries,
+                        selected = settings.reverb,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setReverb,
+                    )
+                }
             }
-            item {
-                SwitchRow(
-                    title = "Выравнивать громкость",
-                    description = "Тихие записи не теряются после громких — по данным самого YouTube.",
-                    checked = settings.normalizeVolume,
-                    onChange = viewModel::setNormalize,
-                )
+            if (tab == SettingsTab.SPEED) {
+                item {
+                    InfoRow(
+                        title = stringResource(R.string.settings_startup_title),
+                        description =
+                            stringResource(
+                                R.string.settings_startup_desc,
+                                if (startupCount == 0) {
+                                    stringResource(R.string.settings_startup_desc_empty)
+                                } else {
+                                    stringResource(
+                                        R.string.settings_startup_desc_stats,
+                                        startupCount,
+                                        (startupLast ?: 0).toInt(),
+                                    )
+                                },
+                            ),
+                        value =
+                            startupAverage
+                                ?.let { stringResource(R.string.settings_startup_value_ms, it.toInt()) }
+                                ?: "—",
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_preload_title),
+                        description = stringResource(R.string.settings_preload_desc),
+                        checked = settings.preloadNext,
+                        onChange = viewModel::setPreload,
+                    )
+                }
             }
-            item {
-                SwitchRow(
-                    title = "Пропускать тишину",
-                    description = "Молчание в начале и конце записи проматывается.",
-                    checked = settings.skipSilence,
-                    onChange = viewModel::setSkipSilence,
-                )
-            }
-
-            item { Group("ЗВУЧАНИЕ") }
-            item {
-                ChoiceRow(
-                    title = "Скорость",
-                    description =
-                        "Играет быстрее или медленнее оригинала. Замедление с эхом звучит как slowed-переделка, " +
-                            "только из оригинального файла и без потери качества.",
-                    options = listOf(0.75f, 0.85f, 1f, 1.25f, 1.5f),
-                    selected = settings.speed,
-                    label = { "${it}×".replace(".0×", "×") },
-                    onSelect = viewModel::setSpeed,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Тон",
-                    description =
-                        "Насколько ниже или выше звучит голос. Отдельно от скорости: можно замедлить, " +
-                            "не превращая вокал в бас.",
-                    options = listOf(0.9f, 0.95f, 1f, 1.05f, 1.1f),
-                    selected = settings.pitch,
-                    label = { "${it}".replace("1.0", "норма") },
-                    onSelect = viewModel::setPitch,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Эхо",
-                    description = "Реверб поверх трека — от небольшой комнаты до пещеры.",
-                    options = Reverb.entries,
-                    selected = settings.reverb,
-                    label = { it.label },
-                    onSelect = viewModel::setReverb,
-                )
-            }
-
-            item { Group("СКОРОСТЬ") }
-            item {
-                InfoRow(
-                    title = "Старт трека",
-                    description =
-                        "Время от нажатия до первого звука, замеренное на этом телефоне. " +
-                            if (startupCount == 0) {
-                                "Появится после первого включения."
+            if (tab == SettingsTab.STORAGE) {
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_wifi_only_title),
+                        description = stringResource(R.string.settings_wifi_only_desc),
+                        checked = settings.downloadOnWifiOnly,
+                        onChange = viewModel::setDownloadOnWifiOnly,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_cache_title),
+                        description =
+                            stringResource(
+                                R.string.settings_cache_desc,
+                                (cacheBytes / 1024 / 1024).toInt(),
+                            ),
+                        options = listOf(256, 512, 1024, 2048),
+                        selected = settings.cacheLimitMb,
+                        label = {
+                            if (it >= 1024) {
+                                stringResource(R.string.settings_cache_gb, it / 1024)
                             } else {
-                                "Среднее за последние $startupCount запусков; последний — ${startupLast ?: 0} мс."
-                            },
-                    value = startupAverage?.let { "$it мс" } ?: "—",
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Готовить следующий трек",
-                    description = "Ссылка следующего трека берётся заранее — переход без паузы.",
-                    checked = settings.preloadNext,
-                    onChange = viewModel::setPreload,
-                )
-            }
-
-            item { Group("ХРАНИЛИЩЕ") }
-            item {
-                SwitchRow(
-                    title = "Скачивать только по Wi-Fi",
-                    description = "Загрузки ждут Wi-Fi и не тратят мобильный трафик.",
-                    checked = settings.downloadOnWifiOnly,
-                    onChange = viewModel::setDownloadOnWifiOnly,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Предел кэша",
-                    description = "Сколько прослушанного держать на телефоне. Новый предел вступает в силу после перезапуска. Сейчас занято: ${cacheBytes / 1024 / 1024} МБ.",
-                    options = listOf(256, 512, 1024, 2048),
-                    selected = settings.cacheLimitMb,
-                    label = { if (it >= 1024) "${it / 1024} ГБ" else "$it МБ" },
-                    onSelect = viewModel::setCacheLimit,
-                )
-            }
-            item {
-                ActionRow(
-                    title = "Очистить кэш",
-                    description = "Скачанные треки не трогает — они хранятся отдельно.",
-                    button = "ОЧИСТИТЬ",
-                    onClick = viewModel::clearCache,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Скачивать лайкнутое",
-                    description = "Трек, которому поставлен лайк, сразу уходит в загрузки.",
-                    checked = settings.autoDownloadLiked,
-                    onChange = viewModel::setAutoDownload,
-                )
-            }
-
-            item { Group("ВОСПРОИЗВЕДЕНИЕ") }
-            item {
-                ActionRow(
-                    title = "Эквалайзер",
-                    description = "Открывает системный эквалайзер для звука w0y — тот же, что у остальных приложений.",
-                    button = "ОТКРЫТЬ",
-                    onClick = {
-                        val intent =
-                            Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, viewModel.audioSessionId)
-                                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+                                stringResource(R.string.settings_cache_mb, it)
                             }
-                        // Честно говорим, если эквалайзера в системе нет,
-                        // вместо кнопки, которая молча ничего не делает.
-                        if (intent.resolveActivity(context.packageManager) != null) {
-                            context.startActivity(intent)
-                        } else {
-                            viewModel.reportNoEqualizer()
-                        }
-                    },
-                )
+                        },
+                        onSelect = viewModel::setCacheLimit,
+                    )
+                }
+                item {
+                    ActionRow(
+                        title = stringResource(R.string.settings_clear_cache_title),
+                        description = stringResource(R.string.settings_clear_cache_desc),
+                        button = stringResource(R.string.settings_clear_cache_button),
+                        onClick = viewModel::clearCache,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_autodownload_title),
+                        description = stringResource(R.string.settings_autodownload_desc),
+                        checked = settings.autoDownloadLiked,
+                        onChange = viewModel::setAutoDownload,
+                    )
+                }
             }
-            item {
-                ChoiceRow(
-                    title = "Что играет дальше",
-                    description =
-                        "По очереди — список, из которого включили трек. Перемешать — тот же список вразнобой. " +
-                            "Рекомендации (бета) — похожее по жанру и звучанию, с учётом того, что ты слушал и искал.",
-                    options = QueueMode.entries,
-                    selected = settings.queueMode,
-                    label = { it.label },
-                    onSelect = viewModel::setQueueMode,
-                )
+            if (tab == SettingsTab.PLAYBACK) {
+                item {
+                    ActionRow(
+                        title = stringResource(R.string.settings_equalizer_title),
+                        description = stringResource(R.string.settings_equalizer_desc),
+                        button = stringResource(R.string.settings_equalizer_button),
+                        onClick = {
+                            val intent =
+                                Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
+                                    putExtra(AudioEffect.EXTRA_AUDIO_SESSION, viewModel.audioSessionId)
+                                    putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+                                    putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+                                }
+                            // Честно говорим, если эквалайзера в системе нет,
+                            // вместо кнопки, которая молча ничего не делает.
+                            if (intent.resolveActivity(context.packageManager) != null) {
+                                context.startActivity(intent)
+                            } else {
+                                viewModel.reportNoEqualizer()
+                            }
+                        },
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_queue_title),
+                        description = stringResource(R.string.settings_queue_desc),
+                        options = QueueMode.entries,
+                        selected = settings.queueMode,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setQueueMode,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_pause_headphones_title),
+                        description = stringResource(R.string.settings_pause_headphones_desc),
+                        checked = settings.pauseOnHeadphonesOut,
+                        onChange = viewModel::setPauseOnUnplug,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_resume_headphones_title),
+                        description = stringResource(R.string.settings_resume_headphones_desc),
+                        checked = settings.resumeOnHeadphonesIn,
+                        onChange = viewModel::setResumeOnPlug,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_sleep_title),
+                        description = stringResource(R.string.settings_sleep_desc),
+                        options = listOf(15, 30, 45, 60),
+                        selected = settings.sleepTimerDefaultMin,
+                        label = { stringResource(R.string.settings_sleep_minutes, it) },
+                        onSelect = viewModel::setSleepDefault,
+                    )
+                }
             }
-            item {
-                SwitchRow(
-                    title = "Пауза при отключении наушников",
-                    description = "Вытащил наушники — музыка не продолжит играть в динамик.",
-                    checked = settings.pauseOnHeadphonesOut,
-                    onChange = viewModel::setPauseOnUnplug,
-                )
+            if (tab == SettingsTab.CLEAN) {
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_clean_title),
+                        description = stringResource(R.string.settings_clean_desc),
+                        checked = settings.cleanMode,
+                        onChange = viewModel::setCleanMode,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_clean_fallback_title),
+                        description = stringResource(R.string.settings_clean_fallback_desc),
+                        options = ExplicitFallback.entries,
+                        selected = settings.explicitFallback,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setExplicitFallback,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_hide_explicit_title),
+                        description = stringResource(R.string.settings_hide_explicit_desc),
+                        checked = settings.hideExplicit,
+                        onChange = viewModel::setHideExplicit,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_mute_swear_title),
+                        description = stringResource(R.string.settings_mute_swear_desc),
+                        checked = settings.muteSwearLines,
+                        onChange = viewModel::setMuteSwearLines,
+                    )
+                }
             }
-            item {
-                SwitchRow(
-                    title = "Продолжать при подключении",
-                    description = "Вставил наушники — воспроизведение возобновится само.",
-                    checked = settings.resumeOnHeadphonesIn,
-                    onChange = viewModel::setResumeOnPlug,
-                )
+            if (tab == SettingsTab.LOOK) {
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_shelves_title),
+                        description = stringResource(R.string.settings_shelves_desc),
+                        checked = settings.showRecommendations,
+                        onChange = viewModel::setShowRecommendations,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_compact_title),
+                        description = stringResource(R.string.settings_compact_desc),
+                        checked = settings.compactRows,
+                        onChange = viewModel::setCompactRows,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_language_title),
+                        description = stringResource(R.string.settings_language_desc),
+                        options = Language.entries,
+                        selected = settings.language,
+                        label = { stringResource(it.label) },
+                        // Экран пересоздаётся сразу после записи: ресурсы
+                        // читаются при создании, и без этого новый язык
+                        // появился бы только на части экрана.
+                        onSelect = { choice ->
+                            viewModel.setLanguage(choice) {
+                                (context as? Activity)?.recreate()
+                            }
+                        },
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_start_tab_title),
+                        description = stringResource(R.string.settings_start_tab_desc),
+                        options = StartTab.entries,
+                        selected = settings.startTab,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setStartTab,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_search_history_title),
+                        description = stringResource(R.string.settings_search_history_desc),
+                        checked = settings.saveSearchHistory,
+                        onChange = viewModel::setSaveSearchHistory,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_theme_title),
+                        description = stringResource(R.string.settings_theme_desc),
+                        options = ThemeMode.entries,
+                        selected = settings.theme,
+                        label = { themeLabel(it) },
+                        onSelect = viewModel::setTheme,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_lyrics_title),
+                        description = stringResource(R.string.settings_lyrics_desc),
+                        checked = settings.showLyrics,
+                        onChange = viewModel::setShowLyrics,
+                    )
+                }
+                item {
+                    SwitchRow(
+                        title = stringResource(R.string.settings_history_title),
+                        description = stringResource(R.string.settings_history_desc),
+                        checked = settings.keepHistory,
+                        onChange = viewModel::setKeepHistory,
+                    )
+                }
             }
-            item {
-                ChoiceRow(
-                    title = "Таймер сна по умолчанию",
-                    description = "Сколько минут предлагать в плеере при включении таймера.",
-                    options = listOf(15, 30, 45, 60),
-                    selected = settings.sleepTimerDefaultMin,
-                    label = { "$it мин" },
-                    onSelect = viewModel::setSleepDefault,
-                )
+            if (tab == SettingsTab.DATA) {
+                item {
+                    ActionRow(
+                        title = stringResource(R.string.settings_export_title),
+                        description = stringResource(R.string.settings_export_desc),
+                        button = stringResource(R.string.settings_export_button),
+                        onClick = { exportLauncher.launch("w0y-settings.json") },
+                    )
+                }
+                item {
+                    ActionRow(
+                        title = stringResource(R.string.settings_import_title),
+                        description = stringResource(R.string.settings_import_desc),
+                        button = stringResource(R.string.settings_import_button),
+                        onClick = { importLauncher.launch(arrayOf("application/json")) },
+                    )
+                }
+                item {
+                    Text(
+                        text = "TexFi w0y ${BuildConfig.VERSION_NAME} · AGPL-3.0",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(vertical = 18.dp),
+                    )
+                }
             }
+        }
+    }
+}
 
-            item { Group("БЕЗ МАТА") }
-            item {
-                SwitchRow(
-                    title = "Искать чистую версию",
-                    description =
-                        "Трек с меткой «E» заменяется официальной clean-версией, если она выложена. " +
-                            "Вырезать слова из готовой записи приложение не умеет и делать вид не будет.",
-                    checked = settings.cleanMode,
-                    onChange = viewModel::setCleanMode,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Если чистой версии нет",
-                    description = "Играть оригинал как есть или пропустить его и перейти к следующему.",
-                    options = ExplicitFallback.entries,
-                    selected = settings.explicitFallback,
-                    label = { it.label },
-                    onSelect = viewModel::setExplicitFallback,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Прятать «E» в выдаче",
-                    description = "Помеченные записи не показываются в поиске и рекомендациях.",
-                    checked = settings.hideExplicit,
-                    onChange = viewModel::setHideExplicit,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Глушить строки с матом (бета)",
-                    description =
-                        "По синхронной лирике: строка с матом проигрывается без звука целиком. " +
-                            "Отдельное слово убрать нельзя — для этого нужна дорожка без вокала. " +
-                            "Работает только там, где нашлась синхронная лирика.",
-                    checked = settings.muteSwearLines,
-                    onChange = viewModel::setMuteSwearLines,
-                )
-            }
+/**
+ * Разделы настроек.
+ *
+ * Подписи короткие намеренно: полоса вкладок листается, но если каждая
+ * подпись в два слова, листать её приходится вдвое дольше.
+ */
+private enum class SettingsTab(@StringRes val label: Int) {
+    SOUND(R.string.settings_tab_sound),
+    TONE(R.string.settings_tab_tone),
+    SPEED(R.string.settings_tab_speed),
+    STORAGE(R.string.settings_tab_storage),
+    PLAYBACK(R.string.settings_tab_queue),
+    CLEAN(R.string.settings_tab_clean),
+    LOOK(R.string.settings_tab_look),
+    DATA(R.string.settings_tab_data),
+}
 
-            item { Group("ВИД") }
-            item {
-                SwitchRow(
-                    title = "Ленты рекомендаций",
-                    description = "Блок с подборками YouTube Music на главной. Выключи — останутся только свои списки.",
-                    checked = settings.showRecommendations,
-                    onChange = viewModel::setShowRecommendations,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Компактные списки",
-                    description = "Строки треков ниже, на экран помещается больше.",
-                    checked = settings.compactRows,
-                    onChange = viewModel::setCompactRows,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Экран при запуске",
-                    description = "С чего начинать, когда открываешь приложение.",
-                    options = StartTab.entries,
-                    selected = settings.startTab,
-                    label = { it.label },
-                    onSelect = viewModel::setStartTab,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Хранить историю поиска",
-                    description =
-                        "Недавние запросы показываются под пустым полем поиска и помогают рекомендациям " +
-                            "угадывать жанр. Выключено — ничего не запоминается.",
-                    checked = settings.saveSearchHistory,
-                    onChange = viewModel::setSaveSearchHistory,
-                )
-            }
-            item {
-                ChoiceRow(
-                    title = "Тема",
-                    description = "OLED — полностью чёрный фон, экономит батарею на AMOLED.",
-                    options = ThemeMode.entries,
-                    selected = settings.theme,
-                    label = ::themeLabel,
-                    onSelect = viewModel::setTheme,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Показывать лирику",
-                    description = "Текст песни в плеере, синхронизированный по строкам, из LRCLIB.",
-                    checked = settings.showLyrics,
-                    onChange = viewModel::setShowLyrics,
-                )
-            }
-            item {
-                SwitchRow(
-                    title = "Вести историю",
-                    description = "Запоминать, что включал. Выключено — раздел «история» перестаёт пополняться.",
-                    checked = settings.keepHistory,
-                    onChange = viewModel::setKeepHistory,
-                )
-            }
-
-            item { Group("НАСТРОЙКИ ЦЕЛИКОМ") }
-            item {
-                ActionRow(
-                    title = "Сохранить в файл",
-                    description = "Все настройки одним JSON — перенести на другой телефон.",
-                    button = "ЭКСПОРТ",
-                    onClick = { exportLauncher.launch("w0y-settings.json") },
-                )
-            }
-            item {
-                ActionRow(
-                    title = "Загрузить из файла",
-                    description = "Применить ранее сохранённые настройки.",
-                    button = "ИМПОРТ",
-                    onClick = { importLauncher.launch(arrayOf("application/json")) },
-                )
-            }
-            item {
-                Text(
-                    text = "TexFi w0y ${BuildConfig.VERSION_NAME} · AGPL-3.0",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
-                    modifier = Modifier.padding(vertical = 18.dp),
+/**
+ * Полоса вкладок настроек: листается по горизонтали, активная вкладка
+ * подчёркнута акцентом.
+ *
+ * Material `ScrollableTabRow` притащил бы с собой подчёркивание с
+ * закруглениями и свою анимацию — здесь всё своё, как в остальной
+ * экосистеме: рубленый прямоугольник и подчёркивание в 3dp.
+ */
+@Composable
+private fun SettingsTabs(
+    selected: SettingsTab,
+    onSelect: (SettingsTab) -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    val state = rememberLazyListState()
+    // Выбранная вкладка подъезжает к краю сама: иначе после выбора
+    // последней вкладки её подчёркивание остаётся за пределами экрана.
+    LaunchedEffect(selected) {
+        state.animateScrollToItem(selected.ordinal.coerceAtLeast(0))
+    }
+    LazyRow(
+        state = state,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        items(SettingsTab.entries, key = { it.name }) { entry ->
+            val active = entry == selected
+            val interaction = remember { MutableInteractionSource() }
+            val fill by animateColorAsState(
+                targetValue = if (active) colors.surfaceHigh else colors.surface,
+                animationSpec = tween(160),
+                label = "tabFill",
+            )
+            val underline by animateDpAsState(
+                targetValue = if (active) 3.dp else 0.dp,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "tabRule",
+            )
+            Column(
+                Modifier
+                    .pressScale(interaction, pressed = 0.94f)
+                    .clickable(interactionSource = interaction, indication = null) { onSelect(entry) },
+            ) {
+                Box(
+                    Modifier
+                        .background(fill)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Text(
+                        text = stringResource(entry.label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (active) colors.text else colors.textMuted,
+                        maxLines = 1,
+                    )
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(underline)
+                        .background(colors.accent),
                 )
             }
         }
     }
 }
 
+@Composable
 private fun qualityLabel(quality: Quality): String =
     when (quality) {
-        Quality.LOW -> "экономно"
-        Quality.MEDIUM -> "авто"
-        Quality.HIGH -> "максимум"
-    }
-
-private fun themeLabel(mode: ThemeMode): String =
-    when (mode) {
-        ThemeMode.DARK -> "тёмная"
-        ThemeMode.OLED -> "чёрная"
-        ThemeMode.LIGHT -> "светлая"
+        Quality.LOW -> stringResource(R.string.quality_low)
+        Quality.MEDIUM -> stringResource(R.string.quality_auto)
+        Quality.HIGH -> stringResource(R.string.quality_high)
     }
 
 @Composable
-private fun Group(title: String) {
-    val colors = LocalW0yColors.current
-    Text(
-        text = "❯ $title",
-        style = PixelSectionLabel,
-        color = colors.accent,
-        modifier = Modifier.padding(top = 18.dp, bottom = 4.dp),
-    )
-}
+private fun themeLabel(mode: ThemeMode): String =
+    when (mode) {
+        ThemeMode.DARK -> stringResource(R.string.theme_dark)
+        ThemeMode.OLED -> stringResource(R.string.theme_oled)
+        ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+    }
 
 @Composable
 private fun SwitchRow(
@@ -523,7 +645,10 @@ private fun <T> ChoiceRow(
     description: String,
     options: List<T>,
     selected: T,
-    label: (T) -> String,
+    // Подпись варианта тянется из ресурсов, поэтому лямбда composable:
+    // иначе каждый вызов пришлось бы разворачивать в строку заранее и
+    // терять смену языка без перезапуска экрана.
+    label: @Composable (T) -> String,
     onSelect: (T) -> Unit,
 ) {
     val colors = LocalW0yColors.current
@@ -535,7 +660,7 @@ private fun <T> ChoiceRow(
         // «таблеток»: Material-овальность здесь чужая, а равные секции
         // читаются как один переключатель, а не как россыпь кнопок.
         PixelSegmented(
-            options = options.map(label),
+            options = options.map { label(it) },
             selectedIndex = options.indexOf(selected),
             onSelect = { onSelect(options[it]) },
         )

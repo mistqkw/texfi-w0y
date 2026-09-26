@@ -1,6 +1,10 @@
 package com.texfi.w0y.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -14,6 +18,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +52,10 @@ import com.texfi.w0y.R
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.ui.components.LocalCompactRows
 import com.texfi.w0y.ui.components.MiniPlayer
+import com.texfi.w0y.ui.components.pressScale
+import com.texfi.w0y.ui.components.popWhenActivated
 import com.texfi.w0y.ui.components.PixelSprite
+import com.texfi.w0y.ui.components.Starfield
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.nav.BrowseNavigator
 import com.texfi.w0y.ui.nav.BrowseRoute
@@ -138,6 +146,9 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             .fillMaxSize()
             .background(colors.background),
     ) {
+        // Фон экосистемы: он виден в промежутках между карточками и
+        // строками — как на сайте, где чёрный тоже не пустой.
+        Starfield(Modifier.fillMaxSize())
         Column(
             Modifier
                 .fillMaxSize()
@@ -297,22 +308,43 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
         ) {
             Tab.entries.forEach { entry ->
                 val active = entry == selected
+                val interaction = remember { MutableInteractionSource() }
+                // Своя анимация на смену вкладки: иконка подпрыгивает,
+                // подчёркивание разъезжается в стороны. Отклик отличается
+                // от нажатия на трек, и поэтому по нему сразу понятно,
+                // что сменился весь экран, а не сработала кнопка в списке.
+                val iconColor by animateColorAsState(
+                    targetValue = if (active) colors.accent else colors.textMuted,
+                    animationSpec = tween(180),
+                    label = "tabIcon",
+                )
+                val labelColor by animateColorAsState(
+                    targetValue = if (active) colors.text else colors.textMuted,
+                    animationSpec = tween(180),
+                    label = "tabLabel",
+                )
+                val underline by animateDpAsState(
+                    targetValue = if (active) 20.dp else 0.dp,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+                    label = "tabUnderline",
+                )
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier =
                         Modifier
-                            .clickable { onSelect(entry) }
+                            .pressScale(interaction, pressed = 0.88f)
+                            .clickable(interactionSource = interaction, indication = null) { onSelect(entry) }
                             .padding(horizontal = 18.dp, vertical = 4.dp),
                 ) {
                     PixelSprite(
                         rows = entry.sprite,
-                        color = if (active) colors.accent else colors.textMuted,
-                        modifier = Modifier.size(24.dp),
+                        color = iconColor,
+                        modifier = Modifier.size(24.dp).popWhenActivated(active, peak = 1.22f),
                     )
                     Text(
                         text = stringResource(entry.labelRes),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (active) colors.text else colors.textMuted,
+                        color = labelColor,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                     // Подчёркивание активной вкладки: подсветки иконки мало,
@@ -320,7 +352,7 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
                     Box(
                         Modifier
                             .padding(top = 4.dp)
-                            .width(if (active) 20.dp else 0.dp)
+                            .width(underline)
                             .height(3.dp)
                             .background(colors.accent),
                     )
