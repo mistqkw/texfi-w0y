@@ -24,6 +24,7 @@ import org.junit.Test
 class SearchSmokeTest {
     @Test
     fun findsSongs() = runBlocking {
+        requireLiveNetwork()
         val http =
             HttpClient(OkHttp) {
                 install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }

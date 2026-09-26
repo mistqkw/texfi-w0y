@@ -33,6 +33,7 @@ class BrowseSmokeTest {
 
     @Test
     fun opensArtistAndAlbum() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
 
@@ -70,6 +71,7 @@ class BrowseSmokeTest {
 
     @Test
     fun findsAlbums() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
         val response =
@@ -87,6 +89,7 @@ class BrowseSmokeTest {
 
     @Test
     fun songsCarryArtistAndAlbumLinks() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
         val response =
@@ -104,6 +107,7 @@ class BrowseSmokeTest {
 
     @Test
     fun buildsRadioQueue() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
         // «Instant Crush» — первый попавшийся живой трек, станция строится
@@ -128,6 +132,7 @@ class BrowseSmokeTest {
 
     @Test
     fun readsHomeShelves() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
         val response =
@@ -145,6 +150,7 @@ class BrowseSmokeTest {
     /** Метку «E» YouTube отдаёт значком, а не полем трека — проверяем, что ловим. */
     @Test
     fun marksExplicitSongs() = runBlocking {
+        requireLiveNetwork()
         val http = client()
         val innerTube = InnerTube(httpClient = http)
         val response =
@@ -163,6 +169,7 @@ class BrowseSmokeTest {
     /** Размер зашит в саму ссылку — проверяем, что мы просим крупную картинку. */
     @Test
     fun upscalesThumbnails() {
+        requireLiveNetwork()
         assertEquals(
             "https://lh3.googleusercontent.com/abc=w384-h384-l90-rj",
             Thumbnails.sized("https://lh3.googleusercontent.com/abc=w60-h60-l90-rj", 384),

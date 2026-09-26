@@ -25,6 +25,7 @@ import org.junit.Test
 class StreamSmokeTest {
     @Test
     fun extractsAudioUrl() = runBlocking {
+        requireLiveNetwork()
         val http =
             HttpClient(OkHttp) {
                 install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }

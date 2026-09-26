@@ -27,6 +27,7 @@ import org.robolectric.annotation.Config
 class AndroidSearchSmokeTest {
     @Test
     fun findsSongsOnAndroidVariant() = runBlocking {
+        requireLiveNetwork()
         val okHttp =
             OkHttpClient
                 .Builder()

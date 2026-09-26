@@ -26,6 +26,7 @@ import org.junit.Test
 class LocaleProbeTest {
     @Test
     fun languageOnlyHlWorksWithAnyCountry() = runBlocking {
+        requireLiveNetwork()
         val cases =
             listOf(
                 YouTubeLocale(hl = "en", gl = "PL") to true,
