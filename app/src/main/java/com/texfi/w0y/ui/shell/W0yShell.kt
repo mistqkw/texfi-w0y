@@ -35,6 +35,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,6 +96,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     var loginError by remember { mutableStateOf<String?>(null) }
     var loginBusy by remember { mutableStateOf(false) }
     val libraryViewModel: LibraryViewModel = hiltViewModel()
+    val welcomeSeen by viewModel.welcomeSeen.collectAsStateWithLifecycle()
+    val theme by viewModel.theme.collectAsStateWithLifecycle()
+    // Заставка играет один раз за запуск, а не при каждом повороте экрана.
+    var introDone by rememberSaveable { mutableStateOf(false) }
     val libraryRoute by libraryViewModel.route.collectAsStateWithLifecycle()
     val browseStack = remember { mutableStateListOf<BrowseRoute>() }
     val navigator = remember { BrowseNavigator { route -> browseStack.add(route) } }
@@ -150,7 +155,14 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     label = "tab",
                 ) { current ->
                     when (current) {
-                        Tab.HOME -> HomeScreen(onOpenSettings = { settingsOpen = true })
+                        Tab.HOME ->
+                            HomeScreen(
+                                onOpenSettings = { settingsOpen = true },
+                                onOpenLocalPlaylist = { id ->
+                                    libraryViewModel.open(LibraryRoute.Local(id))
+                                    tab = Tab.LIBRARY
+                                },
+                            )
                         Tab.SEARCH -> SearchScreen()
                         Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
                     }
@@ -189,6 +201,23 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             exit = fadeOut(tween(120)),
         ) {
             SettingsScreen(onClose = { settingsOpen = false })
+        }
+
+        // Приветствие поверх всего: на первом запуске за ним ещё нечего
+        // смотреть, а сразу после него — уже настроенное приложение.
+        if (welcomeSeen == false) {
+            WelcomeScreen(
+                theme = theme,
+                startTab = startTab ?: StartTab.HOME,
+                onTheme = viewModel::setTheme,
+                onStartTab = viewModel::setStartTab,
+                onSignIn = { loginOpen = true },
+                onDone = viewModel::completeWelcome,
+            )
+        }
+
+        if (!introDone) {
+            FeatherIntro(onFinished = { introDone = true })
         }
 
         AnimatedVisibility(

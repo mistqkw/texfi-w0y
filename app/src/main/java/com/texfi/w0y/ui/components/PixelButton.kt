@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.luminance
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 
@@ -69,8 +70,20 @@ fun PixelButton(
             Text(
                 text = text,
                 style = PixelSectionLabel,
-                color = if (enabled) colors.background else colors.textMuted,
+                // Цвет подписи считается от заливки, а не задан раз и навсегда:
+                // на синей кнопке нужен тёмный текст, а на тёмной — светлый.
+                // Раньше он всегда был тёмным, и «К АРТИСТУ» на сером фоне
+                // просто не читалось.
+                color =
+                    when {
+                        !enabled -> colors.textMuted
+                        body.luminance() > CONTRAST_SWITCH -> colors.background
+                        else -> colors.text
+                    },
             )
         }
     }
 }
+
+/** Граница, за которой заливка считается светлой и требует тёмной подписи. */
+private const val CONTRAST_SWITCH = 0.35f

@@ -131,6 +131,7 @@ data class W0ySettings(
     val explicitFallback: ExplicitFallback = ExplicitFallback.PLAY,
     val hideExplicit: Boolean = false,
     val muteSwearLines: Boolean = false,
+    val welcomeSeen: Boolean = false,
 )
 
 @Singleton
@@ -170,6 +171,7 @@ class SettingsRepository @Inject constructor(
                     explicitFallback = prefs.enum(Keys.EXPLICIT_FALLBACK, ExplicitFallback.PLAY),
                     hideExplicit = prefs[Keys.HIDE_EXPLICIT] ?: false,
                     muteSwearLines = prefs[Keys.MUTE_SWEAR_LINES] ?: false,
+                    welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
                 )
             }
 
@@ -233,6 +235,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setHideExplicit(value: Boolean) = put(Keys.HIDE_EXPLICIT, value)
 
     suspend fun setMuteSwearLines(value: Boolean) = put(Keys.MUTE_SWEAR_LINES, value)
+
+    suspend fun setWelcomeSeen(value: Boolean) = put(Keys.WELCOME_SEEN, value)
 
     /** Экспорт всех настроек одной строкой JSON — её можно сохранить в файл. */
     suspend fun export(current: W0ySettings): String =
@@ -315,5 +319,6 @@ class SettingsRepository @Inject constructor(
         val EXPLICIT_FALLBACK = stringPreferencesKey("explicit_fallback")
         val HIDE_EXPLICIT = booleanPreferencesKey("hide_explicit")
         val MUTE_SWEAR_LINES = booleanPreferencesKey("mute_swear_lines")
+        val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     }
 }

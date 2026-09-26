@@ -57,6 +57,7 @@ private val TILE_GAP = 10.dp
 @Composable
 fun HomeScreen(
     onOpenSettings: () -> Unit,
+    onOpenLocalPlaylist: (Long) -> Unit,
     viewModel: LibraryViewModel = hiltViewModel(),
     home: HomeViewModel = hiltViewModel(),
 ) {
@@ -108,6 +109,11 @@ fun HomeScreen(
                         when (item.kind) {
                             PinEntity.KIND_ARTIST ->
                                 navigator.open(BrowseRoute.Artist(item.id, item.title, item.thumbnailUrl))
+
+                            // Свой плейлист живёт в базе, а не на YouTube:
+                            // его открывает библиотека, а не страница альбома.
+                            PinEntity.KIND_PLAYLIST if item.localPlaylistId != null ->
+                                onOpenLocalPlaylist(item.localPlaylistId)
 
                             PinEntity.KIND_ALBUM, PinEntity.KIND_PLAYLIST ->
                                 navigator.open(BrowseRoute.Album(item.id, item.title, item.thumbnailUrl))
@@ -250,7 +256,9 @@ private fun SpeedDialPager(
     onPin: (DialItem) -> Unit,
 ) {
     val colors = LocalW0yColors.current
-    val pages = items.chunked(DIAL_PAGE)
+    // Страница всегда из девяти мест: на неполной странице плитки иначе
+    // липнут к верху, и вторая страница выглядит обрубком.
+    val pages = items.chunked(DIAL_PAGE).map { page -> page + List(DIAL_PAGE - page.size) { null } }
     val state = rememberPagerState(pageCount = { pages.size })
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Высота считается от ширины: плитка квадратная, а у страницы
@@ -260,7 +268,7 @@ private fun SpeedDialPager(
         Column {
             HorizontalPager(
                 state = state,
-                pageSpacing = TILE_GAP,
+                pageSpacing = Gutter * 2,
                 contentPadding = PaddingValues(horizontal = Gutter),
                 modifier = Modifier.height(pageHeight),
             ) { page ->
@@ -268,6 +276,10 @@ private fun SpeedDialPager(
                     pages[page].chunked(DIAL_COLUMNS).forEach { row ->
                         Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
                             row.forEach { item ->
+                                if (item == null) {
+                                    GhostTile(Modifier.weight(1f))
+                                    return@forEach
+                                }
                                 SpeedDialTile(
                                     title = item.title,
                                     subtitle = item.subtitle,
@@ -285,7 +297,6 @@ private fun SpeedDialPager(
                                     onLongClick = { onPin(item) },
                                 )
                             }
-                            repeat(DIAL_COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                 }

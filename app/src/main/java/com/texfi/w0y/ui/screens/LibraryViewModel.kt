@@ -68,7 +68,13 @@ class LibraryViewModel @Inject constructor(
      * один и тот же трек занимал бы две плитки из девяти.
      */
     val speedDial: StateFlow<List<DialItem>> =
-        combine(library.pins, library.mostPlayed) { pins, played ->
+        combine(
+            library.pins,
+            library.mostPlayed,
+            library.liked,
+            library.recent,
+            library.playlists,
+        ) { pins, played, liked, recent, playlists ->
             val pinned =
                 pins.map { pin ->
                     DialItem(
@@ -93,10 +99,12 @@ class LibraryViewModel @Inject constructor(
                             },
                     )
                 }
-            val pinnedSongs = pins.filter { it.kind == PinEntity.KIND_SONG }.map { it.targetId }.toSet()
-            val frequent =
-                played
-                    .filterNot { it.id in pinnedSongs }
+            // Набор собирается из всего своего: закреплённое, частое, лайки,
+            // недавнее, свои плейлисты. На одной истории страницы получались
+            // полупустыми — листать было нечего.
+            val songs =
+                (played + liked + recent)
+                    .distinctBy { it.id }
                     .map { song ->
                         DialItem(
                             kind = PinEntity.KIND_SONG,
@@ -104,11 +112,22 @@ class LibraryViewModel @Inject constructor(
                             title = song.title,
                             subtitle = song.artist.takeIf { it.isNotBlank() },
                             thumbnailUrl = song.thumbnailUrl,
-                            pinned = false,
                             song = song,
                         )
                     }
-            (pinned + frequent).take(SPEED_DIAL_SIZE)
+            val localPlaylists =
+                playlists.map { playlist ->
+                    DialItem(
+                        kind = PinEntity.KIND_PLAYLIST,
+                        id = playlist.id.toString(),
+                        title = playlist.name,
+                        subtitle = "Свой плейлист",
+                        localPlaylistId = playlist.id,
+                    )
+                }
+            (pinned + songs + localPlaylists)
+                .distinctBy { it.kind to it.id }
+                .take(SPEED_DIAL_SIZE)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Треки быстрого набора подряд — чтобы плитка запускала очередь, а не один трек. */
@@ -251,6 +270,8 @@ data class DialItem(
     val pinned: Boolean = false,
     /** Заполнено только для треков: по нему плитка сразу играет. */
     val song: SongItem? = null,
+    /** Заполнено для своих плейлистов: они открываются локально, а не через YouTube. */
+    val localPlaylistId: Long? = null,
 )
 
 /** Пять страниц по девять плиток: столько влезает без прокрутки экрана. */
