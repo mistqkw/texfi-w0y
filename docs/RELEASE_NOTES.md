@@ -1,7 +1,24 @@
-# TexFi w0y v0.0.1-beta
+# TexFi w0y v0.0.1-beta-1.1
 
-The first beta. A YouTube Music client for Android: no ads, no Premium
-restrictions, with your own account and downloads into phone storage.
+A YouTube Music client for Android: no ads, no Premium restrictions,
+with your own account and downloads into phone storage.
+
+## What is new in 1.1
+
+- **Colour schemes.** Six accent pairs: blue, pink, violet, mint,
+  crimson, sand. Blue stays the default — it is the colour of the whole
+  TexFi family — and the scheme changes only the accent, so the theme
+  you picked stays the theme you get.
+- **Play something random.** Scroll to the end of the search results and
+  the app will pick a track for you.
+- **The play button no longer lies.** Switch to another app that takes
+  the audio, come back, and the button showed "playing" while nothing
+  was playing: the connection to the service was already gone by the
+  time playback stopped, so nobody could report the pause. Now the state
+  is re-read whenever you come back.
+- **An About screen** with the version, the licence, the sources — and
+  the other three TexFi apps, because until now there was no way to
+  learn from inside the app that they exist.
 
 ## What's inside
 
