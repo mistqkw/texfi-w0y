@@ -34,6 +34,8 @@
     <string name="home_dial_hint">długie przytrzymanie — przypnij lub odepnij</string>
     <string name="home_empty">Tu pojawi się to, czego słuchasz. Na razie pusto — zacznij od wyszukiwania.</string>
     <string name="home_hint">Wyszukiwanie i odtwarzanie już działają. Biblioteka, pobierania i ustawienia są następne.</string>
+    <string name="home_meta">start %1$d ms · wersja %2$s</string>
+    <string name="home_meta_plain">wersja %1$s</string>
     <string name="home_recent">OSTATNIE</string>
     <string name="home_recommendations">REKOMENDACJE</string>
     <string name="home_recommendations_failed">Rekomendacje nie przyszły. Naciśnij odśwież albo sprawdź sieć.</string>

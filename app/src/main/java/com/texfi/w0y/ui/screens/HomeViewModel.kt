@@ -7,6 +7,7 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.playback.PlaybackStarter
+import com.texfi.w0y.playback.StartupMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +31,17 @@ class HomeViewModel @Inject constructor(
     private val youtube: YouTubeRepository,
     private val playback: PlaybackStarter,
     private val settings: SettingsRepository,
+    startupMetrics: StartupMetrics,
 ) : ViewModel() {
+    /**
+     * Среднее время «нажал → пошёл звук».
+     *
+     * Показывается прямо под названием на главной: главное обещание
+     * приложения стоит держать на виду, а не прятать в настройках —
+     * и его всегда можно проверить.
+     */
+    val startupAverage: StateFlow<Long?> = startupMetrics.average
+
     /** Ленты можно выключить совсем — кому-то нужна только своя библиотека. */
     val showRecommendations: StateFlow<Boolean> =
         settings.settings

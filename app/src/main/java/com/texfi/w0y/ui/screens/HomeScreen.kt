@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.R
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.ui.components.ArtistTile
@@ -72,10 +73,20 @@ fun HomeScreen(
     val loadingShelves by home.loading.collectAsStateWithLifecycle()
     val recommendationsFailed by home.failed.collectAsStateWithLifecycle()
     val showRecommendations by home.showRecommendations.collectAsStateWithLifecycle()
+    val startupAverage by home.startupAverage.collectAsStateWithLifecycle()
 
     LazyColumn(Modifier.fillMaxSize()) {
         item {
-            ScreenTitle(title = stringResource(R.string.app_name), actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) })
+            ScreenTitle(
+                title = stringResource(R.string.app_name),
+                // Замер старта стоит рядом с названием: обещание «быстро»
+                // проверяется на этом же экране, а не на слово.
+                subtitle =
+                    startupAverage?.let {
+                        stringResource(R.string.home_meta, it.toInt(), BuildConfig.VERSION_NAME)
+                    } ?: stringResource(R.string.home_meta_plain, BuildConfig.VERSION_NAME),
+                actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) },
+            )
         }
 
         item {

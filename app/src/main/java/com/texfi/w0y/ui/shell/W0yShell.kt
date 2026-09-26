@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.ui.components.LocalCompactRows
+import com.texfi.w0y.ui.components.LocalPlayingSongId
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.components.popWhenActivated
@@ -140,6 +141,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     CompositionLocalProvider(
         LocalBrowseNavigator provides navigator,
         LocalCompactRows provides compactRows,
+        LocalPlayingSongId provides playerState.song?.id,
     ) {
     Box(
         Modifier

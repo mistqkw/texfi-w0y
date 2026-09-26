@@ -3,6 +3,12 @@ package com.texfi.w0y.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -28,12 +34,22 @@ import androidx.compose.ui.unit.sp
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import kotlin.math.sin
+import kotlin.math.abs
 
 /**
  * Насколько плотно рисуются строки списков. Задаётся один раз в оболочке
  * из настроек, чтобы каждый список не тащил их через параметры.
  */
 val LocalCompactRows = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
+ * Id играющего трека — на весь интерфейс сразу.
+ *
+ * Иначе каждый экран со списком тянул бы состояние плеера ради одной
+ * подсветки, и рано или поздно один из них про неё забыл бы.
+ */
+val LocalPlayingSongId = androidx.compose.runtime.compositionLocalOf<String?> { null }
 
 /**
  * Строка трека — одна на все списки: поиск, плейлист, лайки, загрузки.
@@ -45,7 +61,7 @@ fun SongRow(
     song: SongItem,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    highlighted: Boolean = false,
+    highlighted: Boolean = song.id == LocalPlayingSongId.current,
     progressPercent: Float? = null,
     actions: @Composable () -> Unit = {},
 ) {
@@ -64,11 +80,19 @@ fun SongRow(
                 .padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CoverImage(
-                url = song.thumbnailUrl,
-                px = Thumbnails.ROW,
-                modifier = Modifier.size(cover),
-            )
+            Box(Modifier.size(cover)) {
+                CoverImage(
+                    url = song.thumbnailUrl,
+                    px = Thumbnails.ROW,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                // Играющий трек помечен живым столбиком, а не только цветом
+                // названия: в длинном списке цвет строки глазом не найти,
+                // а движение находится сразу.
+                if (highlighted) {
+                    PlayingMark(Modifier.align(Alignment.BottomStart).padding(3.dp))
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -171,3 +195,43 @@ fun ExplicitBadge(modifier: Modifier = Modifier) {
         )
     }
 }
+
+/**
+ * Отметка играющего трека: три столбика, которые дышат.
+ *
+ * Отдельная анимация именно под это состояние — не отклик на нажатие, а
+ * признак того, что сейчас звучит. Поэтому она идёт сама и не привязана
+ * к касанию.
+ */
+@Composable
+private fun PlayingMark(modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    val transition = rememberInfiniteTransition(label = "playingMark")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(1_100), RepeatMode.Restart),
+        label = "bars",
+    )
+    Row(
+        modifier
+            .background(colors.background.copy(alpha = 0.72f))
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        repeat(MARK_BARS) { index ->
+            // Столбики сдвинуты по фазе: в один такт они читались бы как
+            // один мигающий прямоугольник.
+            val height = 3f + 6f * abs(sin(phase + index * 0.9f))
+            Box(
+                Modifier
+                    .width(2.dp)
+                    .height(height.dp)
+                    .background(colors.accent),
+            )
+        }
+    }
+}
+
+private const val MARK_BARS = 3

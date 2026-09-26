@@ -34,6 +34,8 @@
     <string name="home_dial_hint">long press to pin or unpin</string>
     <string name="home_empty">What you listen to will show up here. Empty for now — start with a search.</string>
     <string name="home_hint">Search and playback already work. Library, downloads and settings are next.</string>
+    <string name="home_meta">start %1$d ms · build %2$s</string>
+    <string name="home_meta_plain">build %1$s</string>
     <string name="home_recent">RECENT</string>
     <string name="home_recommendations">RECOMMENDATIONS</string>
     <string name="home_recommendations_failed">The recommendations didn\'t arrive. Hit refresh or check the network.</string>
