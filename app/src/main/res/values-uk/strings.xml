@@ -43,7 +43,7 @@
     <string name="language_en">ENGLISH</string>
     <string name="language_pl">POLSKI</string>
     <string name="language_ru">РУССКИЙ</string>
-    <string name="language_system">СИСТЕМНА</string>
+    <string name="language_system">СИСТЕМА</string>
     <string name="language_uk">УКРАЇНСЬКА</string>
     <string name="library_account">АКАУНТ</string>
     <string name="library_cancel">СКАСУВАТИ</string>
@@ -217,7 +217,7 @@
     <string name="settings_accent_desc">Акцент кнопок, прогресу та виділень. Синій — колір родини TexFi, решта на ваш смак.</string>
     <string name="accent_blue">СИНЯ</string>
     <string name="accent_pink">РОЖЕВА</string>
-    <string name="accent_violet">ФІОЛЕТОВА</string>
+    <string name="accent_violet">ФІОЛЕТ</string>
     <string name="accent_mint">М’ЯТНА</string>
     <string name="accent_crimson">ЧЕРВОНА</string>
     <string name="accent_sand">ПІЩАНА</string>
@@ -294,5 +294,6 @@
     <string name="about_donate_title">Закинути на каву</string>
     <string name="about_donate_text">TexFi робить одна людина, і всі застосунки безкоштовні. Платних функцій немає і не буде.</string>
     <string name="settings_about_title">Про застосунок</string>
-    <string name="settings_about_desc">Версія, ліцензія, вихідний код і решта TexFi.</string>
+    <string name="settings_about_desc">Версія %1$s, ліцензія, вихідний код і решта TexFi.</string>
+    <string name="settings_about_button">ВІДКРИТИ</string>
 </resources>

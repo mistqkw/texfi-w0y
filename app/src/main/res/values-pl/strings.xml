@@ -43,7 +43,7 @@
     <string name="language_en">ENGLISH</string>
     <string name="language_pl">POLSKI</string>
     <string name="language_ru">РУССКИЙ</string>
-    <string name="language_system">SYSTEMOWY</string>
+    <string name="language_system">SYSTEM</string>
     <string name="language_uk">УКРАЇНСЬКА</string>
     <string name="library_account">KONTO</string>
     <string name="library_cancel">ANULUJ</string>
@@ -217,10 +217,10 @@
     <string name="settings_accent_desc">Akcent przycisków, postępu i wyróżnień. Niebieski to kolor rodziny TexFi, reszta według uznania.</string>
     <string name="accent_blue">NIEBIESKI</string>
     <string name="accent_pink">RÓŻOWY</string>
-    <string name="accent_violet">FIOLETOWY</string>
+    <string name="accent_violet">FIOLET</string>
     <string name="accent_mint">MIĘTOWY</string>
     <string name="accent_crimson">KARMAZYN</string>
-    <string name="accent_sand">PIASKOWY</string>
+    <string name="accent_sand">PIASEK</string>
     <string name="settings_theme_title">Motyw</string>
     <string name="settings_title">ustawienia</string>
     <string name="settings_wifi_only_desc">Pobierania czekają na Wi-Fi i nie zużywają danych komórkowych.</string>
@@ -294,5 +294,6 @@
     <string name="about_donate_title">Postaw kawę</string>
     <string name="about_donate_text">TexFi robi jedna osoba, a wszystkie aplikacje są darmowe. Płatnych funkcji nie ma i nie będzie.</string>
     <string name="settings_about_title">O aplikacji</string>
-    <string name="settings_about_desc">Wersja, licencja, źródła i reszta TexFi.</string>
+    <string name="settings_about_desc">Wersja %1$s, licencja, źródła i reszta TexFi.</string>
+    <string name="settings_about_button">OTWÓRZ</string>
 </resources>

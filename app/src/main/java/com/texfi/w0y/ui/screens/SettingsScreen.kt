@@ -518,8 +518,15 @@ fun SettingsScreen(
                     // исходники, и остальные приложения TexFi.
                     ActionRow(
                         title = stringResource(R.string.settings_about_title),
-                        description = stringResource(R.string.settings_about_desc),
-                        button = "TexFi w0y ${BuildConfig.VERSION_NAME}",
+                        // Версия — в описание, а не на кнопку: у ActionRow
+                        // кнопка занимает столько, сколько просит текст, и
+                        // длинная надпись выдавливает колонку с описанием в
+                        // столбик по одному слову.
+                        description = stringResource(
+                            R.string.settings_about_desc,
+                            BuildConfig.VERSION_NAME,
+                        ),
+                        button = stringResource(R.string.settings_about_button),
                         onClick = { aboutOpen = true },
                     )
                 }

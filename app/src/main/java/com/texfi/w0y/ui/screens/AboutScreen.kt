@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -180,10 +181,16 @@ private fun AppFacts() {
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textMuted,
         )
+        // Крупный пиксельный шрифт широкий, и длинная версия в него не
+        // влезает: у debug-сборки к имени добавляется суффикс, и «v0.0.1-
+        // beta-debug» переносилось посреди слова. Длинное имя набирается
+        // на размер меньше — лучше, чем перенос в середине версии.
+        val version = "v${BuildConfig.VERSION_NAME}"
         Text(
-            text = "v${BuildConfig.VERSION_NAME}",
-            style = PixelBigNumber,
+            text = version,
+            style = if (version.length > VERSION_FITS) PixelTitle else PixelBigNumber,
             color = colors.text,
+            maxLines = 1,
             modifier = Modifier.padding(top = 4.dp),
         )
         Text(
@@ -285,6 +292,9 @@ private fun DonateCard(onClick: () -> Unit) {
             .pressScale(interaction, pressed = 0.985f)
             .clip(RoundedCornerShape(8.dp))
             .background(colors.surface)
+            // Единственная карточка с акцентной рамкой на экране — как
+            // в m0ney: просьбу о поддержке видно, но она не кричит.
+            .border(2.dp, colors.accent, RoundedCornerShape(8.dp))
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(16.dp),
     ) {
@@ -331,3 +341,6 @@ private const val HUB_SHORT = "texfi-hub.vercel.app"
 
 /** Тот же адрес, что у остальных приложений TexFi: копилка одна на всех. */
 private const val DONATE_URL = "https://github.com/sponsors/mistqkw"
+
+/** Сколько знаков версии влезает в строку крупным пиксельным шрифтом. */
+private const val VERSION_FITS = 12

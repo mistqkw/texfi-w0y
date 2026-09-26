@@ -294,5 +294,6 @@
     <string name="about_donate_title">Buy a coffee</string>
     <string name="about_donate_text">TexFi is made by one person, and every app is free. There are no paid features and there never will be.</string>
     <string name="settings_about_title">About the app</string>
-    <string name="settings_about_desc">Version, licence, sources and the rest of TexFi.</string>
+    <string name="settings_about_desc">Version %1$s, licence, sources and the rest of TexFi.</string>
+    <string name="settings_about_button">OPEN</string>
 </resources>
