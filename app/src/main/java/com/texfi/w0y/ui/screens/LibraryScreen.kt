@@ -355,6 +355,9 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.downloaded.collectAsStateWithLifecycle()
     val progress by viewModel.downloads.progress.collectAsStateWithLifecycle()
+    // Download.STATE_COMPLETED — нестабильное API media3; состояние
+    // загрузки больше взять негде, а показать «в очереди: N» обещали.
+    @Suppress("UnsafeOptInUsageError")
     val pending = progress.values.filter { it.state != Download.STATE_COMPLETED }
     Column(
         Modifier

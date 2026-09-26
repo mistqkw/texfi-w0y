@@ -32,6 +32,7 @@ import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.data.YouTubeRepository
+import com.texfi.w0y.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import javax.inject.Named
@@ -71,6 +72,8 @@ class W0yPlayerService : MediaSessionService() {
     @Inject lateinit var startupMetrics: StartupMetrics
 
     @Inject lateinit var lyricsRepository: LyricsRepository
+
+    @Inject lateinit var widgetUpdater: WidgetUpdater
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val settings = MutableStateFlow(W0ySettings())
@@ -147,6 +150,7 @@ class W0yPlayerService : MediaSessionService() {
             },
         )
         player.addListener(TrackListener(player))
+        player.addListener(WidgetListener(player))
         startSwearWatch(player)
         attachFirstAudioTrace(player)
 
@@ -206,6 +210,9 @@ class W0yPlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        // Виджет на домашнем экране узнаёт об этом первым: строка с треком
+        // и кнопки после смерти сервиса адресованы уже никому.
+        widgetUpdater.clear()
         swearJob?.cancel()
         releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
@@ -337,6 +344,32 @@ class W0yPlayerService : MediaSessionService() {
                     delay(WATCH_INTERVAL_MS)
                 }
             }
+    }
+
+    /**
+     * Держит виджет в курсе: название, исполнитель, обложка и то, играет
+     * ли сейчас звук.
+     *
+     * Отдельным слушателем, а не строкой в [TrackListener]: тот отвечает
+     * за воспроизведение, и смешивать с ним обновление домашнего экрана
+     * значило бы, что поломка одного тянет второе.
+     */
+    private inner class WidgetListener(
+        private val player: Player,
+    ) : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = push(mediaItem)
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) = push(player.currentMediaItem)
+
+        private fun push(mediaItem: MediaItem?) {
+            val metadata = mediaItem?.mediaMetadata
+            widgetUpdater.push(
+                title = metadata?.title?.toString().orEmpty(),
+                artist = metadata?.artist?.toString().orEmpty(),
+                playing = player.isPlaying,
+                coverUrl = metadata?.artworkUri?.toString(),
+            )
+        }
     }
 
     private inner class TrackListener(

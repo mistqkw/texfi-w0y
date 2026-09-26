@@ -200,6 +200,10 @@ class PlayerConnection @Inject constructor(
             albumId = mediaMetadata.extras?.getString(EXTRA_ALBUM_ID),
         )
 
+    // setCustomCacheKey помечен в media3 как нестабильный: без него кэш
+    // ключуется по URL, а URL потока YouTube живёт несколько часов — один
+    // и тот же трек лёг бы в кэш заново после каждого истечения ссылки.
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun toMediaItem(song: SongItem): MediaItem =
         MediaItem
             .Builder()

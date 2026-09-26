@@ -256,4 +256,10 @@
     <string name="welcome_theme_oled">ЧЁРНАЯ</string>
     <string name="welcome_theme_text">Чёрная — для OLED-экрана: пиксели просто не светятся.</string>
     <string name="welcome_tune_title">под себя</string>
+    <string name="widget_cover_description">Обложка трека</string>
+    <string name="widget_description">Что играет сейчас: обложка, название и управление</string>
+    <string name="widget_idle">Нечего играть — откройте w0y</string>
+    <string name="widget_next">Следующий трек</string>
+    <string name="widget_previous">Предыдущий трек</string>
+    <string name="widget_toggle">Пауза или продолжить</string>
 </resources>

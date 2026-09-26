@@ -1,6 +1,7 @@
 package com.texfi.w0y.ui.screens
 
 import android.content.Context
+import androidx.media3.common.util.UnstableApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
@@ -31,6 +32,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+// SimpleCache помечен в media3 как нестабильное API: другого способа
+// узнать и почистить объём кэша библиотека не даёт, а размер кэша —
+// настройка, которую обещали пользователю.
+@androidx.annotation.OptIn(UnstableApi::class)
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,

@@ -256,4 +256,10 @@
     <string name="welcome_theme_oled">CZARNY</string>
     <string name="welcome_theme_text">Czarny jest dla ekranu OLED: piksele po prostu nie świecą.</string>
     <string name="welcome_tune_title">pod siebie</string>
+    <string name="widget_cover_description">Okładka utworu</string>
+    <string name="widget_description">Co teraz leci: okładka, tytuł i sterowanie</string>
+    <string name="widget_idle">Nic nie leci — otwórz w0y</string>
+    <string name="widget_next">Następny utwór</string>
+    <string name="widget_previous">Poprzedni utwór</string>
+    <string name="widget_toggle">Pauza lub wznów</string>
 </resources>

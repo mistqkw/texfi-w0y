@@ -54,6 +54,15 @@ jobs:
             echo "::warning::Нет секрета с keystore — сборка уйдёт на debug-ключ, такой APK не раздаём."
           fi
 
+      # Проверки до сборки: lint ловит то, что компилятор пропускает —
+      # например, вид, недопустимый в виджете (RemoteViews принимает лишь
+      # известный ей список классов, и обычный View в него не входит).
+      - name: Unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Lint
+        run: ./gradlew lintDebug --no-daemon
+
       - name: Build release APK
         env:
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}

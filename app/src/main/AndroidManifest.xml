@@ -40,6 +40,11 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
+            <!-- Кнопки виджета приходят сюда медиа-клавишами: своего
+                 контроллера у виджета нет, а сервис разбирает их сам. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
         </service>
         <service
             android:name=".playback.W0yDownloadService"
@@ -50,5 +55,19 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
+
+        <!-- Виджет плеера на домашний экран. updatePeriodMillis=0: система
+             его по таймеру не будит, перерисовку заказывает сам плеер при
+             смене трека или паузе. -->
+        <receiver
+            android:name=".widget.W0yWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/w0y_widget_info" />
+        </receiver>
     </application>
 </manifest>

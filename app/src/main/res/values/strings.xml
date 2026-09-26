@@ -256,4 +256,10 @@
     <string name="welcome_theme_oled">BLACK</string>
     <string name="welcome_theme_text">Black is for an OLED screen: the pixels simply don\'t light up.</string>
     <string name="welcome_tune_title">make it yours</string>
+    <string name="widget_cover_description">Track cover</string>
+    <string name="widget_description">What\'s playing now: cover, title and controls</string>
+    <string name="widget_idle">Nothing to play — open w0y</string>
+    <string name="widget_next">Next track</string>
+    <string name="widget_previous">Previous track</string>
+    <string name="widget_toggle">Pause or resume</string>
 </resources>

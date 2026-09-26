@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Заглушка обложки: пока трека нет, на месте картинки не пустота, а
+     рамка того же вида. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_border" />
+    <stroke
+        android:width="2dp"
+        android:color="@color/widget_border_high" />
+</shape>
