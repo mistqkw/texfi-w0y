@@ -13,6 +13,7 @@ import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.Language
 import com.texfi.w0y.data.SettingsRepository
+import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.playback.AudioSessionHolder
@@ -40,6 +41,7 @@ import kotlinx.coroutines.withContext
 class SettingsViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val repository: SettingsRepository,
+    private val youtube: YouTubeRepository,
     @param:Named("stream") private val streamCache: SimpleCache,
     private val audioSession: AudioSessionHolder,
     private val playback: PlaybackStarter,
@@ -160,6 +162,9 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(value: Language, onApplied: () -> Unit) =
         update {
             repository.setLanguage(value)
+            // Язык уходит и в запросы к YouTube: иначе ленты остались бы
+            // на языке телефона до перезапуска процесса.
+            youtube.applyAppLocale()
             onApplied()
         }
 

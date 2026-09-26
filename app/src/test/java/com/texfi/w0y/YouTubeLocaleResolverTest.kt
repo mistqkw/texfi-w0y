@@ -30,6 +30,32 @@ class YouTubeLocaleResolverTest {
     }
 
     @Test
+    fun chosenLanguageWinsOverSystem() {
+        // Телефон английский, в приложении выбран русский: ленты YouTube
+        // должны прийти на том языке, который человек видит в интерфейсе.
+        val locale =
+            YouTubeLocaleResolver.resolve(
+                system = Locale.forLanguageTag("en-PL"),
+                countryCandidates = emptyList(),
+                chosenLanguage = "ru",
+            )
+        assertEquals("ru", locale.hl)
+        // Страна от выбора языка не меняется: региональная выдача своя.
+        assertEquals("PL", locale.gl)
+    }
+
+    @Test
+    fun systemLanguageWinsWhenNothingChosen() {
+        val locale =
+            YouTubeLocaleResolver.resolve(
+                system = Locale.forLanguageTag("pl-PL"),
+                countryCandidates = emptyList(),
+                chosenLanguage = null,
+            )
+        assertEquals("pl", locale.hl)
+    }
+
+    @Test
     fun fallsBackWhenCountryUnknown() {
         val locale = YouTubeLocaleResolver.resolve(Locale.forLanguageTag("ru"), emptyList())
         assertEquals("US", locale.gl)

@@ -53,8 +53,10 @@ object YouTubeModule {
         return InnerTube(httpClient = httpClient).apply {
             // Своя локаль вместо системной: библиотека по умолчанию кладёт
             // в hl полный языковой тег устройства, а на паре вроде en-PL
-            // YouTube отвечает 400 на любой запрос.
-            locale = YouTubeLocaleResolver.forDevice(context)
+            // YouTube отвечает 400 на любой запрос. Язык берётся тот, что
+            // выбран в приложении, иначе интерфейс на русском получал бы
+            // ленты на языке телефона.
+            locale = YouTubeLocaleResolver.forApp(context)
         }
     }
 

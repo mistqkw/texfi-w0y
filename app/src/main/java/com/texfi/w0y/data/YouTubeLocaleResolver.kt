@@ -18,18 +18,46 @@ import java.util.Locale
  * `gl` при этом может быть любой страной — региональная выдача сохраняется.
  */
 object YouTubeLocaleResolver {
+    /**
+     * Локаль запроса с учётом языка, выбранного в самом приложении.
+     *
+     * Без этого интерфейс на русском получал бы ленты YouTube на языке
+     * телефона: человек переключил язык в настройках, а «Listen again» так
+     * и осталось. Страна при этом берётся из системы и сети как раньше —
+     * выбор языка не должен менять региональную выдачу.
+     */
+    fun forApp(context: Context): YouTubeLocale =
+        resolve(
+            system = Locale.getDefault(),
+            countryCandidates = systemCountries(context),
+            chosenLanguage = LocalePrefs.current(context).tag,
+        )
+
     fun forDevice(context: Context): YouTubeLocale = resolve(Locale.getDefault(), systemCountries(context))
 
     /** Чистая функция: её проверяет тест, без Android под рукой. */
-    fun resolve(system: Locale, countryCandidates: List<String>): YouTubeLocale {
-        val language = system.language.lowercase(Locale.ROOT).takeIf { it.isNotBlank() } ?: "en"
+    fun resolve(
+        system: Locale,
+        countryCandidates: List<String>,
+        chosenLanguage: String? = null,
+    ): YouTubeLocale {
+        val language =
+            chosenLanguage?.lowercase(Locale.ROOT)?.takeIf { it.isNotBlank() }
+                ?: system.language.lowercase(Locale.ROOT).takeIf { it.isNotBlank() }
+                ?: LANG_FALLBACK
         val country =
             (listOf(system.country) + countryCandidates)
                 .firstOrNull { it.length == 2 && it.all(Char::isLetter) }
                 ?.uppercase(Locale.ROOT)
-                ?: "US"
+                ?: COUNTRY_FALLBACK
         return YouTubeLocale(gl = country, hl = language)
     }
+
+    /** Английский — язык, который YouTube принимает всегда. */
+    private const val LANG_FALLBACK = "en"
+
+    /** Страна по умолчанию: без неё региональная выдача просто шире. */
+    private const val COUNTRY_FALLBACK = "US"
 
     private fun systemCountries(context: Context): List<String> {
         val fromList =

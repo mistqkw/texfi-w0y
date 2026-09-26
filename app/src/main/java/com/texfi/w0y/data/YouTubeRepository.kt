@@ -40,6 +40,17 @@ class YouTubeRepository @Inject constructor(
     private val settings: SettingsRepository,
     @param:dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
 ) {
+    /**
+     * Перечитать язык запросов после его смены в настройках.
+     *
+     * InnerTube живёт синглтоном на весь процесс, а экран настроек только
+     * пересоздаёт активити — без этого ленты YouTube оставались бы на
+     * старом языке до следующего запуска приложения.
+     */
+    fun applyAppLocale() {
+        innerTube.locale = YouTubeLocaleResolver.forApp(context)
+    }
+
     private val streams = ConcurrentHashMap<String, ExtractedStream>()
     private val locks = ConcurrentHashMap<String, Mutex>()
     private val prefetchScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
