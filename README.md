@@ -83,9 +83,13 @@ The icon is generated from a pixel grid by code rather than stored as
 images:
 
 ```bash
-python3 tools/make_icons.py preview        # concept sheets into docs/
-python3 tools/make_icons.py apply fork     # every format into app/src/main/res
+python3 tools/make_icons.py preview            # concept sheets into docs/
+python3 tools/make_icons.py apply quill_wide   # every format into res/
+python3 tools/make_banners.py                  # banners into docs/banners
 ```
+
+`quill_wide` is the shape currently shipped. The banners are drawn from
+the same grid, so the icon and the header cannot drift apart.
 
 ## Licences
 
