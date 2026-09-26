@@ -111,5 +111,9 @@ jobs:
           # вместе с кодом; автосписок коммитов GitHub дописывает следом.
           body_path: docs/RELEASE_NOTES.md
           generate_release_notes: true
-          prerelease: true
+          # Отметку «pre-release» не ставим намеренно, хотя версия бета.
+          # Сайт берёт выпуск через /releases/latest, а этот эндпоинт
+          # пре-релизы пропускает: с отметкой карточка w0y на texfi-hub
+          # осталась бы без версии и без кнопки загрузки. У f0kus, files
+          # и m0ney бета-выпуски по той же причине идут без неё.
           files: out/TexFi-w0y-android.apk
