@@ -122,6 +122,7 @@
     <string name="search_hint">Type a track or artist name — I\'ll find it in YouTube Music.</string>
     <string name="search_nothing">Nothing found. Try something else.</string>
     <string name="search_nothing_text">Try a different spelling, or switch the section above.</string>
+    <string name="search_random">Play something random</string>
     <string name="search_nothing_title">NOTHING FOUND</string>
     <string name="search_placeholder">Track, album, artist…</string>
     <string name="search_query_fallback">music</string>
@@ -212,6 +213,14 @@
     <string name="settings_tab_storage">STORAGE</string>
     <string name="settings_tab_tone">TONE</string>
     <string name="settings_theme_desc">OLED — a fully black background, saves battery on AMOLED.</string>
+    <string name="settings_accent_title">Colour scheme</string>
+    <string name="settings_accent_desc">The accent colour of buttons, progress and highlights. Blue is the TexFi family colour; the rest are yours to pick.</string>
+    <string name="accent_blue">BLUE</string>
+    <string name="accent_pink">PINK</string>
+    <string name="accent_violet">VIOLET</string>
+    <string name="accent_mint">MINT</string>
+    <string name="accent_crimson">CRIMSON</string>
+    <string name="accent_sand">SAND</string>
     <string name="settings_theme_title">Theme</string>
     <string name="settings_title">settings</string>
     <string name="settings_wifi_only_desc">Downloads wait for Wi-Fi and don\'t spend mobile data.</string>

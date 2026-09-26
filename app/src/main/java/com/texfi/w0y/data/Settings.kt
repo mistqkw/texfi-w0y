@@ -122,6 +122,30 @@ enum class ThemeMode {
 }
 
 /**
+ * Цветовая схема: пара «акцент + вторичный».
+ *
+ * Синяя — по умолчанию и остаётся фирменной: `#4a7dfb` — цвет всей
+ * экосистемы TexFi, по нему приложения читаются как семья. Остальные
+ * схемы — выбор пользователя, а не новое лицо приложения.
+ *
+ * Цвета хранятся числами, а не `Color`: слой данных не должен тянуть за
+ * собой Compose ради четырёх констант.
+ */
+enum class Accent(
+    @StringRes val label: Int,
+    val accent: Long,
+    val deep: Long,
+    val secondary: Long,
+) {
+    BLUE(R.string.accent_blue, 0xFF4A7DFB, 0xFF1E3F8F, 0xFFFFB84D),
+    PINK(R.string.accent_pink, 0xFFFB4A8D, 0xFF8F1E4C, 0xFFFFB2CF),
+    VIOLET(R.string.accent_violet, 0xFF9A6BFF, 0xFF4C2E99, 0xFFFF9F45),
+    MINT(R.string.accent_mint, 0xFF3ED9A4, 0xFF167A5B, 0xFFFFD166),
+    CRIMSON(R.string.accent_crimson, 0xFFFF5A5A, 0xFF8F2020, 0xFFFFC46B),
+    SAND(R.string.accent_sand, 0xFFE0A860, 0xFF8A5F26, 0xFF7FB5FF),
+}
+
+/**
  * Все настройки одним снимком — так экраны и плеер читают согласованное
  * состояние, а не собирают его из десятка отдельных потоков.
  */
@@ -155,6 +179,7 @@ data class W0ySettings(
     val welcomeSeen: Boolean = false,
     val language: Language = Language.SYSTEM,
     val animatedBackground: Boolean = true,
+    val accent: Accent = Accent.BLUE,
 )
 
 @Singleton
@@ -197,6 +222,7 @@ class SettingsRepository @Inject constructor(
                     welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
                     language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
                     animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
+                    accent = prefs.enum(Keys.ACCENT, Accent.BLUE),
                 )
             }
 
@@ -265,6 +291,8 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAnimatedBackground(value: Boolean) = put(Keys.ANIMATED_BACKGROUND, value)
 
+    suspend fun setAccent(value: Accent) = put(Keys.ACCENT, value.name)
+
     /**
      * Язык пишется сразу в двух местах.
      *
@@ -295,6 +323,7 @@ class SettingsRepository @Inject constructor(
             .put("keepHistory", current.keepHistory)
             .put("language", current.language.name)
             .put("animatedBackground", current.animatedBackground)
+            .put("accent", current.accent.name)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -316,6 +345,7 @@ class SettingsRepository @Inject constructor(
             if (obj.has("animatedBackground")) {
                 prefs[Keys.ANIMATED_BACKGROUND] = obj.getBoolean("animatedBackground")
             }
+            obj.optString("accent").takeIf { it.isNotBlank() }?.let { prefs[Keys.ACCENT] = it }
             // Язык из выгрузки нужно продублировать в синхронное хранилище:
             // именно оттуда его читает attachBaseContext при следующем старте.
             obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
@@ -372,5 +402,6 @@ class SettingsRepository @Inject constructor(
         val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
         val LANGUAGE = stringPreferencesKey("language")
         val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")
+        val ACCENT = stringPreferencesKey("accent")
     }
 }

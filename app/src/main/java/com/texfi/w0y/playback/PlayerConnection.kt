@@ -70,13 +70,48 @@ class PlayerConnection @Inject constructor(
     fun connect() {
         if (controller != null) return
         val token = SessionToken(context, ComponentName(context, W0yPlayerService::class.java))
-        val future = MediaController.Builder(context, token).buildAsync()
+        val future =
+            MediaController.Builder(context, token)
+                // Разрыв связи с сервисом надо ловить: без этого ссылка на
+                // контроллер остаётся живой, события больше не приходят, и
+                // экран навсегда застывает на последнем состоянии.
+                .setListener(
+                    object : MediaController.Listener {
+                        override fun onDisconnected(controller: MediaController) {
+                            if (this@PlayerConnection.controller === controller) {
+                                this@PlayerConnection.controller = null
+                            }
+                        }
+                    },
+                )
+                .buildAsync()
         future.addListener({
             val media = runCatching { future.get() }.getOrNull() ?: return@addListener
             controller = media
             media.addListener(listener)
             push(media)
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    /**
+     * Перечитать состояние у сервиса.
+     *
+     * Нужно при возвращении в приложение. Пока экран не виден, связь с
+     * сервисом может оборваться — например, система останавливает сервис
+     * после того, как другое приложение забрало звук и воспроизведение
+     * встало. События паузы в этот момент прийти уже некому, и кнопка
+     * остаётся в положении «играет», хотя музыка давно остановлена.
+     * Здесь состояние берётся заново у самого плеера, а если контроллер
+     * отвалился — соединение поднимается с нуля.
+     */
+    fun refresh() {
+        val media = controller
+        if (media == null || !media.isConnected) {
+            controller = null
+            connect()
+            return
+        }
+        push(media)
     }
 
     fun play(songs: List<SongItem>, startIndex: Int) {

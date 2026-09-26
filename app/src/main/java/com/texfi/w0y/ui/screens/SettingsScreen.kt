@@ -54,6 +54,7 @@ import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.R
 import com.texfi.w0y.data.Language
 import com.texfi.w0y.data.Quality
+import com.texfi.w0y.data.Accent
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.Reverb
@@ -447,6 +448,16 @@ fun SettingsScreen(
                         description = stringResource(R.string.settings_search_history_desc),
                         checked = settings.saveSearchHistory,
                         onChange = viewModel::setSaveSearchHistory,
+                    )
+                }
+                item {
+                    ChoiceRow(
+                        title = stringResource(R.string.settings_accent_title),
+                        description = stringResource(R.string.settings_accent_desc),
+                        options = Accent.entries,
+                        selected = settings.accent,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setAccent,
                     )
                 }
                 item {

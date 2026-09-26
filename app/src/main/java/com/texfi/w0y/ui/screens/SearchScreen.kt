@@ -53,9 +53,11 @@ import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SkeletonRow
 import com.texfi.w0y.ui.components.SongRow
+import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.PixelTitle
+import kotlin.random.Random
 
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
@@ -218,6 +220,24 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                                 },
                             )
                         }
+                        // Награда тому, кто долистал до конца: выдача
+                        // кончилась, выбирать больше не из чего — пусть
+                        // выберет само.
+                        val pickable = current.songs.filterNot { hideExplicit && it.explicit }
+                        if (pickable.size >= RANDOM_MIN) {
+                            item {
+                                PixelButton(
+                                    text = stringResource(R.string.search_random),
+                                    onClick = {
+                                        val index = Random.nextInt(pickable.size)
+                                        viewModel.playFrom(pickable, index)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                )
+                            }
+                        }
                     }
                 }
         }
@@ -341,3 +361,6 @@ private fun SearchPlaylistPanel(
     onCreate: (String) -> Unit,
     onDismiss: () -> Unit,
 ) = AddToPlaylistPanel(song, playlists, newName, onNewNameChange, onPick, onCreate, onDismiss)
+
+/** Меньше трёх треков — «случайный» перестаёт быть случайным. */
+private const val RANDOM_MIN = 3

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
 import com.texfi.w0y.R
+import com.texfi.w0y.data.Accent
 import com.texfi.w0y.data.Quality
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
@@ -126,6 +127,8 @@ class SettingsViewModel @Inject constructor(
     fun setCompactRows(value: Boolean) = update { repository.setCompactRows(value) }
 
     fun setAnimatedBackground(value: Boolean) = update { repository.setAnimatedBackground(value) }
+
+    fun setAccent(value: Accent) = update { repository.setAccent(value) }
 
     fun setSaveSearchHistory(value: Boolean) = update { repository.setSaveSearchHistory(value) }
 

@@ -122,6 +122,7 @@
     <string name="search_hint">Wpisz nazwę utworu lub wykonawcy — znajdę w YouTube Music.</string>
     <string name="search_nothing">Nic nie znaleziono. Spróbuj inaczej.</string>
     <string name="search_nothing_text">Spróbuj innej pisowni albo przełącz sekcję powyżej.</string>
+    <string name="search_random">Zagraj losowy</string>
     <string name="search_nothing_title">NIC NIE ZNALEZIONO</string>
     <string name="search_placeholder">Utwór, album, wykonawca…</string>
     <string name="search_query_fallback">muzyka</string>
@@ -212,6 +213,14 @@
     <string name="settings_tab_storage">PAMIĘĆ</string>
     <string name="settings_tab_tone">BRZMIENIE</string>
     <string name="settings_theme_desc">OLED — całkowicie czarne tło, oszczędza baterię na AMOLED.</string>
+    <string name="settings_accent_title">Schemat kolorów</string>
+    <string name="settings_accent_desc">Akcent przycisków, postępu i wyróżnień. Niebieski to kolor rodziny TexFi, reszta według uznania.</string>
+    <string name="accent_blue">NIEBIESKI</string>
+    <string name="accent_pink">RÓŻOWY</string>
+    <string name="accent_violet">FIOLETOWY</string>
+    <string name="accent_mint">MIĘTOWY</string>
+    <string name="accent_crimson">KARMAZYN</string>
+    <string name="accent_sand">PIASKOWY</string>
     <string name="settings_theme_title">Motyw</string>
     <string name="settings_title">ustawienia</string>
     <string name="settings_wifi_only_desc">Pobierania czekają na Wi-Fi i nie zużywają danych komórkowych.</string>

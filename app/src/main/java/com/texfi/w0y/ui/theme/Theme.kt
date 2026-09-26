@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.texfi.w0y.data.Accent
 import com.texfi.w0y.data.ThemeMode
 
 /**
@@ -73,12 +74,29 @@ private val LightColors =
 val LocalW0yColors = staticCompositionLocalOf { DarkColors }
 
 @Composable
-fun W0yTheme(mode: ThemeMode = ThemeMode.DARK, content: @Composable () -> Unit) {
-    val colors =
+fun W0yTheme(
+    mode: ThemeMode = ThemeMode.DARK,
+    accent: Accent = Accent.BLUE,
+    content: @Composable () -> Unit,
+) {
+    val base =
         when (mode) {
             ThemeMode.DARK -> DarkColors
             ThemeMode.OLED -> OledColors
             ThemeMode.LIGHT -> LightColors
+        }
+    // Схема меняет только пару акцентов: фон, поверхности и текст остаются
+    // от темы. Иначе «розовая» схема на светлой теме превращалась бы
+    // в отдельную, четвёртую тему, которую никто не проверял.
+    val colors =
+        if (accent == Accent.BLUE) {
+            base
+        } else {
+            base.copy(
+                accent = Color(accent.accent),
+                accentDeep = Color(accent.deep),
+                secondary = Color(accent.secondary),
+            )
         }
     val scheme =
         if (mode == ThemeMode.LIGHT) {

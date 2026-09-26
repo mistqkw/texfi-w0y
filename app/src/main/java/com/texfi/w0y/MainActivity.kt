@@ -50,9 +50,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             val shellViewModel: ShellViewModel = hiltViewModel()
             val theme by shellViewModel.theme.collectAsStateWithLifecycle()
-            W0yTheme(mode = theme) {
+            val accent by shellViewModel.accent.collectAsStateWithLifecycle()
+            W0yTheme(mode = theme, accent = accent) {
                 W0yShell(shellViewModel)
             }
         }
+    }
+
+    /**
+     * Возвращение в приложение — повод перечитать состояние плеера.
+     *
+     * Пока экран не виден, связь с сервисом может оборваться: другое
+     * приложение забирает звук, воспроизведение встаёт, сервис
+     * останавливается — и сообщить об этом уже некому. Без этой строки
+     * пользователь возвращается к кнопке «пауза», хотя музыка не играет.
+     */
+    override fun onStart() {
+        super.onStart()
+        playerConnection.refresh()
     }
 }

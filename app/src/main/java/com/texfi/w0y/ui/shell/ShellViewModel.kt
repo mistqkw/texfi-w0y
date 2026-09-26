@@ -2,6 +2,7 @@ package com.texfi.w0y.ui.shell
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.data.Accent
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.ThemeMode
@@ -46,6 +47,11 @@ class ShellViewModel @Inject constructor(
         settings.settings
             .map { it.animatedBackground }
             .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    val accent: StateFlow<Accent> =
+        settings.settings
+            .map { it.accent }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, Accent.BLUE)
 
     val theme: StateFlow<ThemeMode> =
         settings.settings

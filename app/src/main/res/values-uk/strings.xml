@@ -122,6 +122,7 @@
     <string name="search_hint">Набери назву трека або виконавця — знайду в YouTube Music.</string>
     <string name="search_nothing">Нічого не знайшлося. Спробуй інакше.</string>
     <string name="search_nothing_text">Спробуй інше написання або переключи розділ вище.</string>
+    <string name="search_random">Заграти випадковий</string>
     <string name="search_nothing_title">НІЧОГО НЕ ЗНАЙШЛОСЯ</string>
     <string name="search_placeholder">Трек, альбом, виконавець…</string>
     <string name="search_query_fallback">музика</string>
@@ -212,6 +213,14 @@
     <string name="settings_tab_storage">СХОВИЩЕ</string>
     <string name="settings_tab_tone">ЗВУЧАННЯ</string>
     <string name="settings_theme_desc">OLED — повністю чорний фон, економить батарею на AMOLED.</string>
+    <string name="settings_accent_title">Кольорова схема</string>
+    <string name="settings_accent_desc">Акцент кнопок, прогресу та виділень. Синій — колір родини TexFi, решта на ваш смак.</string>
+    <string name="accent_blue">СИНЯ</string>
+    <string name="accent_pink">РОЖЕВА</string>
+    <string name="accent_violet">ФІОЛЕТОВА</string>
+    <string name="accent_mint">М’ЯТНА</string>
+    <string name="accent_crimson">ЧЕРВОНА</string>
+    <string name="accent_sand">ПІЩАНА</string>
     <string name="settings_theme_title">Тема</string>
     <string name="settings_title">налаштування</string>
     <string name="settings_wifi_only_desc">Завантаження чекають на Wi-Fi і не витрачають мобільний трафік.</string>
