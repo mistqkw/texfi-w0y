@@ -11,6 +11,7 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.data.SearchHistoryRepository
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -62,9 +64,16 @@ class SearchViewModel @Inject constructor(
     private val library: LibraryRepository,
     private val downloads: DownloadsRepository,
     private val history: SearchHistoryRepository,
+    settingsRepository: SettingsRepository,
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
 ) : ViewModel() {
+    /** Прятать ли записи с меткой «E» — решает настройка «без мата». */
+    val hideExplicit: StateFlow<Boolean> =
+        settingsRepository.settings
+            .map { it.hideExplicit }
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), false)
+
     /** Недавние запросы: и подсказка под пустым полем, и сигнал рекомендациям. */
     val recentQueries: StateFlow<List<String>> =
         history.recent.stateIn(

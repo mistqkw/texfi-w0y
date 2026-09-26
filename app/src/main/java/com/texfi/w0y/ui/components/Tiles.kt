@@ -268,11 +268,11 @@ fun PixelSegmented(
             ) {
                 Text(
                     text = option,
-                    // Пиксельный шрифт широкий: на трёх-четырёх секциях
-                    // длинное слово переносится посреди буквы и выглядит
-                    // как брак вёрстки. Одна строка и мельче кегль.
-                    style = PixelSectionLabel.copy(fontSize = 8.sp, lineHeight = 12.sp),
-                    color = if (active) colors.background else colors.textMuted,
+                    // Обычный шрифт, а не пиксельный: это подписи, которые
+                    // читают, а на 8sp пиксельные буквы просто не видно.
+                    // Пиксельный остаётся на заголовках — там его и разглядывают.
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (active) colors.background else colors.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,

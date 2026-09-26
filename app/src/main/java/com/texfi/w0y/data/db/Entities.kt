@@ -20,6 +20,7 @@ data class SongEntity(
     val thumbnailUrl: String? = null,
     val artistId: String? = null,
     val albumId: String? = null,
+    val explicit: Boolean = false,
     val liked: Boolean = false,
     val likedAt: Long? = null,
     val downloadState: Int = DOWNLOAD_NONE,
@@ -34,6 +35,7 @@ data class SongEntity(
             thumbnailUrl = thumbnailUrl,
             artistId = artistId,
             albumId = albumId,
+            explicit = explicit,
         )
 
     companion object {
@@ -51,6 +53,7 @@ data class SongEntity(
                 thumbnailUrl = song.thumbnailUrl,
                 artistId = song.artistId,
                 albumId = song.albumId,
+                explicit = song.explicit,
             )
     }
 }

@@ -253,4 +253,7 @@ data class DialItem(
     val song: SongItem? = null,
 )
 
-private const val SPEED_DIAL_SIZE = 9
+/** Пять страниц по девять плиток: столько влезает без прокрутки экрана. */
+private const val SPEED_DIAL_PAGE = 9
+private const val SPEED_DIAL_PAGES = 5
+private const val SPEED_DIAL_SIZE = SPEED_DIAL_PAGE * SPEED_DIAL_PAGES

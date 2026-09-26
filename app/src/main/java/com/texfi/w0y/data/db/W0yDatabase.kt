@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PinEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class W0yDatabase : RoomDatabase() {
@@ -44,6 +44,14 @@ abstract class W0yDatabase : RoomDatabase() {
                         )
                         """.trimIndent(),
                     )
+                }
+            }
+
+        /** Метка «E»: её показывает список, поэтому хранится вместе с треком. */
+        val MIGRATION_2_3 =
+            object : Migration(2, 3) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE songs ADD COLUMN explicit INTEGER NOT NULL DEFAULT 0")
                 }
             }
     }

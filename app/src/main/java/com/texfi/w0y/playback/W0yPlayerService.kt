@@ -25,6 +25,8 @@ import androidx.media3.session.MediaSessionService
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.MainActivity
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.LyricsRepository
+import com.texfi.w0y.data.Profanity
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
@@ -37,11 +39,14 @@ import kotlin.math.pow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
@@ -65,6 +70,8 @@ class W0yPlayerService : MediaSessionService() {
 
     @Inject lateinit var startupMetrics: StartupMetrics
 
+    @Inject lateinit var lyricsRepository: LyricsRepository
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val settings = MutableStateFlow(W0ySettings())
     private var session: MediaSession? = null
@@ -72,6 +79,12 @@ class W0yPlayerService : MediaSessionService() {
     private var headsetReceiver: BroadcastReceiver? = null
     private var reverbEffect: PresetReverb? = null
     private var reverbSession: Int? = null
+
+    /** Громкость трека без учёта заглушения — к ней возвращаемся после строки с матом. */
+    private var baseVolume: Float = 1f
+    private var swearWindows: List<LongRange> = emptyList()
+    private var swearJob: Job? = null
+    private var lyricsForId: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -115,6 +128,13 @@ class W0yPlayerService : MediaSessionService() {
                 player.playbackParameters = PlaybackParameters(current.speed, current.pitch)
                 applyReverb(player.audioSessionId, current.reverb)
                 applyLoudness(player)
+                if (!current.muteSwearLines) {
+                    swearWindows = emptyList()
+                    lyricsForId = null
+                    updateVolume(player)
+                } else {
+                    loadSwearWindows(player.currentMediaItem)
+                }
             }.launchIn(scope)
 
         audioSession.update(player.audioSessionId)
@@ -127,6 +147,7 @@ class W0yPlayerService : MediaSessionService() {
             },
         )
         player.addListener(TrackListener(player))
+        startSwearWatch(player)
         attachFirstAudioTrace(player)
 
         val sessionActivity =
@@ -185,6 +206,7 @@ class W0yPlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        swearJob?.cancel()
         releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
         headsetReceiver = null
@@ -244,14 +266,77 @@ class W0yPlayerService : MediaSessionService() {
      */
     private fun applyLoudness(player: Player) {
         val id = player.currentMediaItem?.mediaId
-        if (!settings.value.normalizeVolume || id == null) {
-            player.volume = 1f
-            return
+        val loudness = id?.let { repository.cachedLoudnessDb(it) }
+        baseVolume =
+            if (!settings.value.normalizeVolume || loudness == null) {
+                1f
+            } else {
+                // Приводим к -14 дБ: типовой ориентир стриминговых сервисов.
+                val gainDb = (-14.0 - loudness).coerceIn(-6.0, 6.0)
+                10.0.pow(gainDb / 20.0).toFloat().coerceIn(0.2f, 1f)
+            }
+        updateVolume(player)
+    }
+
+    /**
+     * Громкость с учётом заглушения строк.
+     *
+     * Выравнивание громкости и режим «без мата» пишут в одно и то же поле
+     * плеера, поэтому базовый уровень хранится отдельно — иначе первое же
+     * выравнивание снимало бы заглушение посреди строки.
+     */
+    private fun updateVolume(player: Player) {
+        val ducked =
+            settings.value.muteSwearLines &&
+                swearWindows.any { player.currentPosition in it }
+        player.volume = if (ducked) 0f else baseVolume
+    }
+
+    /**
+     * Строки с матом по синхронной лирике.
+     *
+     * Приглушается строка целиком: вырезать отдельное слово из готовой
+     * записи нельзя — для этого нужна дорожка без вокала, которой нет ни у
+     * нас, ни у YouTube. Поэтому режим помечен бетой, а основной путь
+     * «без мата» — подмена на официальную чистую версию.
+     */
+    private fun loadSwearWindows(item: MediaItem?) {
+        val id = item?.mediaId ?: return
+        if (lyricsForId == id) return
+        lyricsForId = id
+        swearWindows = emptyList()
+        scope.launch {
+            val song =
+                SongItem(
+                    id = id,
+                    title = item.mediaMetadata.title?.toString().orEmpty(),
+                    artist = item.mediaMetadata.artist?.toString().orEmpty(),
+                )
+            val lines =
+                runCatching { lyricsRepository.lyrics(song)?.synced.orEmpty() }
+                    .onFailure { Timber.w(it, "Лирика для заглушения не пришла") }
+                    .getOrDefault(emptyList())
+            swearWindows =
+                lines.mapIndexedNotNull { index, line ->
+                    if (!Profanity.inText(line.text)) return@mapIndexedNotNull null
+                    val end = lines.getOrNull(index + 1)?.timeMs ?: (line.timeMs + LAST_LINE_MS)
+                    line.timeMs until end
+                }
         }
-        val loudness = repository.cachedLoudnessDb(id) ?: run { player.volume = 1f; return }
-        // Приводим к -14 дБ: типовой ориентир стриминговых сервисов.
-        val gainDb = (-14.0 - loudness).coerceIn(-6.0, 6.0)
-        player.volume = 10.0.pow(gainDb / 20.0).toFloat().coerceIn(0.2f, 1f)
+    }
+
+    /** Следит за позицией: тишина включается ровно на время строки. */
+    private fun startSwearWatch(player: Player) {
+        swearJob?.cancel()
+        swearJob =
+            scope.launch {
+                while (true) {
+                    if (settings.value.muteSwearLines && swearWindows.isNotEmpty()) {
+                        withContext(Dispatchers.Main) { updateVolume(player) }
+                    }
+                    delay(WATCH_INTERVAL_MS)
+                }
+            }
     }
 
     private inner class TrackListener(
@@ -260,6 +345,7 @@ class W0yPlayerService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             prefetchNext()
             applyLoudness(player)
+            if (settings.value.muteSwearLines) loadSwearWindows(mediaItem) else swearWindows = emptyList()
             val item = mediaItem ?: return
             if (!settings.value.keepHistory) return
             scope.launch {
@@ -319,5 +405,11 @@ class W0yPlayerService : MediaSessionService() {
     private companion object {
         /** Приоритет вставки эффекта: выше нуля, чтобы система не вытеснила его чужим. */
         const val REVERB_PRIORITY = 1
+
+        /** Сколько держать заглушение на последней строке лирики. */
+        const val LAST_LINE_MS = 6_000L
+
+        /** Шаг проверки позиции: чаще незачем, реже — слышно край слова. */
+        const val WATCH_INTERVAL_MS = 120L
     }
 }

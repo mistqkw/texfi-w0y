@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,7 +29,7 @@ import timber.log.Timber
 class HomeViewModel @Inject constructor(
     private val youtube: YouTubeRepository,
     private val playback: PlaybackStarter,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     /** Ленты можно выключить совсем — кому-то нужна только своя библиотека. */
     val showRecommendations: StateFlow<Boolean> =
@@ -55,7 +56,14 @@ class HomeViewModel @Inject constructor(
             _loading.value = true
             _failed.value = false
             runCatching { youtube.home() }
-                .onSuccess { shelves ->
+                .onSuccess { loaded ->
+                    val hide = settings.settings.first().hideExplicit
+                    val shelves =
+                        if (hide) {
+                            loaded.map { shelf -> shelf.copy(songs = shelf.songs.filterNot { it.explicit }) }
+                        } else {
+                            loaded
+                        }
                     // Лент на главной у YouTube бывает под два десятка —
                     // это ровно та перегруженность, от которой уходили.
                     _shelves.value = shelves.filter { it.songs.size + it.cards.size + it.artists.size >= 2 }.take(SHELVES)

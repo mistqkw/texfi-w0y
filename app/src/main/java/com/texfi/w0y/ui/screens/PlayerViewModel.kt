@@ -40,6 +40,7 @@ class PlayerViewModel @Inject constructor(
     /** Что играет после текущего трека и не подбираются ли сейчас похожие. */
     val queueMode: StateFlow<QueueMode> = playback.mode
     val loadingRadio: StateFlow<Boolean> = playback.loadingRadio
+    val findingClean: StateFlow<Boolean> = playback.findingClean
 
     fun setQueueMode(mode: QueueMode) = playback.applyMode(mode)
 

@@ -1,9 +1,12 @@
 package com.texfi.w0y.playback
 
+import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.RecommendationRepository
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.W0ySettings
+import com.texfi.w0y.data.YouTubeRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -30,15 +33,23 @@ class PlaybackStarter @Inject constructor(
     private val player: PlayerConnection,
     private val settings: SettingsRepository,
     private val recommendations: RecommendationRepository,
+    private val youtube: YouTubeRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var radioJob: Job? = null
+    private var cleanJob: Job? = null
 
     private val _mode = MutableStateFlow(QueueMode.ORDER)
     val mode: StateFlow<QueueMode> = _mode.asStateFlow()
 
     private val _loadingRadio = MutableStateFlow(false)
     val loadingRadio: StateFlow<Boolean> = _loadingRadio.asStateFlow()
+
+    /** Идёт поиск чистой версии — пользователю видно, почему пауза перед стартом. */
+    private val _findingClean = MutableStateFlow(false)
+    val findingClean: StateFlow<Boolean> = _findingClean.asStateFlow()
+
+    private var current: W0ySettings = W0ySettings()
 
     /** Для какого трека уже подобрано продолжение — чтобы не просить дважды. */
     private var extendedFor: String? = null
@@ -48,7 +59,10 @@ class PlaybackStarter @Inject constructor(
         // дальше, приходится в момент нажатия, и ждать чтение настроек там
         // нельзя — это прямая задержка между нажатием и звуком.
         scope.launch {
-            settings.settings.map { it.queueMode }.collect { _mode.value = it }
+            settings.settings.collect {
+                current = it
+                _mode.value = it.queueMode
+            }
         }
         // В режиме рекомендаций очередь не должна заканчиваться: дойдя до
         // последнего трека, продолжаем от него же. Иначе «дальше похожее»
@@ -68,6 +82,56 @@ class PlaybackStarter @Inject constructor(
         if (songs.isEmpty()) return
         val chosen = songs[index.coerceIn(songs.indices)]
         radioJob?.cancel()
+        if (current.cleanMode && chosen.explicit) {
+            startClean(songs, chosen)
+            return
+        }
+        start(prepare(songs), chosen)
+    }
+
+    /**
+     * Запуск в режиме «без мата»: сначала ищем официальную чистую версию,
+     * и только если её нет — поступаем так, как выбрал пользователь.
+     * Поиск занимает доли секунды, но он до звука: включить сначала
+     * матерную версию, а потом «исправиться» — хуже, чем подождать.
+     */
+    private fun startClean(songs: List<SongItem>, chosen: SongItem) {
+        cleanJob?.cancel()
+        cleanJob =
+            scope.launch {
+                _findingClean.value = true
+                val clean =
+                    runCatching { withContext(Dispatchers.IO) { youtube.cleanVersion(chosen) } }
+                        .onFailure { Timber.w(it, "Чистая версия не искалась") }
+                        .getOrNull()
+                _findingClean.value = false
+                when {
+                    clean != null -> start(prepare(songs.map { if (it.id == chosen.id) clean else it }), clean)
+
+                    current.explicitFallback == ExplicitFallback.SKIP -> {
+                        // Пропускаем к ближайшему подходящему, а не молчим.
+                        val queue = prepare(songs)
+                        if (queue.isNotEmpty()) start(queue, queue.first())
+                    }
+
+                    else -> start(prepare(songs), chosen)
+                }
+            }
+    }
+
+    /**
+     * Очередь под текущие правила: с «пропускать» помеченные записи из неё
+     * убираются целиком, иначе следующий же трек снова окажется матерным.
+     */
+    private fun prepare(songs: List<SongItem>): List<SongItem> =
+        if (current.cleanMode && current.explicitFallback == ExplicitFallback.SKIP) {
+            songs.filterNot { it.explicit }.ifEmpty { songs }
+        } else {
+            songs
+        }
+
+    private fun start(songs: List<SongItem>, chosen: SongItem) {
+        val index = songs.indexOfFirst { it.id == chosen.id }.coerceAtLeast(0)
         when (_mode.value) {
             QueueMode.ORDER -> player.play(songs, index)
 
@@ -111,6 +175,7 @@ class PlaybackStarter @Inject constructor(
                         withContext(Dispatchers.IO) { recommendations.continuation(seed, exclude = played) }
                     }.onFailure { Timber.w(it, "Рекомендации для ${seed.id} не пришли") }
                         .getOrDefault(emptyList())
+                        .let(::prepare)
                 if (next.isNotEmpty()) player.replaceUpcoming(next)
                 _loadingRadio.value = false
             }

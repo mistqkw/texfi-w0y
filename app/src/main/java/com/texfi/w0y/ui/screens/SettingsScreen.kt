@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.data.Quality
+import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.StartTab
@@ -314,6 +315,47 @@ fun SettingsScreen(
                 )
             }
 
+            item { Group("БЕЗ МАТА") }
+            item {
+                SwitchRow(
+                    title = "Искать чистую версию",
+                    description =
+                        "Трек с меткой «E» заменяется официальной clean-версией, если она выложена. " +
+                            "Вырезать слова из готовой записи приложение не умеет и делать вид не будет.",
+                    checked = settings.cleanMode,
+                    onChange = viewModel::setCleanMode,
+                )
+            }
+            item {
+                ChoiceRow(
+                    title = "Если чистой версии нет",
+                    description = "Играть оригинал как есть или пропустить его и перейти к следующему.",
+                    options = ExplicitFallback.entries,
+                    selected = settings.explicitFallback,
+                    label = { it.label },
+                    onSelect = viewModel::setExplicitFallback,
+                )
+            }
+            item {
+                SwitchRow(
+                    title = "Прятать «E» в выдаче",
+                    description = "Помеченные записи не показываются в поиске и рекомендациях.",
+                    checked = settings.hideExplicit,
+                    onChange = viewModel::setHideExplicit,
+                )
+            }
+            item {
+                SwitchRow(
+                    title = "Глушить строки с матом (бета)",
+                    description =
+                        "По синхронной лирике: строка с матом проигрывается без звука целиком. " +
+                            "Отдельное слово убрать нельзя — для этого нужна дорожка без вокала. " +
+                            "Работает только там, где нашлась синхронная лирика.",
+                    checked = settings.muteSwearLines,
+                    onChange = viewModel::setMuteSwearLines,
+                )
+            }
+
             item { Group("ВИД") }
             item {
                 SwitchRow(
@@ -471,7 +513,7 @@ private fun InfoRow(title: String, description: String, value: String) {
             Text(description, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         }
         Spacer(Modifier.width(12.dp))
-        Text(value, style = PixelSectionLabel, color = colors.accent)
+        Text(value, style = MaterialTheme.typography.bodyLarge, color = colors.accent)
     }
 }
 

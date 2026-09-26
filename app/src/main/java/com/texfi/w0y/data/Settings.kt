@@ -76,6 +76,17 @@ enum class SoundPreset(
         settings.speed == speed && settings.pitch == pitch && settings.reverb == reverb
 }
 
+/**
+ * Что делать с записью, помеченной «E», когда чистой версии не нашлось.
+ *
+ * Вырезать отдельное слово из готовой записи приложение не умеет и делать
+ * вид, что умеет, не будет: выбор честный — играть как есть или пропустить.
+ */
+enum class ExplicitFallback(val label: String) {
+    PLAY("ИГРАТЬ"),
+    SKIP("ПРОПУСТИТЬ"),
+}
+
 /** Куда попадаешь при запуске. */
 enum class StartTab(val label: String) {
     HOME("ДОМ"),
@@ -116,6 +127,10 @@ data class W0ySettings(
     val saveSearchHistory: Boolean = true,
     val downloadOnWifiOnly: Boolean = true,
     val startTab: StartTab = StartTab.HOME,
+    val cleanMode: Boolean = false,
+    val explicitFallback: ExplicitFallback = ExplicitFallback.PLAY,
+    val hideExplicit: Boolean = false,
+    val muteSwearLines: Boolean = false,
 )
 
 @Singleton
@@ -151,6 +166,10 @@ class SettingsRepository @Inject constructor(
                     saveSearchHistory = prefs[Keys.SAVE_SEARCHES] ?: true,
                     downloadOnWifiOnly = prefs[Keys.WIFI_ONLY_DOWNLOADS] ?: true,
                     startTab = prefs.enum(Keys.START_TAB, StartTab.HOME),
+                    cleanMode = prefs[Keys.CLEAN_MODE] ?: false,
+                    explicitFallback = prefs.enum(Keys.EXPLICIT_FALLBACK, ExplicitFallback.PLAY),
+                    hideExplicit = prefs[Keys.HIDE_EXPLICIT] ?: false,
+                    muteSwearLines = prefs[Keys.MUTE_SWEAR_LINES] ?: false,
                 )
             }
 
@@ -206,6 +225,14 @@ class SettingsRepository @Inject constructor(
     suspend fun setDownloadOnWifiOnly(value: Boolean) = put(Keys.WIFI_ONLY_DOWNLOADS, value)
 
     suspend fun setStartTab(value: StartTab) = put(Keys.START_TAB, value.name)
+
+    suspend fun setCleanMode(value: Boolean) = put(Keys.CLEAN_MODE, value)
+
+    suspend fun setExplicitFallback(value: ExplicitFallback) = put(Keys.EXPLICIT_FALLBACK, value.name)
+
+    suspend fun setHideExplicit(value: Boolean) = put(Keys.HIDE_EXPLICIT, value)
+
+    suspend fun setMuteSwearLines(value: Boolean) = put(Keys.MUTE_SWEAR_LINES, value)
 
     /** Экспорт всех настроек одной строкой JSON — её можно сохранить в файл. */
     suspend fun export(current: W0ySettings): String =
@@ -284,5 +311,9 @@ class SettingsRepository @Inject constructor(
         val SAVE_SEARCHES = booleanPreferencesKey("save_searches")
         val WIFI_ONLY_DOWNLOADS = booleanPreferencesKey("wifi_only_downloads")
         val START_TAB = stringPreferencesKey("start_tab")
+        val CLEAN_MODE = booleanPreferencesKey("clean_mode")
+        val EXPLICIT_FALLBACK = stringPreferencesKey("explicit_fallback")
+        val HIDE_EXPLICIT = booleanPreferencesKey("hide_explicit")
+        val MUTE_SWEAR_LINES = booleanPreferencesKey("mute_swear_lines")
     }
 }

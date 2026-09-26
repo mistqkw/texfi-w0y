@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
@@ -61,12 +62,18 @@ fun SongRow(
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = if (highlighted) colors.accent else colors.text,
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (song.explicit) {
+                        ExplicitBadge()
+                        Spacer(Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = song.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (highlighted) colors.accent else colors.text,
+                        maxLines = 1,
+                    )
+                }
                 Text(
                     text =
                         listOfNotNull(song.artist.takeIf { it.isNotBlank() }, song.album)
@@ -118,4 +125,27 @@ fun SpriteButton(
                 .size(size.dp)
                 .clickable(onClick = onClick),
     )
+}
+
+/**
+ * Метка «E»: запись с ненормативной лексикой.
+ *
+ * Показывается так же, как у самого YouTube, — иначе непонятно, почему
+ * режим «без мата» подменяет именно этот трек.
+ */
+@Composable
+fun ExplicitBadge(modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    Box(
+        modifier
+            .size(14.dp)
+            .background(colors.textMuted),
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
+        Text(
+            text = "E",
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 9.sp, lineHeight = 10.sp),
+            color = colors.background,
+        )
+    }
 }

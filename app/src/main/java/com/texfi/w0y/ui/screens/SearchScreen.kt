@@ -65,6 +65,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val recentQueries by viewModel.recentQueries.collectAsStateWithLifecycle()
+    val hideExplicit by viewModel.hideExplicit.collectAsStateWithLifecycle()
     val diagnosis by viewModel.diagnosis.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     var pickPlaylistFor by remember { mutableStateOf<SongItem?>(null) }
@@ -158,6 +159,9 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 }
 
             is SearchState.Results ->
+                // Фильтр здесь, а не в запросе: YouTube не умеет отдавать
+                // выдачу без «E», а перезапрашивать при переключении
+                // настройки — лишний поход в сеть.
                 if (current.isEmpty) {
                     EmptyState(
                         sprite = Sprites.search,
@@ -168,11 +172,12 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         // Ключ по id: без него Compose пересобирает строки
                         // при каждом обновлении списка, и прокрутка дёргается.
-                        items(current.songs, key = { it.id }) { song ->
+                        items(current.songs.filterNot { hideExplicit && it.explicit }, key = { it.id }) { song ->
                             SongRow(
                                 song = song,
                                 onClick = {
-                                    viewModel.playFrom(current.songs, current.songs.indexOf(song))
+                                    val list = current.songs.filterNot { hideExplicit && it.explicit }
+                                    viewModel.playFrom(list, list.indexOf(song))
                                 },
                                 actions = {
                                     SpriteButton(

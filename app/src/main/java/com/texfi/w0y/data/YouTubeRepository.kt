@@ -90,6 +90,19 @@ class YouTubeRepository @Inject constructor(
         YtJson.queueSongs(response).filterNot { it.id == videoId }
     }
 
+    /**
+     * Чистая версия трека, если она вообще выложена.
+     *
+     * Вырезать слова из записи нельзя, но у половины таких треков есть
+     * официальная clean-версия — её и ищем по названию и исполнителю.
+     * Сверяем название, иначе поиск с готовностью подсунет чужой кавер.
+     */
+    suspend fun cleanVersion(song: SongItem): SongItem? {
+        val candidates =
+            runCatching { searchSongs("${song.title} ${song.artist} clean") }.getOrDefault(emptyList())
+        return CleanMatch.pick(song, candidates)
+    }
+
     /** Альбомы в выдаче поиска. */
     suspend fun searchAlbums(query: String): List<PlaylistCard> = withContext(Dispatchers.IO) {
         val response =

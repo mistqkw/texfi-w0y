@@ -21,4 +21,6 @@ data class SongItem(
     val artistId: String? = null,
     /** Альбом (MPRE…), если трек к нему относится. */
     val albumId: String? = null,
+    /** Метка «E» — YouTube помечает ею записи с ненормативной лексикой. */
+    val explicit: Boolean = false,
 )

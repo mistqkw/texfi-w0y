@@ -76,6 +76,7 @@ object YtJson {
                 song.copy(
                     artistId = obj.browseIds().firstOrNull { it.startsWith("UC") },
                     albumId = obj.browseIds().firstOrNull { it.startsWith("MPRE") },
+                    explicit = obj.hasExplicitBadge(),
                 )
             }.distinctBy { it.id }
 
@@ -188,6 +189,7 @@ object YtJson {
                     thumbnailUrl = obj.bestThumbnail(),
                     artistId = obj.browseIds().firstOrNull { it.startsWith("UC") },
                     albumId = obj.browseIds().firstOrNull { it.startsWith("MPRE") },
+                    explicit = obj.hasExplicitBadge(),
                 )
             }.distinctBy { it.id }
 
@@ -210,6 +212,37 @@ object YtJson {
                 if (songs.isEmpty() && cards.isEmpty() && artists.isEmpty()) return@mapNotNull null
                 Shelf(title = title, songs = songs, cards = cards, artists = artists)
             }.distinctBy { it.title }
+
+    /**
+     * Есть ли у карточки значок «E».
+     *
+     * YouTube вешает его отдельным значком-иконкой, а не полем трека,
+     * поэтому ищем сам тип иконки в поддереве карточки.
+     */
+    fun JsonElement.hasExplicitBadge(): Boolean {
+        var found = false
+        fun walk(element: JsonElement) {
+            if (found) return
+            when (element) {
+                is JsonObject ->
+                    element.forEach { (name, value) ->
+                        if (found) return@forEach
+                        if (name == "iconType" && value is JsonPrimitive && value.content == EXPLICIT_BADGE) {
+                            found = true
+                        } else {
+                            walk(value)
+                        }
+                    }
+
+                is JsonArray -> element.forEach(::walk)
+                else -> Unit
+            }
+        }
+        walk(this)
+        return found
+    }
+
+    private const val EXPLICIT_BADGE = "MUSIC_EXPLICIT_BADGE"
 
     /** Все browseId в поддереве — в порядке появления. */
     fun JsonElement.browseIds(): List<String> =

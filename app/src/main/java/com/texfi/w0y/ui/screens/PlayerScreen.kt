@@ -50,6 +50,7 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.ExplicitBadge
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.SectionHeader
@@ -82,6 +83,7 @@ fun PlayerScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val queueMode by viewModel.queueMode.collectAsStateWithLifecycle()
     val radioLoading by viewModel.loadingRadio.collectAsStateWithLifecycle()
+    val findingClean by viewModel.findingClean.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
@@ -124,6 +126,13 @@ fun PlayerScreen(
                         active = sleepLeft != null,
                     )
                 }
+                if (findingClean) {
+                    Text(
+                        text = "Ищу чистую версию…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.accent,
+                    )
+                }
                 sleepLeft?.let {
                     Text(
                         text = "Таймер сна: ${it / 60_000} мин ${(it / 1000) % 60} с",
@@ -161,6 +170,10 @@ fun PlayerScreen(
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
+                        if (song.explicit) {
+                            ExplicitBadge()
+                            Spacer(Modifier.height(6.dp))
+                        }
                         Text(
                             text = song.title,
                             style = MaterialTheme.typography.bodyLarge,

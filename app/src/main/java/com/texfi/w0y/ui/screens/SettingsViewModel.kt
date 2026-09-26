@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.datasource.cache.SimpleCache
 import com.texfi.w0y.data.Quality
+import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.QueueMode
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.StartTab
@@ -117,6 +118,14 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadOnWifiOnly(value: Boolean) = update { repository.setDownloadOnWifiOnly(value) }
 
     fun setStartTab(value: StartTab) = update { repository.setStartTab(value) }
+
+    fun setCleanMode(value: Boolean) = update { repository.setCleanMode(value) }
+
+    fun setExplicitFallback(value: ExplicitFallback) = update { repository.setExplicitFallback(value) }
+
+    fun setHideExplicit(value: Boolean) = update { repository.setHideExplicit(value) }
+
+    fun setMuteSwearLines(value: Boolean) = update { repository.setMuteSwearLines(value) }
 
     suspend fun exportJson(): String = repository.export(repository.settings.first())
 

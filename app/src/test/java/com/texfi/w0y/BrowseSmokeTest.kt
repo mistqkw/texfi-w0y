@@ -142,6 +142,24 @@ class BrowseSmokeTest {
         assertTrue("Главная не вернула ни одной ленты", shelves.isNotEmpty())
     }
 
+    /** Метку «E» YouTube отдаёт значком, а не полем трека — проверяем, что ловим. */
+    @Test
+    fun marksExplicitSongs() = runBlocking {
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        val response =
+            innerTube
+                .search(
+                    client = YouTubeClient.WEB_REMIX,
+                    query = "eminem rap god",
+                    params = YouTubeRepository.SONGS_FILTER,
+                ).body<JsonObject>()
+        val songs = YtJson.songs(response)
+        songs.take(5).forEach { println("МЕТКА: ${if (it.explicit) "E" else "-"} ${it.title} — ${it.artist}") }
+        http.close()
+        assertTrue("Ни один трек не помечен как explicit", songs.any { it.explicit })
+    }
+
     /** Размер зашит в саму ссылку — проверяем, что мы просим крупную картинку. */
     @Test
     fun upscalesThumbnails() {
