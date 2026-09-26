@@ -97,6 +97,9 @@ jobs:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           name: TexFi w0y ${{ inputs.release_tag || github.ref_name }}
           target_commitish: ${{ github.sha }}
+          # Человеческое описание выпуска лежит в репозитории и правится
+          # вместе с кодом; автосписок коммитов GitHub дописывает следом.
+          body_path: docs/RELEASE_NOTES.md
           generate_release_notes: true
           prerelease: true
           files: dist/**/*.apk
