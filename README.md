@@ -1,3 +1,5 @@
+![TexFi w0y — a YouTube Music client for Android](docs/banners/github.png)
+
 # TexFi w0y
 
 A YouTube Music client for Android. No ads, no Premium restrictions, and
