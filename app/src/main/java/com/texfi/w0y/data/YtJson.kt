@@ -366,6 +366,10 @@ object YtJson {
      * Слово зависит от языка выдачи, поэтому смотрим на все варианты, а не
      * только на английский: в русской выдаче это «прослушиваний».
      */
+    /** Длительность: «3:19», «1:02:11». Год и число сюда не попадают. */
+    private fun looksLikeDuration(text: String): Boolean =
+        text.contains(':') && text.all { it.isDigit() || it == ':' }
+
     private fun looksLikePlays(text: String): Boolean {
         val lower = text.lowercase()
         return PLAY_WORDS.any { lower.contains(it) }
@@ -390,11 +394,15 @@ object YtJson {
         // Поэтому режем колонку по «•» и разбираем уже куски, иначе в поле
         // альбома оседает то запятая, то второй исполнитель.
         val chunks = splitByBullet(columns.getOrNull(1).orEmpty().map { it.text })
-        val artists = chunks.firstOrNull().orEmpty()
-        val rest = chunks.drop(1)
-        val duration = rest.firstOrNull { it.contains(':') && it.any(Char::isDigit) }
-        val plays = rest.firstOrNull(::looksLikePlays)
-        val album = rest.firstOrNull { it != duration && it != plays }
+        // Исполнитель — первый кусок, но только если он и правда похож на
+        // имя. В лентах главной у части карточек подписи всего один кусок —
+        // «5.2M plays», — и слепое «первый кусок и есть артист» рисовало
+        // счётчик прослушиваний на месте имени прямо в быстром наборе.
+        val duration = chunks.firstOrNull(::looksLikeDuration)
+        val plays = chunks.firstOrNull(::looksLikePlays)
+        val named = chunks.filter { it != duration && it != plays }
+        val artists = named.firstOrNull().orEmpty()
+        val album = named.drop(1).firstOrNull()
 
         return SongItem(
             id = videoId,

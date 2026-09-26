@@ -2,6 +2,7 @@ package com.texfi.w0y
 
 import com.metrolist.innertubex.InnerTube
 import com.metrolist.innertubex.models.YouTubeClient
+import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.YtJson
@@ -143,8 +144,15 @@ class BrowseSmokeTest {
         shelves.take(6).forEach {
             println("ЛЕНТА: ${it.title} · треков ${it.songs.size} · карточек ${it.cards.size} · артистов ${it.artists.size}")
         }
+        val songs = shelves.flatMap { it.songs }
+        songs.take(8).forEach { println("ТРЕК ЛЕНТЫ: ${it.title} — «${it.artist}» · прослушиваний=${it.plays}") }
         http.close()
         assertTrue("Главная не вернула ни одной ленты", shelves.isNotEmpty())
+        // Счётчик прослушиваний — не имя исполнителя. В лентах главной у
+        // части карточек подпись состоит из него одного, и раньше он
+        // приезжал в поле артиста прямо на главный экран.
+        val misread = songs.filter { it.artist.isNotBlank() && it.artist == it.plays }
+        assertTrue("Прослушивания попали в имя исполнителя: ${misread.map(SongItem::title)}", misread.isEmpty())
     }
 
     /** Метку «E» YouTube отдаёт значком, а не полем трека — проверяем, что ловим. */
