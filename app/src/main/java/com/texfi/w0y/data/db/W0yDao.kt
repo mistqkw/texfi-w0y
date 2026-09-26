@@ -10,14 +10,80 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface W0yDao {
+    /**
+     * Запись трека целиком — вместе с лайком и состоянием загрузки.
+     *
+     * Снаружи вызывать нельзя: у трека из выдачи этих полей нет, и такая
+     * запись затрёт то, что человек отметил сам. Для всего, что приходит
+     * от YouTube, есть [saveSongMeta]. Метод остаётся потому, что вставку
+     * новой строки делать всё равно чем-то надо.
+     */
     @Upsert
     suspend fun upsertSong(song: SongEntity)
 
-    @Upsert
-    suspend fun upsertSongs(songs: List<SongEntity>)
-
     @Query("SELECT * FROM songs WHERE id = :id")
     suspend fun song(id: String): SongEntity?
+
+    /**
+     * Обновляет только то, что приходит из выдачи.
+     *
+     * Лайк, время лайка и состояние загрузки принадлежат пользователю, а не
+     * ответу YouTube, и в этом запросе их просто нет. Раньше трек
+     * перезаписывался целиком через `@Upsert`, и лайк слетал при первом же
+     * повторном прослушивании — история сохраняла тот же трек и обнуляла
+     * флаг. Пустые и отсутствующие значения тоже не затирают сохранённое:
+     * из истории трек приходит без альбома и длительности.
+     */
+    @Query(
+        """
+        UPDATE songs SET
+            title = CASE WHEN :title <> '' THEN :title ELSE title END,
+            artist = CASE WHEN :artist <> '' THEN :artist ELSE artist END,
+            album = COALESCE(:album, album),
+            durationText = COALESCE(:durationText, durationText),
+            thumbnailUrl = COALESCE(:thumbnailUrl, thumbnailUrl),
+            artistId = COALESCE(:artistId, artistId),
+            albumId = COALESCE(:albumId, albumId),
+            explicit = CASE WHEN :explicit THEN 1 ELSE explicit END
+        WHERE id = :id
+        """,
+    )
+    suspend fun updateSongMeta(
+        id: String,
+        title: String,
+        artist: String,
+        album: String?,
+        durationText: String?,
+        thumbnailUrl: String?,
+        artistId: String?,
+        albumId: String?,
+        explicit: Boolean,
+    )
+
+    /**
+     * Единственный способ положить трек в таблицу из выдачи.
+     *
+     * Новый — вставляется, известный — обновляется по метаданным, и его
+     * лайк с загрузкой остаются на месте.
+     */
+    @Transaction
+    suspend fun saveSongMeta(song: SongEntity) {
+        if (song(song.id) == null) {
+            upsertSong(song)
+            return
+        }
+        updateSongMeta(
+            id = song.id,
+            title = song.title,
+            artist = song.artist,
+            album = song.album,
+            durationText = song.durationText,
+            thumbnailUrl = song.thumbnailUrl,
+            artistId = song.artistId,
+            albumId = song.albumId,
+            explicit = song.explicit,
+        )
+    }
 
     @Query("SELECT * FROM songs WHERE liked = 1 ORDER BY likedAt DESC")
     fun likedSongs(): Flow<List<SongEntity>>
@@ -73,7 +139,7 @@ interface W0yDao {
 
     @Transaction
     suspend fun addSongToPlaylist(playlistId: Long, song: SongEntity, now: Long) {
-        upsertSong(song)
+        saveSongMeta(song)
         addToPlaylist(
             PlaylistSongEntity(
                 playlistId = playlistId,

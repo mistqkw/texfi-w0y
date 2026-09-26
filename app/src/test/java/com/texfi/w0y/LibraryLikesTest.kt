@@ -1,0 +1,96 @@
+package com.texfi.w0y
+
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.db.W0yDatabase
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Лайк принадлежит пользователю и не должен исчезать сам.
+ *
+ * Тест появился по живому случаю: раздел «лайки» оказывался пустым при
+ * девяти записях в истории. Причина — трек перезаписывался целиком при
+ * каждом сохранении, и флаг лайка обнулялся повторным прослушиванием.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
+class LibraryLikesTest {
+    private lateinit var db: W0yDatabase
+    private lateinit var library: LibraryRepository
+
+    private val song =
+        SongItem(
+            id = "abc12345678",
+            title = "andy warhol",
+            artist = "Kai Angel",
+            album = "ЖИЗНЬ",
+            durationText = "2:56",
+            explicit = true,
+        )
+
+    @Before
+    fun setUp() {
+        db =
+            Room
+                .inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), W0yDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+        library = LibraryRepository(db.dao())
+    }
+
+    @After
+    fun tearDown() = db.close()
+
+    @Test
+    fun likeSurvivesListeningAgain() = runBlocking {
+        library.toggleLike(song)
+        // Из плеера трек приходит без альбома и длительности — ровно так
+        // его и сохраняет история.
+        library.remember(song.copy(album = null, durationText = null))
+
+        val liked = library.liked.first()
+        assertEquals(listOf(song.id), liked.map(SongItem::id))
+        // И метаданные при этом не обеднели.
+        assertEquals("ЖИЗНЬ", liked.first().album)
+        assertEquals("2:56", liked.first().durationText)
+        assertTrue("Метка E потерялась", liked.first().explicit)
+    }
+
+    @Test
+    fun likeSurvivesAddingToPlaylist() = runBlocking {
+        library.toggleLike(song)
+        val playlistId = library.createPlaylist("Свой")
+        library.addToPlaylist(playlistId, song)
+
+        assertEquals(listOf(song.id), library.liked.first().map(SongItem::id))
+    }
+
+    @Test
+    fun accountLikesLandInTheLikedSection() = runBlocking {
+        // Синхронизация раньше только сохраняла треки, не отмечая лайк.
+        library.importLikes(listOf(song))
+
+        assertEquals(listOf(song.id), library.liked.first().map(SongItem::id))
+    }
+
+    @Test
+    fun syncDoesNotDropLocalLikes() = runBlocking {
+        val own = song.copy(id = "local999", title = "Свой лайк")
+        library.toggleLike(own)
+        library.importLikes(listOf(song))
+
+        val ids = library.liked.first().map(SongItem::id).toSet()
+        assertEquals(setOf(own.id, song.id), ids)
+    }
+}

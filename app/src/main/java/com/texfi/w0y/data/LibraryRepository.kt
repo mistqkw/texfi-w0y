@@ -51,7 +51,7 @@ class LibraryRepository @Inject constructor(
 
     suspend fun toggleLike(song: SongItem): Boolean {
         val stored = dao.song(song.id)
-        if (stored == null) dao.upsertSong(SongEntity.from(song))
+        if (stored == null) dao.saveSongMeta(SongEntity.from(song))
         val liked = stored?.liked != true
         dao.setLiked(song.id, liked, if (liked) now() else null)
         return liked
@@ -62,14 +62,10 @@ class LibraryRepository @Inject constructor(
      * важнее «что я недавно включал», чем «что я дослушал».
      */
     suspend fun remember(song: SongItem) {
-        val stored = dao.song(song.id)
-        val merged =
-            stored?.copy(
-                title = song.title.ifBlank { stored.title },
-                artist = song.artist.ifBlank { stored.artist },
-                thumbnailUrl = song.thumbnailUrl ?: stored.thumbnailUrl,
-            ) ?: SongEntity.from(song)
-        dao.upsertSong(merged)
+        // Слияние со старой записью — внутри saveSongMeta: из плеера трек
+        // приходит без альбома и длительности, а лайк и загрузка вообще не
+        // его дело.
+        dao.saveSongMeta(SongEntity.from(song))
         dao.addHistory(HistoryEntity(songId = song.id, playedAt = now()))
     }
 
@@ -109,7 +105,23 @@ class LibraryRepository @Inject constructor(
 
     suspend fun markDownload(songId: String, state: Int) = dao.setDownloadState(songId, state)
 
-    suspend fun saveSong(song: SongItem) = dao.upsertSong(SongEntity.from(song))
+    suspend fun saveSong(song: SongItem) = dao.saveSongMeta(SongEntity.from(song))
+
+    /**
+     * Лайки из аккаунта в локальную библиотеку.
+     *
+     * Локальные лайки при этом не снимаются: синхронизация добавляет то,
+     * что есть в аккаунте, а не заменяет собой то, что человек отметил на
+     * телефоне. Иначе один вход в аккаунт стирал бы всё, что накопилось
+     * без него.
+     */
+    suspend fun importLikes(songs: List<SongItem>) {
+        val now = now()
+        songs.forEach { song ->
+            dao.saveSongMeta(SongEntity.from(song))
+            dao.setLiked(song.id, true, now)
+        }
+    }
 
     private fun now() = System.currentTimeMillis()
 }

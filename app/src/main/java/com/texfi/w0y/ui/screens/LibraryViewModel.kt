@@ -232,7 +232,9 @@ class LibraryViewModel @Inject constructor(
             runCatching {
                 _accountPlaylists.value = account.playlists()
                 val liked = account.likedSongs()
-                liked.forEach { library.saveSong(it) }
+                // Раньше треки просто сохранялись — без отметки лайка, и
+                // раздел «лайки» после синхронизации оставался пустым.
+                library.importLikes(liked)
                 liked
             }.onFailure {
                 Timber.w(it, "Синхронизация не удалась")
