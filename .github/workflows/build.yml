@@ -7,6 +7,7 @@ name: Build & Release
 #      → просто соберёт release APK в артефакты
 #  • вручную с тегом:  release_tag = v0.0.1-beta
 #      → соберёт, заведёт тег на выбранном коммите и выпустит релиз
+#  • пуш в main: тесты, lint и сборка release APK — без выпуска
 on:
   push:
     # И ветка тоже: без этого на main не запускалось вообще ничего, и
@@ -79,24 +80,29 @@ jobs:
           mkdir -p out
           cp app/build/outputs/apk/release/app-release*.apk out/TexFi-w0y-android.apk
 
+      # Артефакт — только когда сборку запустили руками ради тестового
+      # APK. На каждом коммите он копился бы впустую и съедал квоту
+      # хранилища аккаунта, а именно в неё сборка уже один раз и упёрлась.
+      # Провал загрузки не должен ронять зелёную сборку: файл здесь —
+      # удобство, а не результат.
       - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         with:
           name: texfi-w0y-android
           path: out/TexFi-w0y-android.apk
           if-no-files-found: error
+          retention-days: 14
 
-  release:
-    needs: build
-    if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          path: dist
-      - uses: softprops/action-gh-release@v2
+      # Релиз выпускается той же job, которая собрала APK: отдельная job
+      # означала бы прогон файла через хранилище артефактов туда и обратно
+      # — лишняя зависимость от квоты ровно в тот момент, когда выпуск
+      # нужен больше всего.
+      - name: Create release
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
           name: TexFi w0y ${{ inputs.release_tag || github.ref_name }}
@@ -106,4 +112,4 @@ jobs:
           body_path: docs/RELEASE_NOTES.md
           generate_release_notes: true
           prerelease: true
-          files: dist/**/*.apk
+          files: out/TexFi-w0y-android.apk
