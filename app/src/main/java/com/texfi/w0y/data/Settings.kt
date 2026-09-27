@@ -79,6 +79,9 @@ enum class SoundPreset(
 
     fun matches(settings: W0ySettings): Boolean =
         settings.speed == speed && settings.pitch == pitch && settings.reverb == reverb
+
+    fun matches(profile: SoundProfile): Boolean =
+        profile.speed == speed && profile.pitch == pitch && profile.reverb == reverb
 }
 
 /**

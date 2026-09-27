@@ -58,9 +58,32 @@ class PlayerConnection @Inject constructor(
     private val _sleepRemainingMs = MutableStateFlow<Long?>(null)
     val sleepRemainingMs: StateFlow<Long?> = _sleepRemainingMs.asStateFlow()
 
+    private val _sleepAfterTrack = MutableStateFlow(false)
+
+    /** Заведён ли таймер «до конца трека» — у него нет обратного отсчёта. */
+    val sleepAfterTrack: StateFlow<Boolean> = _sleepAfterTrack.asStateFlow()
+
     private val listener =
         object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) = push(player)
+
+            /**
+             * «До конца трека» — засыпают именно так, а не по круглым
+             * минутам. Ставим паузу на переходе к следующему: доиграл —
+             * и тишина, очередь остаётся на месте.
+             */
+            override fun onMediaItemTransition(
+                mediaItem: androidx.media3.common.MediaItem?,
+                reason: Int,
+            ) {
+                if (!_sleepAfterTrack.value) return
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
+                ) {
+                    _sleepAfterTrack.value = false
+                    controller?.pause()
+                }
+            }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 _state.value = _state.value.copy(error = error.errorCodeName, isBuffering = false)
@@ -134,6 +157,63 @@ class PlayerConnection @Inject constructor(
         if (songs.isNotEmpty()) media.addMediaItems(songs.map(::toMediaItem))
     }
 
+    /**
+     * Ставит трек сразу после играющего.
+     *
+     * Дублировать его в очереди незачем: если он в ней уже есть, просто
+     * переставляем — иначе «следующим» превращается в способ набить
+     * очередь копиями одного трека.
+     */
+    fun playNext(song: SongItem) {
+        val media = controller ?: return
+        if (media.mediaItemCount == 0) {
+            play(listOf(song), 0)
+            return
+        }
+        val target = media.currentMediaItemIndex + 1
+        val existing = indexOf(media, song.id)
+        if (existing != null) {
+            if (existing != target) media.moveMediaItem(existing, target)
+            return
+        }
+        media.addMediaItem(target, toMediaItem(song))
+    }
+
+    /** Добавляет трек в конец очереди. */
+    fun enqueue(song: SongItem) {
+        val media = controller ?: return
+        if (media.mediaItemCount == 0) {
+            play(listOf(song), 0)
+            return
+        }
+        if (indexOf(media, song.id) != null) return
+        media.addMediaItem(toMediaItem(song))
+    }
+
+    /**
+     * Убирает трек из очереди.
+     *
+     * Играющий не трогаем: удаление того, что звучит прямо сейчас, — это
+     * не «убрать из очереди», а «выключить», и делать это одной кнопкой в
+     * списке было бы неожиданно.
+     */
+    fun removeFromQueue(index: Int) {
+        val media = controller ?: return
+        if (index == media.currentMediaItemIndex) return
+        if (index !in 0 until media.mediaItemCount) return
+        media.removeMediaItem(index)
+    }
+
+    /** Поднимает трек в очереди на одну позицию. */
+    fun moveUp(index: Int) {
+        val media = controller ?: return
+        if (index <= 0 || index >= media.mediaItemCount) return
+        media.moveMediaItem(index, index - 1)
+    }
+
+    private fun indexOf(media: MediaController, songId: String): Int? =
+        (0 until media.mediaItemCount).firstOrNull { media.getMediaItemAt(it).mediaId == songId }
+
     /** Очередь после текущего трека. */
     fun upcoming(): List<SongItem> {
         val media = controller ?: return emptyList()
@@ -196,6 +276,7 @@ class PlayerConnection @Inject constructor(
     /** Таймер сна: по истечении ставит паузу, а не глушит приложение. */
     fun startSleepTimer(minutes: Int) {
         sleepJob?.cancel()
+        _sleepAfterTrack.value = false
         val totalMs = minutes * 60_000L
         sleepJob =
             scope.launch {
@@ -210,10 +291,19 @@ class PlayerConnection @Inject constructor(
             }
     }
 
+    /** Пауза после текущего трека — без обратного отсчёта. */
+    fun sleepAfterCurrentTrack() {
+        sleepJob?.cancel()
+        sleepJob = null
+        _sleepRemainingMs.value = null
+        _sleepAfterTrack.value = true
+    }
+
     fun cancelSleepTimer() {
         sleepJob?.cancel()
         sleepJob = null
         _sleepRemainingMs.value = null
+        _sleepAfterTrack.value = false
     }
 
     private fun push(player: Player) {

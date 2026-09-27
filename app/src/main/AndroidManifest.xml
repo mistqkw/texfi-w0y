@@ -43,6 +43,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!--
+            Карточка трека уходит в чужое приложение файлом, а файл из своей
+            песочницы можно отдать только через провайдера. Наружу открыт
+            ровно кэш — см. res/xml/share_paths.xml.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/share_paths" />
+        </provider>
+
         <service
             android:name=".playback.W0yPlayerService"
             android:exported="true"

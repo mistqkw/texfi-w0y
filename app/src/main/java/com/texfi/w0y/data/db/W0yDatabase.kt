@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PinEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class W0yDatabase : RoomDatabase() {
@@ -44,6 +44,22 @@ abstract class W0yDatabase : RoomDatabase() {
                         )
                         """.trimIndent(),
                     )
+                }
+            }
+
+        /**
+         * «Твоя версия» трека: своя скорость, тон и эхо.
+         *
+         * Три столбца, а не таблица: метка версии нужна в каждом списке, а
+         * списки и так возвращают строку трека целиком. NULL значит «играть
+         * как все» — так у старых треков после обновления ничего не меняется.
+         */
+        val MIGRATION_3_4 =
+            object : Migration(3, 4) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE songs ADD COLUMN speed REAL")
+                    db.execSQL("ALTER TABLE songs ADD COLUMN pitch REAL")
+                    db.execSQL("ALTER TABLE songs ADD COLUMN reverb TEXT")
                 }
             }
 

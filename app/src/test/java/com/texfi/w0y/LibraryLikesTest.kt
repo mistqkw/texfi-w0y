@@ -7,14 +7,17 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import com.texfi.w0y.data.AccountRepository
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.SoundProfile
 import com.texfi.w0y.data.YtPlaylistSync
 import com.texfi.w0y.data.db.W0yDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -112,5 +115,36 @@ class LibraryLikesTest {
 
         val ids = library.liked.first().map(SongItem::id).toSet()
         assertEquals(setOf(own.id, song.id), ids)
+    }
+
+    /**
+     * «Своя версия» трека — такая же собственность пользователя, как лайк:
+     * подобрал скорость один раз и она обязана дождаться следующего раза.
+     * Проверка отдельная, потому что механика та же самая, на которой лайк
+     * уже один раз терялся: повторное прослушивание перезаписывает трек.
+     */
+    @Test
+    fun soundSurvivesListeningAgain() = runBlocking {
+        val mine = SoundProfile(speed = 0.85f, pitch = 0.94f, reverb = Reverb.HALL)
+        library.setSound(song, mine)
+        library.remember(song.copy(album = null, durationText = null))
+
+        assertEquals(mine, library.soundOnce(song.id))
+    }
+
+    @Test
+    fun soundComesBackWithTheTrack() = runBlocking {
+        val mine = SoundProfile(speed = 1.25f, pitch = 1f, reverb = Reverb.OFF)
+        library.setSound(song, mine)
+        library.toggleLike(song)
+
+        assertEquals(mine, library.liked.first().first().sound)
+    }
+
+    @Test
+    fun plainTrackHasNoVersion() = runBlocking {
+        library.remember(song)
+
+        assertNull("У обычного трека не должно появляться своей версии", library.soundOnce(song.id))
     }
 }

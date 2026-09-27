@@ -2,7 +2,9 @@ package com.texfi.w0y.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +27,12 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.theme.LocalW0yColors
 
 /**
- * Выбор плейлиста для трека: одна панель на поиск, плеер и списки —
- * чтобы добавление работало одинаково везде, где встречается трек.
+ * Что можно сделать с треком: одна панель на поиск, плеер и списки —
+ * чтобы действия над треком были одинаковы везде, где он встречается.
+ *
+ * Очередь здесь же, а не отдельной панелью: «следующим» и «в плейлист» —
+ * это одно и то же движение мысли («не сейчас, но скоро»), и разводить
+ * их по разным окнам значит заставлять выбирать окно до выбора действия.
  */
 @Composable
 fun AddToPlaylistPanel(
@@ -37,6 +43,8 @@ fun AddToPlaylistPanel(
     onPick: (Long) -> Unit,
     onCreate: (String) -> Unit,
     onDismiss: () -> Unit,
+    onPlayNext: (() -> Unit)? = null,
+    onEnqueue: (() -> Unit)? = null,
 ) {
     val colors = LocalW0yColors.current
     Box(
@@ -47,7 +55,7 @@ fun AddToPlaylistPanel(
         contentAlignment = Alignment.Center,
     ) {
         PixelCard(
-            label = stringResource(R.string.add_to_playlist_title),
+            label = stringResource(R.string.track_panel_title),
             modifier = Modifier.padding(24.dp),
         ) {
             Text(
@@ -57,6 +65,27 @@ fun AddToPlaylistPanel(
                 maxLines = 1,
             )
             Spacer(Modifier.height(10.dp))
+            if (onPlayNext != null || onEnqueue != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    onPlayNext?.let {
+                        PixelButton(text = stringResource(R.string.queue_play_next), onClick = it)
+                    }
+                    onEnqueue?.let {
+                        PixelButton(
+                            text = stringResource(R.string.queue_enqueue),
+                            onClick = it,
+                            fill = colors.surfaceHigh,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = "❯ ${stringResource(R.string.add_to_playlist_title)}",
+                    style = com.texfi.w0y.ui.theme.PixelSectionLabel,
+                    color = colors.accent,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             if (playlists.isEmpty() && newName == null) {
                 Text(
                     stringResource(R.string.add_to_playlist_empty),

@@ -3,7 +3,9 @@ package com.texfi.w0y.data.db
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.SoundProfile
 
 /**
  * Трек, который приложение когда-либо видело: в плейлисте, в лайках,
@@ -24,7 +26,28 @@ data class SongEntity(
     val liked: Boolean = false,
     val likedAt: Long? = null,
     val downloadState: Int = DOWNLOAD_NONE,
+    /**
+     * «Твоя версия»: своя скорость, тон и эхо именно этого трека.
+     *
+     * Лежит рядом с треком, а не отдельной таблицей, ровно по одной
+     * причине: метка версии нужна в каждом списке, а списки и так
+     * возвращают эту строку целиком — иначе к каждому пришлось бы
+     * приделывать join.
+     */
+    val speed: Float? = null,
+    val pitch: Float? = null,
+    val reverb: String? = null,
 ) {
+    /** Версия трека, если она вообще задана: скорость обязательна. */
+    fun sound(): SoundProfile? =
+        speed?.let {
+            SoundProfile(
+                speed = it,
+                pitch = pitch ?: 1f,
+                reverb = reverb?.let { name -> runCatching { Reverb.valueOf(name) }.getOrNull() } ?: Reverb.OFF,
+            )
+        }
+
     fun toItem(): SongItem =
         SongItem(
             id = id,
@@ -36,6 +59,7 @@ data class SongEntity(
             artistId = artistId,
             albumId = albumId,
             explicit = explicit,
+            sound = sound(),
         )
 
     companion object {
@@ -43,6 +67,11 @@ data class SongEntity(
         const val DOWNLOAD_QUEUED = 1
         const val DOWNLOAD_DONE = 2
 
+        /**
+         * Трек из выдачи. Версию звучания здесь не заполняем намеренно:
+         * она принадлежит пользователю, как лайк, и приходящий от YouTube
+         * трек о ней ничего не знает.
+         */
         fun from(song: SongItem): SongEntity =
             SongEntity(
                 id = song.id,
@@ -112,6 +141,22 @@ data class PinEntity(
 
         fun key(kind: String, targetId: String) = "$kind:$targetId"
     }
+}
+
+/** Три столбца версии звучания — без остальной строки трека. */
+data class SoundRow(
+    val speed: Float?,
+    val pitch: Float?,
+    val reverb: String?,
+) {
+    fun toProfile(): SoundProfile? =
+        speed?.let {
+            SoundProfile(
+                speed = it,
+                pitch = pitch ?: 1f,
+                reverb = reverb?.let { name -> runCatching { Reverb.valueOf(name) }.getOrNull() } ?: Reverb.OFF,
+            )
+        }
 }
 
 /** Трек вместе с числом прослушиваний — для «часто слушаешь». */

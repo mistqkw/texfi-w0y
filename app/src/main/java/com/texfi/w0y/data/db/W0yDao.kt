@@ -97,6 +97,26 @@ interface W0yDao {
     @Query("UPDATE songs SET downloadState = :state WHERE id = :id")
     suspend fun setDownloadState(id: String, state: Int)
 
+    /**
+     * Записывает «твою версию» трека. NULL во всех трёх — «играть как все».
+     *
+     * В [updateSongMeta] этих столбцов нет намеренно: версия принадлежит
+     * пользователю, и повторное прослушивание не должно её сбрасывать —
+     * ровно та же история, что когда-то была с лайком.
+     */
+    @Query("UPDATE songs SET speed = :speed, pitch = :pitch, reverb = :reverb WHERE id = :id")
+    suspend fun setSound(id: String, speed: Float?, pitch: Float?, reverb: String?)
+
+    @Query("SELECT speed, pitch, reverb FROM songs WHERE id = :id")
+    fun soundFlow(id: String): Flow<SoundRow?>
+
+    @Query("SELECT speed, pitch, reverb FROM songs WHERE id = :id")
+    suspend fun sound(id: String): SoundRow?
+
+    /** Сколько треков слушаются со своей версией — строка для «итогов». */
+    @Query("SELECT COUNT(*) FROM songs WHERE speed IS NOT NULL")
+    fun soundProfileCount(): Flow<Int>
+
     @Query("SELECT * FROM songs WHERE downloadState = :state ORDER BY title")
     fun songsWithDownloadState(state: Int = SongEntity.DOWNLOAD_DONE): Flow<List<SongEntity>>
 

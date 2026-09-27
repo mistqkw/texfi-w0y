@@ -40,11 +40,17 @@ class StreamSmokeTest {
                 innerTube = innerTube,
             )
         val stream =
-            extractor.extract(
-                videoId = "khnokW3Mw24",
-                hints = ContentHints(wantVideo = false),
-                audioQuality = AudioQuality.HIGH,
-            )
+            try {
+                extractor.extract(
+                    videoId = "khnokW3Mw24",
+                    hints = ContentHints(wantVideo = false),
+                    audioQuality = AudioQuality.HIGH,
+                )
+            } catch (error: Throwable) {
+                http.close()
+                skipIfNativeCipherMissing(error)
+                throw error
+            }
         println("ПОТОК: itag=${stream?.itag} mime=${stream?.mimeType} bitrate=${stream?.bitrate}")
         println("ССЫЛКА ЖИВЁТ ДО: ${stream?.expiresAt}, длина=${stream?.contentLengthBytes}")
         http.close()

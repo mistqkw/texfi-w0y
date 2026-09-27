@@ -18,8 +18,8 @@ android {
         applicationId = "com.texfi.w0y"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.0.2-beta-1"
+        versionCode = 4
+        versionName = "0.0.2-beta-2"
     }
 
     // Подпись берётся из переменных окружения — так один и тот же файл
@@ -111,6 +111,7 @@ dependencies {
     implementation(libs.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.navigation.compose)
+    implementation(libs.core.ktx)
     implementation(libs.splashscreen)
     implementation(libs.datastore)
     implementation(libs.room.runtime)

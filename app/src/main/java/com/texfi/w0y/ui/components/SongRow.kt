@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +56,7 @@ val LocalPlayingSongId = androidx.compose.runtime.compositionLocalOf<String?> { 
  * Действия справа задаёт вызывающий экран, чтобы в загрузках не было
  * кнопки «скачать», а в поиске — «удалить».
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SongRow(
     song: SongItem,
@@ -61,6 +64,8 @@ fun SongRow(
     modifier: Modifier = Modifier,
     highlighted: Boolean = song.id == LocalPlayingSongId.current,
     progressPercent: Float? = null,
+    /** Долгое нажатие открывает панель действий над треком, если она есть. */
+    onLongClick: (() -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val colors = LocalW0yColors.current
@@ -74,8 +79,12 @@ fun SongRow(
                 // Строка сжимается слабее плитки: в длинном списке сильный
                 // отклик выглядит как дёрганье всего списка.
                 .pressScale(rowInteraction, pressed = 0.975f)
-                .clickable(interactionSource = rowInteraction, indication = null, onClick = onClick)
-                .padding(vertical = if (compact) 5.dp else 8.dp),
+                .combinedClickable(
+                    interactionSource = rowInteraction,
+                    indication = null,
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                ).padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.size(cover)) {
@@ -103,7 +112,15 @@ fun SongRow(
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (highlighted) colors.accent else colors.text,
                         maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
+                    // Метка «твоей версии»: по ней в списке сразу видно, что
+                    // это не просто песня, а та, которую ты подкрутил под себя.
+                    song.sound?.takeIf { !it.isPlain }?.let {
+                        Spacer(Modifier.width(6.dp))
+                        VersionBadge(it.label)
+                    }
                 }
                 Text(
                     text =
@@ -173,6 +190,29 @@ fun SpriteButton(
                     onClick()
                 },
     )
+}
+
+/**
+ * Метка «твоей версии» трека — своё звучание, запомненное за ним.
+ *
+ * Пиксельный шрифт здесь уместен: это акцентное число, а не текст,
+ * который читают построчно.
+ */
+@Composable
+fun VersionBadge(text: String, modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    Box(
+        modifier
+            .background(colors.accent)
+            .padding(horizontal = 4.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium.copy(fontSize = 9.sp, lineHeight = 11.sp),
+            color = colors.background,
+            maxLines = 1,
+        )
+    }
 }
 
 /**

@@ -19,7 +19,11 @@ object DataModule {
     fun database(@ApplicationContext context: Context): W0yDatabase =
         Room
             .databaseBuilder(context, W0yDatabase::class.java, "w0y.db")
-            .addMigrations(W0yDatabase.MIGRATION_1_2, W0yDatabase.MIGRATION_2_3)
+            .addMigrations(
+                W0yDatabase.MIGRATION_1_2,
+                W0yDatabase.MIGRATION_2_3,
+                W0yDatabase.MIGRATION_3_4,
+            )
             .build()
 
     @Provides

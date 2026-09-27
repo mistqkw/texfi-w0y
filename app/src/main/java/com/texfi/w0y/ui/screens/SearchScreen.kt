@@ -292,6 +292,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                             SongRow(
                                 song = song,
                                 onClick = { viewModel.playFrom(songs, songs.indexOf(song)) },
+                                onLongClick = { pickPlaylistFor = song },
                                 actions = {
                                     SpriteButton(
                                         rows = Sprites.download,
@@ -368,6 +369,14 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
             onDismiss = {
                 pickPlaylistFor = null
                 newPlaylistName = null
+            },
+            onPlayNext = {
+                viewModel.playNext(song)
+                pickPlaylistFor = null
+            },
+            onEnqueue = {
+                viewModel.enqueue(song)
+                pickPlaylistFor = null
             },
         )
     }
@@ -500,7 +509,19 @@ private fun SearchPlaylistPanel(
     onPick: (Long) -> Unit,
     onCreate: (String) -> Unit,
     onDismiss: () -> Unit,
-) = AddToPlaylistPanel(song, playlists, newName, onNewNameChange, onPick, onCreate, onDismiss)
+    onPlayNext: () -> Unit,
+    onEnqueue: () -> Unit,
+) = AddToPlaylistPanel(
+    song = song,
+    playlists = playlists,
+    newName = newName,
+    onNewNameChange = onNewNameChange,
+    onPick = onPick,
+    onCreate = onCreate,
+    onDismiss = onDismiss,
+    onPlayNext = onPlayNext,
+    onEnqueue = onEnqueue,
+)
 
 /** Меньше трёх треков — «случайный» перестаёт быть случайным. */
 private const val RANDOM_MIN = 3

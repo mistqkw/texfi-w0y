@@ -30,6 +30,7 @@ import com.texfi.w0y.data.Profanity
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.SoundProfile
 import com.texfi.w0y.data.W0ySettings
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.widget.WidgetUpdater
@@ -83,6 +84,10 @@ class W0yPlayerService : MediaSessionService() {
     private var reverbEffect: PresetReverb? = null
     private var reverbSession: Int? = null
 
+    /** Что уже стоит на плеере — чтобы не пересоздавать эффект впустую. */
+    private var appliedSound: SoundProfile? = null
+    private var soundJob: Job? = null
+
     /** Громкость трека без учёта заглушения — к ней возвращаемся после строки с матом. */
     private var baseVolume: Float = 1f
     private var swearWindows: List<LongRange> = emptyList()
@@ -125,11 +130,7 @@ class W0yPlayerService : MediaSessionService() {
                 settings.value = current
                 player.skipSilenceEnabled = current.skipSilence
                 player.setHandleAudioBecomingNoisy(current.pauseOnHeadphonesOut)
-                // Скорость и тон — отдельные ручки: замедление без сдвига
-                // тона звучит иначе, чем настоящий slowed-эдит, где падает
-                // и то и другое. Пусть выбирает слушатель.
-                player.playbackParameters = PlaybackParameters(current.speed, current.pitch)
-                applyReverb(player.audioSessionId, current.reverb)
+                applySound(player)
                 applyLoudness(player)
                 if (!current.muteSwearLines) {
                     swearWindows = emptyList()
@@ -214,6 +215,7 @@ class W0yPlayerService : MediaSessionService() {
         // и кнопки после смерти сервиса адресованы уже никому.
         widgetUpdater.clear()
         swearJob?.cancel()
+        soundJob?.cancel()
         releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
         headsetReceiver = null
@@ -225,6 +227,57 @@ class W0yPlayerService : MediaSessionService() {
         session = null
         super.onDestroy()
     }
+
+    /**
+     * Ставит звучание: своё у трека, если оно задано, иначе общее.
+     *
+     * Скорость и тон — отдельные ручки: замедление без сдвига тона звучит
+     * иначе, чем настоящий slowed-эдит, где падает и то и другое. Пусть
+     * выбирает слушатель.
+     *
+     * Чтение версии — запрос к базе, поэтому идёт корутиной; пока он не
+     * вернулся, трек играет на общих настройках. Это заметнее всего в
+     * первую долю секунды после переключения, и лучше так, чем держать
+     * старт трека до ответа диска.
+     */
+    private fun applySound(player: Player) {
+        val id = player.currentMediaItem?.mediaId
+        val global = SoundProfile.of(settings.value)
+        if (id.isNullOrEmpty()) {
+            commitSound(player, global)
+            return
+        }
+        soundJob?.cancel()
+        soundJob =
+            scope.launch {
+                val profile = runCatching { library.soundOnce(id) }.getOrNull() ?: global
+                commitSound(player, profile)
+            }
+    }
+
+    /**
+     * Реверб пересоздавать на каждом треке нельзя: это освобождение и
+     * создание системного эффекта, то есть щелчок в звуке на ровном месте.
+     * Поэтому применяем только изменившееся.
+     */
+    private fun commitSound(player: Player, profile: SoundProfile) {
+        val session = player.audioSessionId()
+        if (profile != appliedSound) {
+            player.playbackParameters = PlaybackParameters(profile.speed, profile.pitch)
+        }
+        // Эффект переставляем при смене эха и при смене самой аудиосессии:
+        // на части устройств она меняется при переключении вывода, и старый
+        // эффект остаётся висеть на мёртвой — звук тогда просто сухой.
+        val movedSession = profile.reverb != Reverb.OFF && session != reverbSession
+        if (profile.reverb != appliedSound?.reverb || movedSession) {
+            applyReverb(session, profile.reverb)
+        }
+        appliedSound = profile
+    }
+
+    /** Сессия нужна для реверба, а у интерфейса Player её нет. */
+    private fun Player.audioSessionId(): Int =
+        (this as? ExoPlayer)?.audioSessionId ?: C.AUDIO_SESSION_ID_UNSET
 
     /**
      * Реверб вешается на аудиосессию плеера как вставка.
@@ -377,6 +430,10 @@ class W0yPlayerService : MediaSessionService() {
     ) : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             prefetchNext()
+            // Версия принадлежит треку, а не приложению: на каждом
+            // переключении её надо перечитать, иначе следующий трек
+            // унаследовал бы замедление предыдущего.
+            applySound(player)
             applyLoudness(player)
             if (settings.value.muteSwearLines) loadSwearWindows(mediaItem) else swearWindows = emptyList()
             val item = mediaItem ?: return

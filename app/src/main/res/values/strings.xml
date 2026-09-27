@@ -362,4 +362,19 @@
     <string name="playlist_push_done">Added to the account: %1$d.</string>
     <string name="playlist_push_same">The account already has everything.</string>
     <string name="playlist_push_failed">YouTube did not accept the upload. The playlist on the phone is untouched.</string>
+    <!-- 0.0.2: your own version of a track, queue, sharing -->
+    <string name="player_version_title">Your version of this track</string>
+    <string name="player_version_desc">Speed, pitch and reverb are remembered for this track. The rest keep playing as they were — this is not a setting for the whole app.</string>
+    <string name="player_version_own">Remembered for this track.</string>
+    <string name="player_version_global">Playing like everything else.</string>
+    <string name="player_version_clear">LIKE THE REST</string>
+    <string name="player_next_mode">AFTER THIS TRACK</string>
+    <string name="player_sleep_title">SLEEP TIMER</string>
+    <string name="player_sleep_off">OFF</string>
+    <string name="player_sleep_track">END OF TRACK</string>
+    <string name="track_panel_title">TRACK</string>
+    <string name="queue_play_next">PLAY NEXT</string>
+    <string name="queue_enqueue">TO THE END</string>
+    <string name="share_card_version">Your version of this track</string>
+    <string name="share_card_source">texfi-hub.vercel.app</string>
 </resources>

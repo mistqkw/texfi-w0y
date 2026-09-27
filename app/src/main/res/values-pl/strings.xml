@@ -362,4 +362,19 @@
     <string name="playlist_push_done">Dodano na konto: %1$d.</string>
     <string name="playlist_push_same">Na koncie już wszystko jest.</string>
     <string name="playlist_push_failed">YouTube nie przyjął wysyłki. Playlista na telefonie jest nietknięta.</string>
+    <!-- 0.0.2: własna wersja utworu, kolejka, udostępnianie -->
+    <string name="player_version_title">Twoja wersja tego utworu</string>
+    <string name="player_version_desc">Tempo, ton i pogłos są pamiętane dla tego utworu. Pozostałe grają jak grały — to nie ustawienie na całą aplikację.</string>
+    <string name="player_version_own">Zapamiętane dla tego utworu.</string>
+    <string name="player_version_global">Gra jak wszystkie inne.</string>
+    <string name="player_version_clear">JAK RESZTA</string>
+    <string name="player_next_mode">PO TYM UTWORZE</string>
+    <string name="player_sleep_title">TIMER SNU</string>
+    <string name="player_sleep_off">WYŁ</string>
+    <string name="player_sleep_track">DO KOŃCA</string>
+    <string name="track_panel_title">UTWÓR</string>
+    <string name="queue_play_next">JAKO NASTĘPNY</string>
+    <string name="queue_enqueue">NA KONIEC</string>
+    <string name="share_card_version">Twoja wersja tego utworu</string>
+    <string name="share_card_source">texfi-hub.vercel.app</string>
 </resources>

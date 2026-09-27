@@ -20,3 +20,28 @@ fun requireLiveNetwork() {
     val ci = System.getenv("CI") != null
     assumeTrue("Живые запросы к YouTube пропущены в CI", forced || !ci)
 }
+
+/**
+ * Подпись ссылки на поток YouTube расшифровывает JS-движком QuickJS, а тот —
+ * нативная библиотека, собранная только под ABI Android. Когда YouTube
+ * отдаёт формат с подписью, извлечение на десктопной JVM заканчивается
+ * UnsatisfiedLinkError: библиотеки в java.library.path просто нет. На
+ * телефоне тот же путь работает.
+ *
+ * Такое падение говорит про машину, а не про код, — поэтому оно
+ * превращается в пропуск. Когда YouTube отдаёт ссылку без подписи, тест
+ * идёт до конца и проверяет ровно то, для чего написан.
+ */
+fun skipIfNativeCipherMissing(error: Throwable) {
+    var cause: Throwable? = error
+    var depth = 0
+    while (cause != null && depth++ < 32) {
+        if (cause is UnsatisfiedLinkError) {
+            assumeTrue(
+                "QuickJS собран только под Android: расшифровку подписи на JVM не проверить",
+                false,
+            )
+        }
+        cause = cause.cause
+    }
+}

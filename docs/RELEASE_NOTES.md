@@ -1,10 +1,27 @@
-# TexFi w0y v0.0.2-beta-1
+# TexFi w0y v0.0.2-beta-2
 
 A YouTube Music client for Android: no ads, no Premium restrictions,
 with your own account and downloads into phone storage.
 
 ## What is new in 0.0.2
 
+- **Your own version of a track.** Speed, pitch and reverb used to be one
+  global setting, which is not how slowed edits are listened to: a track
+  is slowed down, the rest are not. Now the three belong to the track. Pick
+  0.85× and hall once, and that track comes back that way — from search,
+  from the queue, from the widget — while everything else plays as it did.
+  The row shows a small "0.85×" badge, and one button returns the track to
+  how the rest sound.
+- **A card of what you are listening to.** The share button in the player
+  draws a picture: the cover, the title, the artist, and your version if
+  the track has one. It is drawn on the phone into a file, and then it is
+  yours to send wherever — nothing is uploaded anywhere by the app.
+- **The queue can be edited.** A track can be moved up or thrown out, and
+  a long press on any track in search offers "play next" and "to the end".
+  Previously "play next" was the only order there was: whatever YouTube
+  gave back.
+- **Sleep timer: end of track.** The old timer cut the music mid-word. The
+  new option waits for the track to finish and then stops.
 - **Playlists land in your YouTube account.** Create a playlist in w0y and
   it appears in the account; add or remove a track and the account
   follows; rename or delete it and so does the copy there. The phone is
@@ -61,8 +78,8 @@ with your own account and downloads into phone storage.
   by hand.
 - Downloads into phone storage: tracks, albums, playlists; a queue with
   progress, a "Wi-Fi only" limit.
-- Your own sound: speed, pitch and reverb on any track — SLOWED and SPED
-  UP straight from the original file.
+- Your own sound: speed, pitch and reverb per track — SLOWED and SPED UP
+  straight from the original file, remembered for that track alone.
 - Speed dial on the home screen: what you play most, plus whatever you
   pinned by hand.
 - Recommendations by genre and sound, based on what you have already
@@ -87,6 +104,9 @@ with your own account and downloads into phone storage.
 - The name of a Bluetooth device is not always given to an app, and asking
   for the Bluetooth permission just to print a label is a bad trade. When
   the name is missing, the kind of output is shown instead.
+- The share card is a picture, not a link: whoever gets it sees the track
+  and your settings, and has to find the track themselves. Handing out
+  playable links to YouTube's files is not something this app will do.
 - There is no web version and none is planned.
 - Part of the delay when a track starts comes from YouTube's side. That is
   why the "tap → sound" time is measured and shown on the home screen:

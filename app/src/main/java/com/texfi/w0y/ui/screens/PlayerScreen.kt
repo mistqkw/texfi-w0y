@@ -1,5 +1,6 @@
 package com.texfi.w0y.ui.screens
 
+import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -48,11 +49,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
@@ -73,6 +76,7 @@ import com.texfi.w0y.ui.components.PlayPauseButton
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.components.TransportButton
+import com.texfi.w0y.ui.components.VersionBadge
 import com.texfi.w0y.ui.components.asGlow
 import com.texfi.w0y.ui.components.rememberCoverTint
 import com.texfi.w0y.ui.nav.BrowseRoute
@@ -120,7 +124,32 @@ fun PlayerScreen(
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
     val output by viewModel.activeOutput.collectAsStateWithLifecycle()
+    val trackSound by viewModel.trackSound.collectAsStateWithLifecycle()
+    val effectiveSound by viewModel.effectiveSound.collectAsStateWithLifecycle()
+    val sleepAfterTrack by viewModel.player.sleepAfterTrack.collectAsStateWithLifecycle()
+    val shareFile by viewModel.shareFile.collectAsStateWithLifecycle()
+    val sharing by viewModel.sharing.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val song = state.song ?: return
+
+    // Карточка уходит через системное окно выбора: куда именно её отправить,
+    // решает человек, а не приложение.
+    LaunchedEffect(shareFile) {
+        val file = shareFile ?: return@LaunchedEffect
+        runCatching {
+            val uri =
+                FileProvider.getUriForFile(context, "${context.packageName}.share", file)
+            val send =
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "image/png"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    putExtra(Intent.EXTRA_TEXT, "${song.title} — ${song.artist}")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+            context.startActivity(Intent.createChooser(send, null))
+        }
+        viewModel.consumeShare()
+    }
 
     var position by remember { mutableLongStateOf(0L) }
     var dragPosition by remember { mutableStateOf<Long?>(null) }
@@ -282,13 +311,20 @@ fun PlayerScreen(
                             // как раз вторая половина.
                             modifier = Modifier.basicMarquee(),
                         )
-                        Text(
-                            text = song.artist,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textMuted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = song.artist,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.textMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            trackSound?.takeIf { !it.isPlain }?.let { own ->
+                                Spacer(Modifier.width(8.dp))
+                                VersionBadge(own.label)
+                            }
+                        }
                     }
                     SpriteButton(Sprites.heart, onClick = { viewModel.toggleLike(song) }, active = liked)
                     Spacer(Modifier.width(14.dp))
@@ -297,6 +333,12 @@ fun PlayerScreen(
                     SpriteButton(Sprites.download, onClick = { viewModel.download(song) })
                     Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.plus, onClick = { showPlaylists = true })
+                    Spacer(Modifier.width(14.dp))
+                    SpriteButton(
+                        rows = Sprites.share,
+                        onClick = viewModel::shareCard,
+                        active = sharing,
+                    )
                 }
                 // Переход к артисту и альбому прямо из плеера: из него чаще
                 // всего и хочется уйти «послушать, что ещё у них есть».
@@ -448,10 +490,16 @@ fun PlayerScreen(
                             song = item,
                             active = index == state.currentIndex,
                             onClick = { viewModel.player.playAt(index) },
+                            // Играющий трек из очереди не убираем: это не
+                            // «убрать из очереди», а «выключить».
+                            onRemove = if (index == state.currentIndex) null else ({ viewModel.removeFromQueue(index) }),
+                            onMoveUp = if (index <= state.currentIndex + 1) null else ({ viewModel.moveUpInQueue(index) }),
                         )
                     }
                     item {
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(14.dp))
+                        SectionLabel(stringResource(R.string.player_next_mode))
+                        Spacer(Modifier.height(8.dp))
                         PixelSegmented(
                             options = QueueMode.entries.map { stringResource(it.label) },
                             selectedIndex = QueueMode.entries.indexOf(queueMode),
@@ -467,6 +515,38 @@ fun PlayerScreen(
                                 },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (radioLoading) colors.accent else colors.textMuted,
+                        )
+                        // Таймер сна живёт здесь, а не в углу шапки: это
+                        // ответ на вопрос «что будет дальше», а дальше —
+                        // тишина. «До конца трека» важнее круглых минут:
+                        // засыпают именно так.
+                        Spacer(Modifier.height(18.dp))
+                        SectionLabel(stringResource(R.string.player_sleep_title))
+                        Spacer(Modifier.height(8.dp))
+                        val sleepOptions = listOf(null, 0, 15, 30, 60)
+                        val selectedSleep =
+                            when {
+                                sleepAfterTrack -> 1
+                                sleepLeft != null -> -1
+                                else -> 0
+                            }
+                        PixelSegmented(
+                            options =
+                                sleepOptions.map { minutes ->
+                                    when (minutes) {
+                                        null -> stringResource(R.string.player_sleep_off)
+                                        0 -> stringResource(R.string.player_sleep_track)
+                                        else -> stringResource(R.string.settings_sleep_minutes, minutes)
+                                    }
+                                },
+                            selectedIndex = selectedSleep,
+                            onSelect = { index ->
+                                when (val minutes = sleepOptions[index]) {
+                                    null -> viewModel.cancelSleepTimer()
+                                    0 -> viewModel.sleepAfterTrack()
+                                    else -> viewModel.startSleepTimer(minutes)
+                                }
+                            },
                         )
                     }
                 }
@@ -516,34 +596,81 @@ fun PlayerScreen(
 
                 PlayerTab.SOUND ->
                     item {
+                        Text(
+                            text = stringResource(R.string.player_version_title),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.text,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.player_version_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                        )
+                        Spacer(Modifier.height(12.dp))
                         PixelSegmented(
                             options = SoundPreset.entries.map { stringResource(it.label) },
-                            // −1 значит «ни один»: когда значения подкручены руками
-                            // в настройках, подсвечивать готовый пресет было бы враньём.
-                            selectedIndex = SoundPreset.entries.indexOfFirst { it.matches(settings) },
+                            // −1 значит «ни один»: когда скорость подкручена
+                            // руками в настройках, подсвечивать готовый пресет
+                            // было бы враньём.
+                            selectedIndex = SoundPreset.entries.indexOfFirst { it.matches(effectiveSound) },
                             onSelect = { viewModel.setSoundPreset(SoundPreset.entries[it]) },
                         )
+                        Spacer(Modifier.height(12.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text =
+                                    buildString {
+                                        append(
+                                            stringResource(
+                                                R.string.player_sound_speed,
+                                                effectiveSound.speed.toString(),
+                                            ),
+                                        )
+                                        if (effectiveSound.pitch != 1f) {
+                                            append(" ")
+                                            append(
+                                                stringResource(
+                                                    R.string.player_sound_pitch,
+                                                    effectiveSound.pitch.toString(),
+                                                ),
+                                            )
+                                        }
+                                        if (effectiveSound.reverb != Reverb.OFF) {
+                                            append(" ")
+                                            append(
+                                                stringResource(
+                                                    R.string.player_sound_reverb,
+                                                    stringResource(effectiveSound.reverb.label).lowercase(),
+                                                ),
+                                            )
+                                        }
+                                    },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colors.textMuted,
+                                modifier = Modifier.weight(1f),
+                            )
+                            // Кнопка есть только когда есть что снимать:
+                            // «сбросить» при отсутствии версии — пустышка.
+                            if (trackSound != null) {
+                                Spacer(Modifier.width(10.dp))
+                                PixelButton(
+                                    text = stringResource(R.string.player_version_clear),
+                                    onClick = viewModel::clearTrackSound,
+                                    fill = colors.surfaceHigh,
+                                )
+                            }
+                        }
                         Spacer(Modifier.height(10.dp))
                         Text(
                             text =
-                                buildString {
-                                    append(stringResource(R.string.player_sound_speed, settings.speed.toString()))
-                                    if (settings.pitch != 1f) {
-                                        append(" ")
-                                        append(stringResource(R.string.player_sound_pitch, settings.pitch.toString()))
-                                    }
-                                    if (settings.reverb != Reverb.OFF) {
-                                        append(" ")
-                                        append(
-                                            stringResource(
-                                                R.string.player_sound_reverb,
-                                                stringResource(settings.reverb.label).lowercase(),
-                                            ),
-                                        )
-                                    }
+                                if (trackSound == null) {
+                                    stringResource(R.string.player_version_global)
+                                } else {
+                                    stringResource(R.string.player_version_own)
                                 },
                             style = MaterialTheme.typography.bodySmall,
-                            color = colors.textMuted,
+                            color = if (trackSound == null) colors.textMuted else colors.accent,
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
@@ -581,7 +708,14 @@ fun PlayerScreen(
 }
 
 @Composable
-private fun QueueRow(index: Int, song: SongItem, active: Boolean, onClick: () -> Unit) {
+private fun QueueRow(
+    index: Int,
+    song: SongItem,
+    active: Boolean,
+    onClick: () -> Unit,
+    onRemove: (() -> Unit)?,
+    onMoveUp: (() -> Unit)?,
+) {
     val colors = LocalW0yColors.current
     Row(
         Modifier
@@ -597,13 +731,20 @@ private fun QueueRow(index: Int, song: SongItem, active: Boolean, onClick: () ->
             modifier = Modifier.width(28.dp),
         )
         Column(Modifier.weight(1f)) {
-            Text(
-                text = song.title,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (active) colors.accent else colors.text,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (active) colors.accent else colors.text,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                song.sound?.takeIf { !it.isPlain }?.let {
+                    Spacer(Modifier.width(6.dp))
+                    VersionBadge(it.label)
+                }
+            }
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.bodySmall,
@@ -611,6 +752,17 @@ private fun QueueRow(index: Int, song: SongItem, active: Boolean, onClick: () ->
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+        }
+        // Поднять и убрать — то, чего в очереди не было вообще. Перетаскивание
+        // не делаю, пока не могу проверить жест на живом телефоне: жест,
+        // который срабатывает через раз, хуже кнопки.
+        onMoveUp?.let {
+            Spacer(Modifier.width(10.dp))
+            SpriteButton(Sprites.chevronUp, onClick = it, size = 16)
+        }
+        onRemove?.let {
+            Spacer(Modifier.width(10.dp))
+            SpriteButton(Sprites.close, onClick = it, size = 16)
         }
     }
 }

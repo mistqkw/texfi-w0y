@@ -362,4 +362,19 @@
     <string name="playlist_push_done">Додано в акаунт: %1$d.</string>
     <string name="playlist_push_same">В акаунті вже все є.</string>
     <string name="playlist_push_failed">YouTube не прийняв завантаження. Плейлист на телефоні не зачеплений.</string>
+    <!-- 0.0.2: своя версія треку, черга, шеринг -->
+    <string name="player_version_title">Твоя версія цього треку</string>
+    <string name="player_version_desc">Швидкість, тон і ехо запамʼятовуються за цим треком. Решта грає як грала — це не налаштування на весь застосунок.</string>
+    <string name="player_version_own">Запамʼятовано за цим треком.</string>
+    <string name="player_version_global">Грає як усі інші.</string>
+    <string name="player_version_clear">ЯК УСІ</string>
+    <string name="player_next_mode">ПІСЛЯ ЦЬОГО ТРЕКУ</string>
+    <string name="player_sleep_title">ТАЙМЕР СНУ</string>
+    <string name="player_sleep_off">ВИКЛ</string>
+    <string name="player_sleep_track">ДО КІНЦЯ</string>
+    <string name="track_panel_title">ТРЕК</string>
+    <string name="queue_play_next">НАСТУПНИМ</string>
+    <string name="queue_enqueue">У КІНЕЦЬ</string>
+    <string name="share_card_version">Твоя версія цього треку</string>
+    <string name="share_card_source">texfi-hub.vercel.app</string>
 </resources>

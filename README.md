@@ -36,9 +36,13 @@ those:
   subscriptions are pulled from the account.
 - **Downloads** — tracks, albums and playlists into phone storage, a queue
   with progress, a "Wi-Fi only" limit.
-- **Your own sound** — speed, pitch and reverb on any track: SLOWED and
-  SPED UP straight from the original file, no hunting for someone else's
-  edit.
+- **Your own sound, per track** — speed, pitch and reverb belong to the
+  track, not to the app: SLOWED and SPED UP straight from the original
+  file, remembered for that track and nothing else. The row shows the
+  badge; one button puts the track back to how the rest sound.
+- **A card of the track** — the player draws a picture with the cover, the
+  title and your version of it, to send wherever you like. Drawn on the
+  phone; nothing is uploaded.
 - **Speed dial** — what you play most, right on the home screen; a long
   press pins a track, album, playlist or artist.
 - **Stats** — minutes, favourite tracks and artists for a week, a month or
@@ -66,6 +70,9 @@ those:
   request, and matches from your own library before the network replies.
 - **Audio outputs** — the outputs the system actually reports, and which
   one the music is going through.
+- **A queue you can edit** — move a track up, throw it out, send one from
+  search to play next or to the end. Plus a sleep timer that can wait for
+  the end of the track instead of cutting it mid-word.
 
 What's missing: a web version (and none is planned) and scrobbling.
 

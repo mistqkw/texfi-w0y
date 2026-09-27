@@ -146,6 +146,26 @@ class LibraryRepository @Inject constructor(
         return true
     }
 
+    /** «Твоя версия» этого трека, как её видит плеер. */
+    fun sound(songId: String): Flow<SoundProfile?> = dao.soundFlow(songId).map { it?.toProfile() }
+
+    suspend fun soundOnce(songId: String): SoundProfile? = dao.sound(songId)?.toProfile()
+
+    /** Сколько треков слушаются по-своему. */
+    val soundProfiles: Flow<Int> = dao.soundProfileCount()
+
+    /**
+     * Запоминает версию трека или снимает её (`null` — «играть как все»).
+     *
+     * Трек может ещё не лежать в базе: версию задают из плеера, а туда он
+     * попадает из выдачи. Поэтому сначала убеждаемся, что строка есть, —
+     * иначе UPDATE молча не сделал бы ничего.
+     */
+    suspend fun setSound(song: SongItem, profile: SoundProfile?) {
+        dao.saveSongMeta(SongEntity.from(song))
+        dao.setSound(song.id, profile?.speed, profile?.pitch, profile?.reverb?.name)
+    }
+
     suspend fun markDownload(songId: String, state: Int) = dao.setDownloadState(songId, state)
 
     suspend fun saveSong(song: SongItem) = dao.saveSongMeta(SongEntity.from(song))

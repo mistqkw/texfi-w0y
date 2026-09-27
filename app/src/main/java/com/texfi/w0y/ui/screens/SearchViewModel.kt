@@ -113,6 +113,10 @@ class SearchViewModel @Inject constructor(
 
     fun download(song: SongItem) = downloads.download(song)
 
+    fun playNext(song: SongItem) = player.playNext(song)
+
+    fun enqueue(song: SongItem) = player.enqueue(song)
+
     fun addToPlaylist(playlistId: Long, song: SongItem) =
         viewModelScope.launch { library.addToPlaylist(playlistId, song) }
 
