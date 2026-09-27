@@ -116,7 +116,7 @@
     <string name="search_diagnostics_failed">Diagnostyka padła: %1$s</string>
     <string name="search_failed">Nie udało się zapytać YouTube Music.</string>
     <string name="search_filter_albums">ALBUMY</string>
-    <string name="search_filter_artists">WYKONAWCY</string>
+    <string name="search_filter_artists">ARTYŚCI</string>
     <string name="search_filter_songs">UTWORY</string>
     <string name="search_hint">Wpisz nazwę utworu lub wykonawcy — znajdę w YouTube Music.</string>
     <string name="search_nothing">Nic nie znaleziono. Spróbuj inaczej.</string>
@@ -377,4 +377,27 @@
     <string name="queue_enqueue">NA KONIEC</string>
     <string name="share_card_version">Twoja wersja tego utworu</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
+    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <string name="login_picking">Wybieram konto z telefonu…</string>
+    <string name="login_account_hint">Konto %1$s jest już wpisane — Google zapyta tylko o hasło albo potwierdzenie na telefonie.</string>
+    <string name="login_other_account">INNE KONTO</string>
+    <string name="login_finishing">Zalogowano. Zabieram sesję…</string>
+    <string name="theme_glass">Szkło</string>
+    <string name="about_experiments_on">Eksperymenty otwarte: motyw „Szkło” jest w Ustawieniach → Wygląd.</string>
+    <string name="about_experiments_left">Jeszcze stuknięć: %1$d</string>
+    <string name="download_open">OTWÓRZ</string>
+    <string name="download_queued_one">Pobieram „%1$s” — będzie w Bibliotece → Pobrane</string>
+    <string name="download_queued_many">Utworów w pobieraniu: %1$d — będą w Bibliotece → Pobrane</string>
+    <string name="download_wifi_one">„%1$s” czeka na Wi-Fi — tak ustawiono w Ustawieniach</string>
+    <string name="download_wifi_many">Czeka na Wi-Fi: %1$d — tak ustawiono w Ustawieniach</string>
+    <string name="download_done_one">Pobrano: „%1$s” — gra bez sieci</string>
+    <string name="download_done_many">Pobrano utworów: %1$d</string>
+    <string name="download_failed">Nie pobrało się: „%1$s”</string>
+    <string name="downloads_where">Leżą wewnątrz aplikacji, nie w folderze Muzyka: inne odtwarzacze ich nie widzą i znikają razem z aplikacją.</string>
+    <string name="search_filter_videos">WIDEO</string>
+    <string name="player_edit_title">GOTOWE PRZERÓBKI</string>
+    <string name="player_edit_desc">Cudzy slowed albo sped up z YouTube — z własnym miksem i pogłosem. Oryginał zostaje w kolejce za nim.</string>
+    <string name="player_edit_searching">Szukam…</string>
+    <string name="player_edit_none">Nie znalazło się gotowej przeróbki tego utworu. Twoja wersja wyżej zwalnia sam oryginał.</string>
+    <string name="player_edit_playing">Gra: %1$s</string>
 </resources>

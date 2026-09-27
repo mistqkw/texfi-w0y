@@ -61,11 +61,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.texfi.w0y.R
 import com.texfi.w0y.data.QueueMode
+import com.texfi.w0y.data.EditKind
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.SoundPreset
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.playback.OutputKind
+import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.ExplicitBadge
@@ -129,6 +131,7 @@ fun PlayerScreen(
     val sleepAfterTrack by viewModel.player.sleepAfterTrack.collectAsStateWithLifecycle()
     val shareFile by viewModel.shareFile.collectAsStateWithLifecycle()
     val sharing by viewModel.sharing.collectAsStateWithLifecycle()
+    val edit by viewModel.edit.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val song = state.song ?: return
 
@@ -330,7 +333,7 @@ fun PlayerScreen(
                     Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.pin, onClick = { viewModel.togglePin(song) }, active = pinned)
                     Spacer(Modifier.width(14.dp))
-                    SpriteButton(Sprites.download, onClick = { viewModel.download(song) })
+                    DownloadButton(song.id, onDownload = { viewModel.download(song) })
                     Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.plus, onClick = { showPlaylists = true })
                     Spacer(Modifier.width(14.dp))
@@ -678,6 +681,8 @@ fun PlayerScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textMuted,
                         )
+                        Spacer(Modifier.height(20.dp))
+                        EditFinder(songId = song.id, edit = edit, onFind = viewModel::findEdit)
                     }
             }
             item { Spacer(Modifier.height(30.dp)) }
@@ -883,3 +888,57 @@ private const val SWIPE_THRESHOLD_PX = 120f
 
 private const val GLOW_ALPHA = 0.3f
 private const val GLOW_STOP = 0.55f
+
+/**
+ * Готовые переделки с YouTube — вторая дорога к slowed рядом со своей.
+ *
+ * Своя версия замедляет оригинал; здесь — чужой залитый эдит, со своим
+ * сведением и эхом. Ответ показывается только для того трека, к которому
+ * он относится: «не нашлось» от прошлой песни на новой было бы враньём.
+ */
+@Composable
+private fun EditFinder(
+    songId: String,
+    edit: EditSearch,
+    onFind: (EditKind) -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    SectionLabel(stringResource(R.string.player_edit_title))
+    Text(
+        text = stringResource(R.string.player_edit_desc),
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.textMuted,
+    )
+    Spacer(Modifier.height(10.dp))
+    val searching = edit is EditSearch.Searching
+    Row {
+        PixelButton(
+            text = "SLOWED",
+            onClick = { onFind(EditKind.SLOWED) },
+            enabled = !searching,
+            fill = colors.surfaceHigh,
+        )
+        Spacer(Modifier.width(12.dp))
+        PixelButton(
+            text = "SPED UP",
+            onClick = { onFind(EditKind.SPED_UP) },
+            enabled = !searching,
+            fill = colors.surfaceHigh,
+        )
+    }
+    val status =
+        when (edit) {
+            is EditSearch.Searching -> if (edit.songId == songId) stringResource(R.string.player_edit_searching) else null
+            is EditSearch.NotFound -> if (edit.songId == songId) stringResource(R.string.player_edit_none) else null
+            is EditSearch.Playing -> if (edit.songId == songId) stringResource(R.string.player_edit_playing, edit.title) else null
+            EditSearch.Idle -> null
+        }
+    if (status != null) {
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = status,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (edit is EditSearch.NotFound) colors.secondary else colors.accent,
+        )
+    }
+}

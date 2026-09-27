@@ -1,0 +1,75 @@
+package com.texfi.w0y.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.texfi.w0y.playback.DownloadProgress
+import com.texfi.w0y.playback.DownloadState
+import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.PixelSectionLabel
+
+/**
+ * Состояние всех загрузок, раздаётся оболочкой один раз на всё приложение.
+ * Читают его только кнопки загрузки — остальной экран на тики процентов
+ * не перерисовывается.
+ */
+val LocalDownloadProgress = compositionLocalOf<Map<String, DownloadProgress>> { emptyMap() }
+
+/**
+ * Кнопка загрузки, которая показывает, что с треком происходит.
+ *
+ * Раньше это была стрелка, которая после нажатия оставалась той же
+ * стрелкой: понять, пошла ли загрузка и куда, было нельзя — первый же
+ * посторонний тестер на этом споткнулся. Теперь четыре состояния: стрелка,
+ * часы (в очереди или ждёт Wi-Fi), проценты с полоской, галочка.
+ */
+@Composable
+fun DownloadButton(
+    songId: String,
+    onDownload: () -> Unit,
+    downloaded: Boolean = false,
+) {
+    val colors = LocalW0yColors.current
+    val progress = LocalDownloadProgress.current[songId]
+    when {
+        downloaded || progress?.state == DownloadState.DONE ->
+            SpriteButton(Sprites.check, onClick = {}, active = true)
+
+        progress?.state == DownloadState.WAITING ->
+            SpriteButton(Sprites.timer, onClick = {}, active = true)
+
+        progress?.state == DownloadState.RUNNING -> {
+            val percent = progress.percent.toInt().coerceIn(0, 99)
+            Column(Modifier.size(24.dp, 20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(Modifier.height(16.dp), contentAlignment = Alignment.Center) {
+                    Text(text = "$percent", style = PixelSectionLabel.copy(fontSize = 8.sp), color = colors.accent)
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(colors.border),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(percent / 100f)
+                            .height(3.dp)
+                            .background(colors.accent),
+                    )
+                }
+            }
+        }
+
+        else -> SpriteButton(Sprites.download, onClick = onDownload)
+    }
+}

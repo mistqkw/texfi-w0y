@@ -44,7 +44,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -86,7 +93,9 @@ class W0yPlayerService : MediaSessionService() {
 
     /** Что уже стоит на плеере — чтобы не пересоздавать эффект впустую. */
     private var appliedSound: SoundProfile? = null
-    private var soundJob: Job? = null
+
+    /** Трек на плеере — от него зависит, чью версию звучания слушать. */
+    private val currentId = MutableStateFlow<String?>(null)
 
     /** Громкость трека без учёта заглушения — к ней возвращаемся после строки с матом. */
     private var baseVolume: Float = 1f
@@ -130,7 +139,6 @@ class W0yPlayerService : MediaSessionService() {
                 settings.value = current
                 player.skipSilenceEnabled = current.skipSilence
                 player.setHandleAudioBecomingNoisy(current.pauseOnHeadphonesOut)
-                applySound(player)
                 applyLoudness(player)
                 if (!current.muteSwearLines) {
                     swearWindows = emptyList()
@@ -140,6 +148,7 @@ class W0yPlayerService : MediaSessionService() {
                     loadSwearWindows(player.currentMediaItem)
                 }
             }.launchIn(scope)
+        watchSound(player)
 
         audioSession.update(player.audioSessionId)
         player.addAnalyticsListener(
@@ -147,7 +156,11 @@ class W0yPlayerService : MediaSessionService() {
                 override fun onAudioSessionIdChanged(
                     eventTime: AnalyticsListener.EventTime,
                     audioSessionId: Int,
-                ) = audioSession.update(audioSessionId)
+                ) {
+                    audioSession.update(audioSessionId)
+                    // Эхо висит на сессии: переехала она — переезжает и эффект.
+                    appliedSound?.let { commitSound(player, it) }
+                }
             },
         )
         player.addListener(TrackListener(player))
@@ -215,7 +228,6 @@ class W0yPlayerService : MediaSessionService() {
         // и кнопки после смерти сервиса адресованы уже никому.
         widgetUpdater.clear()
         swearJob?.cancel()
-        soundJob?.cancel()
         releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
         headsetReceiver = null
@@ -235,24 +247,28 @@ class W0yPlayerService : MediaSessionService() {
      * иначе, чем настоящий slowed-эдит, где падает и то и другое. Пусть
      * выбирает слушатель.
      *
-     * Чтение версии — запрос к базе, поэтому идёт корутиной; пока он не
-     * вернулся, трек играет на общих настройках. Это заметнее всего в
-     * первую долю секунды после переключения, и лучше так, чем держать
-     * старт трека до ответа диска.
+     * Версия трека читается подпиской на базу, а не разовым запросом при
+     * переключении: иначе пресет, выбранный в плеере для играющего трека,
+     * ложился в базу и не звучал до следующего перехода. Именно так он и
+     * «не работал» в первой сборке beta-2.
+     *
+     * Пока база не ответила про новый трек, он играет на общих настройках:
+     * onStart(null) не даёт ему унаследовать замедление предыдущего.
      */
-    private fun applySound(player: Player) {
-        val id = player.currentMediaItem?.mediaId
-        val global = SoundProfile.of(settings.value)
-        if (id.isNullOrEmpty()) {
-            commitSound(player, global)
-            return
-        }
-        soundJob?.cancel()
-        soundJob =
-            scope.launch {
-                val profile = runCatching { library.soundOnce(id) }.getOrNull() ?: global
-                commitSound(player, profile)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun watchSound(player: Player) {
+        val own =
+            currentId.flatMapLatest { id ->
+                if (id.isNullOrEmpty()) {
+                    flowOf(null)
+                } else {
+                    library.sound(id).onStart { emit(null) }.catch { emit(null) }
+                }
             }
+        combine(own, settings) { mine, global -> mine ?: SoundProfile.of(global) }
+            .distinctUntilChanged()
+            .onEach { commitSound(player, it) }
+            .launchIn(scope)
     }
 
     /**
@@ -433,7 +449,7 @@ class W0yPlayerService : MediaSessionService() {
             // Версия принадлежит треку, а не приложению: на каждом
             // переключении её надо перечитать, иначе следующий трек
             // унаследовал бы замедление предыдущего.
-            applySound(player)
+            currentId.value = mediaItem?.mediaId
             applyLoudness(player)
             if (settings.value.muteSwearLines) loadSwearWindows(mediaItem) else swearWindows = emptyList()
             val item = mediaItem ?: return

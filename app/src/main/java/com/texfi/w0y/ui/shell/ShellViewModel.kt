@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.texfi.w0y.playback.DownloadsRepository
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class ShellViewModel @Inject constructor(
     val player: PlayerConnection,
     private val settings: SettingsRepository,
+    val downloads: DownloadsRepository,
 ) : ViewModel() {
     /** null, пока настройки не прочитаны: показывать приветствие вслепую нельзя. */
     val welcomeSeen: StateFlow<Boolean?> =

@@ -34,6 +34,7 @@ import com.texfi.w0y.ui.components.ScreenTitle
 import com.texfi.w0y.ui.components.SectionHeader
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelBigNumber
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 
@@ -55,7 +56,7 @@ fun StatsScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .screenBackground(),
     ) {
         ScreenTitle(title = stringResource(R.string.stats_title), onBack = onBack)
         Column(Modifier.padding(horizontal = Gutter)) {

@@ -26,6 +26,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +45,7 @@ import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelBigNumber
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.PixelTitle
@@ -55,7 +59,11 @@ import com.texfi.w0y.ui.theme.PixelTitle
  * список, и поэтому он здесь не рекламный блок, а часть продукта.
  */
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(
+    onBack: () -> Unit,
+    experiments: Boolean,
+    onUnlockExperiments: () -> Unit,
+) {
     val colors = LocalW0yColors.current
     val context = LocalContext.current
     val open: (String) -> Unit = { url ->
@@ -69,7 +77,7 @@ fun AboutScreen(onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .screenBackground()
             .statusBarsPadding()
             .padding(horizontal = 18.dp),
     ) {
@@ -89,7 +97,7 @@ fun AboutScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item { NumberedSection("01", stringResource(R.string.about_section_app)) }
-            item { AppFacts() }
+            item { AppFacts(experiments, onUnlockExperiments) }
 
             item { NumberedSection("02", stringResource(R.string.about_section_open)) }
             item {
@@ -173,7 +181,14 @@ private fun NumberedSection(number: String, title: String) {
 
 /** Карточка с версией и тем, что про приложение можно сказать честно. */
 @Composable
-private fun AppFacts() {
+private fun AppFacts(
+    experiments: Boolean,
+    onUnlockExperiments: () -> Unit,
+) {
+    // Эксперименты открываются семью нажатиями на версию — как режим
+    // разработчика в самом Android. Прятать иначе было бы нечестно:
+    // это не секрет, просто не то, что стоит показывать каждому.
+    var versionTaps by remember { mutableIntStateOf(0) }
     val colors = LocalW0yColors.current
     PixelCard {
         Text(
@@ -191,8 +206,29 @@ private fun AppFacts() {
             style = if (version.length > VERSION_FITS) PixelTitle else PixelBigNumber,
             color = colors.text,
             maxLines = 1,
-            modifier = Modifier.padding(top = 4.dp),
+            modifier =
+                Modifier
+                    .padding(top = 4.dp)
+                    .clickable(indication = null, interactionSource = null) {
+                        versionTaps++
+                        if (versionTaps >= UNLOCK_TAPS && !experiments) onUnlockExperiments()
+                    },
         )
+        val left = UNLOCK_TAPS - versionTaps
+        when {
+            experiments && versionTaps > 0 ->
+                Text(
+                    text = stringResource(R.string.about_experiments_on),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.accent,
+                )
+            !experiments && versionTaps >= UNLOCK_HINT_FROM ->
+                Text(
+                    text = stringResource(R.string.about_experiments_left, left),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textMuted,
+                )
+        }
         Text(
             text = stringResource(R.string.about_build, BuildConfig.VERSION_CODE),
             style = MaterialTheme.typography.bodySmall,
@@ -344,3 +380,6 @@ private const val DONATE_URL = "https://github.com/sponsors/mistqkw"
 
 /** Сколько знаков версии влезает в строку крупным пиксельным шрифтом. */
 private const val VERSION_FITS = 12
+
+private const val UNLOCK_TAPS = 7
+private const val UNLOCK_HINT_FROM = 3

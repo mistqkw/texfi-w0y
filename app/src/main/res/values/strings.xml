@@ -377,4 +377,27 @@
     <string name="queue_enqueue">TO THE END</string>
     <string name="share_card_version">Your version of this track</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
+    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <string name="login_picking">Pick an account from the phone…</string>
+    <string name="login_account_hint">Account %1$s is already filled in — Google will only ask for the password or a confirmation on your phone.</string>
+    <string name="login_other_account">OTHER ACCOUNT</string>
+    <string name="login_finishing">Signed in. Taking the session…</string>
+    <string name="theme_glass">Glass</string>
+    <string name="about_experiments_on">Experiments are open: the Glass theme is in Settings → Look.</string>
+    <string name="about_experiments_left">%1$d more taps</string>
+    <string name="download_open">OPEN</string>
+    <string name="download_queued_one">Downloading “%1$s” — it will be in Library → Downloads</string>
+    <string name="download_queued_many">Downloading %1$d tracks — they will be in Library → Downloads</string>
+    <string name="download_wifi_one">“%1$s” is waiting for Wi-Fi — that is how Settings are set</string>
+    <string name="download_wifi_many">%1$d tracks are waiting for Wi-Fi — that is how Settings are set</string>
+    <string name="download_done_one">Downloaded “%1$s” — it plays with no network</string>
+    <string name="download_done_many">Downloaded tracks: %1$d</string>
+    <string name="download_failed">“%1$s” did not download</string>
+    <string name="downloads_where">They are kept inside the app, not in the Music folder: other players will not see them, and they go away with the app.</string>
+    <string name="search_filter_videos">VIDEOS</string>
+    <string name="player_edit_title">READY-MADE EDITS</string>
+    <string name="player_edit_desc">Someone else’s slowed or sped up edit from YouTube — with its own mix and echo. The original stays in the queue behind it.</string>
+    <string name="player_edit_searching">Looking…</string>
+    <string name="player_edit_none">No ready-made edit of this track was found. Your own version above slows down the original.</string>
+    <string name="player_edit_playing">Playing: %1$s</string>
 </resources>

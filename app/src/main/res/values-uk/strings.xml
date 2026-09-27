@@ -377,4 +377,27 @@
     <string name="queue_enqueue">У КІНЕЦЬ</string>
     <string name="share_card_version">Твоя версія цього треку</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
+    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <string name="login_picking">Обираю акаунт із телефона…</string>
+    <string name="login_account_hint">Акаунт %1$s уже підставлено — Google спитає тільки пароль або підтвердження на телефоні.</string>
+    <string name="login_other_account">ІНШИЙ АКАУНТ</string>
+    <string name="login_finishing">Вхід пройшов. Забираю сесію…</string>
+    <string name="theme_glass">Скло</string>
+    <string name="about_experiments_on">Експерименти відкрито: тема «Скло» — у налаштуваннях, розділ «Вигляд».</string>
+    <string name="about_experiments_left">Ще натискань: %1$d</string>
+    <string name="download_open">ВІДКРИТИ</string>
+    <string name="download_queued_one">Завантажую «%1$s» — буде в Бібліотеці → Завантаження</string>
+    <string name="download_queued_many">Треків у завантаженні: %1$d — будуть у Бібліотеці → Завантаження</string>
+    <string name="download_wifi_one">«%1$s» чекає на Wi-Fi — так виставлено в налаштуваннях</string>
+    <string name="download_wifi_many">Чекають на Wi-Fi: %1$d — так виставлено в налаштуваннях</string>
+    <string name="download_done_one">Завантажено: «%1$s» — грає без мережі</string>
+    <string name="download_done_many">Завантажено треків: %1$d</string>
+    <string name="download_failed">Не завантажилось: «%1$s»</string>
+    <string name="downloads_where">Лежать усередині застосунку, а не в теці «Музика»: інші плеєри їх не бачать, і видаляються вони разом із застосунком.</string>
+    <string name="search_filter_videos">ВІДЕО</string>
+    <string name="player_edit_title">ГОТОВІ ПЕРЕРОБКИ</string>
+    <string name="player_edit_desc">Чужий slowed або sped up з YouTube — зі своїм зведенням і ехом. Оригінал лишається в черзі позаду.</string>
+    <string name="player_edit_searching">Шукаю…</string>
+    <string name="player_edit_none">Готової переробки цього треку не знайшлося. Своя версія вище сповільнює сам оригінал.</string>
+    <string name="player_edit_playing">Грає: %1$s</string>
 </resources>

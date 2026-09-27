@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.GraphicsLayerScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -43,9 +45,37 @@ fun CoverImage(
                     .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier.matchParentSize(),
+            modifier =
+                if (Thumbnails.isVideoFrame(url)) {
+                    Modifier.matchParentSize().graphicsLayer { zoomPastLetterbox() }
+                } else {
+                    Modifier.matchParentSize()
+                },
         )
     }
 }
+
+/**
+ * Кадр видео YouTube (`hqdefault`) — это 4:3 с чёрными полосами сверху и
+ * снизу вокруг кадра 16:9. Обычный Crop в квадрат оставлял полосы на
+ * обложке. Здесь картинка увеличивается ровно настолько, чтобы полосы
+ * ушли за край, — для любого соотношения рамки: в широкой рамке 16:9
+ * увеличения нет вовсе, в квадрате оно 4/3.
+ */
+private fun GraphicsLayerScope.zoomPastLetterbox() {
+    val w = size.width
+    val h = size.height
+    if (w <= 0f || h <= 0f) return
+    val fit = maxOf(w / FRAME_W, h / FRAME_H)
+    val zoom = maxOf(1f, h / (VIDEO_H * fit))
+    scaleX = zoom
+    scaleY = zoom
+}
+
+private const val FRAME_W = 4f
+private const val FRAME_H = 3f
+
+/** Высота кадра 16:9 внутри картинки 4:3 шириной [FRAME_W]. */
+private const val VIDEO_H = FRAME_W * 9f / 16f
 
 private fun Int.dp() = androidx.compose.ui.unit.Dp(toFloat())

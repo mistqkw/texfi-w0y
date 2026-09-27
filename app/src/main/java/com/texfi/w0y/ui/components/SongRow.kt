@@ -66,6 +66,8 @@ fun SongRow(
     progressPercent: Float? = null,
     /** Долгое нажатие открывает панель действий над треком, если она есть. */
     onLongClick: (() -> Unit)? = null,
+    /** Кадр 16:9 вместо квадрата — для выдачи видео, как в YouTube Music. */
+    wideCover: Boolean = false,
     actions: @Composable () -> Unit = {},
 ) {
     val colors = LocalW0yColors.current
@@ -87,7 +89,7 @@ fun SongRow(
                 ).padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(cover)) {
+            Box(Modifier.size(if (wideCover) cover * 16 / 9 else cover, cover)) {
                 CoverImage(
                     url = song.thumbnailUrl,
                     px = Thumbnails.ROW,

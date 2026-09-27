@@ -14,6 +14,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,10 @@ fun PixelButton(
     val sink = if (pressed) 4 else 0
     val body = fill ?: colors.accent
 
+    if (colors.glass) {
+        GlassButton(text, onClick, modifier, body, enabled, interaction, pressed, tap)
+        return
+    }
     Box(modifier = modifier) {
         Box(
             Modifier
@@ -85,6 +91,53 @@ fun PixelButton(
                     },
             )
         }
+    }
+}
+
+/**
+ * Кнопка стеклянной темы: капсула, при нажатии чуть уменьшается вместо
+ * «вдавливания» в тень — тени у стекла нет. Акцентная кнопка остаётся
+ * плотной: полупрозрачное главное действие теряется на фоне.
+ */
+@Composable
+private fun GlassButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    body: Color,
+    enabled: Boolean,
+    interaction: MutableInteractionSource,
+    pressed: Boolean,
+    tap: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    val shape = RoundedCornerShape(50)
+    val solid = body == colors.accent
+    Box(
+        modifier
+            .graphicsLayer {
+                val k = if (pressed) 0.96f else 1f
+                scaleX = k
+                scaleY = k
+            }.clip(shape)
+            .background(
+                when {
+                    !enabled -> colors.surface
+                    solid -> body.copy(alpha = 0.85f)
+                    else -> colors.surfaceHigh
+                },
+            ).border(1.dp, Brush.verticalGradient(listOf(GlassEdge, GlassEdgeFaint)), shape)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
+                tap()
+                onClick()
+            }.padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = PixelSectionLabel,
+            color = if (enabled) colors.text else colors.textMuted,
+        )
     }
 }
 

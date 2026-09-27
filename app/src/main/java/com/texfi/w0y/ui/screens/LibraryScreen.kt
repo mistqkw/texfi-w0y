@@ -33,10 +33,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.exoplayer.offline.Download
 import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.playback.DownloadState
+import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.EmptyState
 import com.texfi.w0y.ui.components.Gutter
@@ -368,7 +369,7 @@ private fun SongList(
                     // должно быть видно, что удалилось именно это, а не
                     // что список перерисовался целиком.
                     modifier = Modifier.animateItem(),
-                    actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
+                    actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
             }
         }
@@ -380,10 +381,7 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.downloaded.collectAsStateWithLifecycle()
     val progress by viewModel.downloads.progress.collectAsStateWithLifecycle()
-    // Download.STATE_COMPLETED — нестабильное API media3; состояние
-    // загрузки больше взять негде, а показать «в очереди: N» обещали.
-    @Suppress("UnsafeOptInUsageError")
-    val pending = progress.values.filter { it.state != Download.STATE_COMPLETED }
+    val pending = progress.values.filter { it.state != DownloadState.DONE }
     Column(
         Modifier
             .fillMaxSize()
@@ -399,6 +397,14 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
                 ),
             style = MaterialTheme.typography.bodySmall,
             color = colors.textMuted,
+        )
+        // «Где это» — вопрос, который задали первым. Ответ честный: не в
+        // папке «Музыка», а внутри приложения.
+        Text(
+            text = stringResource(R.string.downloads_where),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.textMuted,
+            modifier = Modifier.padding(top = 4.dp),
         )
         Spacer(Modifier.height(10.dp))
         if (songs.isEmpty() && pending.isEmpty()) {
@@ -522,7 +528,7 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
                     // должно быть видно, что удалилось именно это, а не
                     // что список перерисовался целиком.
                     modifier = Modifier.animateItem(),
-                    actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
+                    actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
             }
         }

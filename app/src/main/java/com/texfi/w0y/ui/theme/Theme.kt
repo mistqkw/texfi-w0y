@@ -28,15 +28,22 @@ data class W0yColors(
     val secondary: Color,
     val text: Color,
     val textMuted: Color,
+    /** Стеклянная тема: скругления, полупрозрачность, без офсетной тени. */
+    val glass: Boolean = false,
 )
 
+/**
+ * Тёмная — графит, а не чернота: карточки заметно светлее фона. Раньше
+ * фон был #0D0D11, и на экране телефона тёмная тема от чёрной не
+ * отличалась ничем — это было замечено первым же посторонним тестером.
+ */
 private val DarkColors =
     W0yColors(
-        background = Color(0xFF0D0D11),
-        surface = Color(0xFF16161C),
-        surfaceHigh = Color(0xFF20202A),
-        border = Color(0xFF2E2E3A),
-        shadow = Color(0xFF05050A),
+        background = Color(0xFF15151B),
+        surface = Color(0xFF1F1F27),
+        surfaceHigh = Color(0xFF2A2A34),
+        border = Color(0xFF383845),
+        shadow = Color(0xFF0A0A0E),
         accent = TexFiBlue,
         accentDeep = TexFiBlueDeep,
         secondary = W0yAmber,
@@ -44,13 +51,38 @@ private val DarkColors =
         textMuted = W0yTextMuted,
     )
 
-/** Чёрная тема для AMOLED: фон именно #000000, иначе смысла нет. */
+/**
+ * Чёрная для AMOLED: чёрный не только фон, но и карточки. Серые подложки
+ * держат пиксели включёнными и съедают весь смысл темы; карточку здесь
+ * очерчивает только рамка, а тень — тонкая ступенька цвета рамки.
+ */
 private val OledColors =
     DarkColors.copy(
         background = Color(0xFF000000),
-        surface = Color(0xFF0A0A0D),
-        surfaceHigh = Color(0xFF14141A),
-        shadow = Color(0xFF000000),
+        surface = Color(0xFF000000),
+        surfaceHigh = Color(0xFF101014),
+        border = Color(0xFF2C2C36),
+        shadow = Color(0xFF17171D),
+    )
+
+/**
+ * Стекло — экспериментальная тема для тех, кому пиксельной резкости мало.
+ * Поверхности полупрозрачные поверх глубокого фона с цветными пятнами,
+ * рамка — светлый блик сверху. Чужой для TexFi язык, поэтому спрятана.
+ */
+private val GlassColors =
+    W0yColors(
+        background = Color(0xFF0A0E1C),
+        surface = Color(0x14FFFFFF),
+        surfaceHigh = Color(0x24FFFFFF),
+        border = Color(0x33FFFFFF),
+        shadow = Color(0x00000000),
+        accent = TexFiBlue,
+        accentDeep = TexFiBlueDeep,
+        secondary = W0yAmber,
+        text = W0yText,
+        textMuted = Color(0xFFA3A8BC),
+        glass = true,
     )
 
 /**
@@ -83,6 +115,7 @@ fun W0yTheme(
         when (mode) {
             ThemeMode.DARK -> DarkColors
             ThemeMode.OLED -> OledColors
+            ThemeMode.GLASS -> GlassColors
             ThemeMode.LIGHT -> LightColors
         }
     // Схема меняет только пару акцентов: фон, поверхности и текст остаются
@@ -114,15 +147,17 @@ fun W0yTheme(
                 error = W0yDanger,
             )
         } else {
+            // Material-компоненты (диалоги, меню) полупрозрачными быть не
+            // должны: у них нет своего фона, и сквозь них читался бы экран.
             darkColorScheme(
                 primary = colors.accent,
                 onPrimary = colors.background,
                 secondary = colors.secondary,
                 background = colors.background,
                 onBackground = colors.text,
-                surface = colors.surface,
+                surface = if (colors.glass) GlassOpaqueSurface else colors.surface,
                 onSurface = colors.text,
-                surfaceVariant = colors.surfaceHigh,
+                surfaceVariant = if (colors.glass) GlassOpaqueSurface else colors.surfaceHigh,
                 onSurfaceVariant = colors.textMuted,
                 outline = colors.border,
                 error = W0yDanger,
@@ -137,3 +172,5 @@ fun W0yTheme(
         )
     }
 }
+
+private val GlassOpaqueSurface = Color(0xFF1A2036)

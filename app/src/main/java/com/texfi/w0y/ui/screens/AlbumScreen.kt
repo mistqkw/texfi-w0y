@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.data.db.PinEntity
+import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.SkeletonRow
@@ -41,6 +42,7 @@ import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.nav.BrowseRoute
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.PixelTitle
 
@@ -66,7 +68,7 @@ fun AlbumScreen(
     LazyColumn(
         Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .screenBackground(),
     ) {
         item {
             Row(
@@ -187,7 +189,7 @@ fun AlbumScreen(
                     song = song,
                     modifier = Modifier.weight(1f),
                     onClick = { viewModel.play(songs, index) },
-                    actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
+                    actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
             }
         }

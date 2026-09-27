@@ -38,6 +38,7 @@ import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelScreenTitle
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import kotlinx.coroutines.launch
@@ -65,7 +66,7 @@ fun WelcomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .screenBackground()
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {

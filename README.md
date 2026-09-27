@@ -31,15 +31,21 @@ those:
 
 - **Search and playback** — tracks, albums, artists; background playback
   with a media notification, queue, repeat, shuffle.
-- **Your account** — sign in through Google, or by pasting a cookie by
-  hand when Google refuses the app's window. Playlists, likes and
+- **Your account** — pick one of the Google accounts already on the phone
+  and confirm on Google's page, or paste a cookie by hand when Google
+  refuses the app's window. Playlists, likes and
   subscriptions are pulled from the account.
-- **Downloads** — tracks, albums and playlists into phone storage, a queue
-  with progress, a "Wi-Fi only" limit.
+- **Downloads** — tracks, albums and playlists into the app's storage; each
+  button shows waiting, percent and done, and a line says where to find
+  them. A "Wi-Fi only" limit.
 - **Your own sound, per track** — speed, pitch and reverb belong to the
   track, not to the app: SLOWED and SPED UP straight from the original
   file, remembered for that track and nothing else. The row shows the
   badge; one button puts the track back to how the rest sound.
+- **Ready-made edits** — a button finds someone else's slowed or sped up
+  upload of the playing track and plays it.
+- **Videos in search** — clips and edits that exist only as videos, with
+  wide frames, played as audio.
 - **A card of the track** — the player draws a picture with the cover, the
   title and your version of it, to send wherever you like. Drawn on the
   phone; nothing is uploaded.

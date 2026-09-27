@@ -50,6 +50,7 @@ import timber.log.Timber
 enum class SearchFilter(@StringRes val label: Int) {
     ALL(R.string.search_filter_all),
     SONGS(R.string.search_filter_songs),
+    VIDEOS(R.string.search_filter_videos),
     ALBUMS(R.string.search_filter_albums),
     ARTISTS(R.string.search_filter_artists),
 }
@@ -63,6 +64,8 @@ sealed interface SearchState {
         val songs: List<SongItem> = emptyList(),
         val albums: List<PlaylistCard> = emptyList(),
         val artists: List<ArtistCard> = emptyList(),
+        /** Строки — видео: рисуются с широким кадром, как в YouTube Music. */
+        val videos: Boolean = false,
     ) : SearchState {
         val isEmpty: Boolean get() = songs.isEmpty() && albums.isEmpty() && artists.isEmpty()
     }
@@ -232,6 +235,7 @@ class SearchViewModel @Inject constructor(
                                     }
 
                                 SearchFilter.SONGS -> SearchState.Results(songs = repository.searchSongs(query))
+                                SearchFilter.VIDEOS -> SearchState.Results(songs = repository.searchVideos(query), videos = true)
                                 SearchFilter.ALBUMS -> SearchState.Results(albums = repository.searchAlbums(query))
                                 SearchFilter.ARTISTS -> SearchState.Results(artists = repository.searchArtists(query))
                             }

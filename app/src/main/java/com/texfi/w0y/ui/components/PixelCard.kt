@@ -13,6 +13,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
@@ -32,6 +34,10 @@ fun PixelCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = LocalW0yColors.current
+    if (colors.glass) {
+        GlassCard(modifier, label, content)
+        return
+    }
     Box(modifier = modifier) {
         Box(
             Modifier
@@ -63,3 +69,40 @@ fun PixelCard(
         }
     }
 }
+
+private val GlassShape = RoundedCornerShape(20.dp)
+
+/**
+ * Карточка стеклянной темы: полупрозрачная заливка, чуть светлее сверху,
+ * и рамка-блик — яркая по верхнему краю и почти пропадающая к нижнему.
+ * Так читается толщина стекла, а офсетная тень здесь была бы чужой.
+ */
+@Composable
+private fun GlassCard(
+    modifier: Modifier,
+    label: String?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(GlassShape)
+            .background(Brush.verticalGradient(listOf(colors.surfaceHigh, colors.surface)))
+            .border(1.dp, Brush.verticalGradient(listOf(GlassEdge, GlassEdgeFaint)), GlassShape)
+            .padding(16.dp),
+    ) {
+        if (label != null) {
+            Text(
+                text = label,
+                style = PixelSectionLabel,
+                color = colors.accent,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+        }
+        content()
+    }
+}
+
+internal val GlassEdge = Color(0x66FFFFFF)
+internal val GlassEdgeFaint = Color(0x14FFFFFF)

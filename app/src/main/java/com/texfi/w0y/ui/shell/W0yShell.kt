@@ -57,6 +57,8 @@ import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.components.popWhenActivated
 import com.texfi.w0y.ui.components.PixelSprite
+import com.texfi.w0y.ui.components.DownloadToast
+import com.texfi.w0y.ui.components.LocalDownloadProgress
 import com.texfi.w0y.ui.components.Starfield
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.nav.BrowseNavigator
@@ -73,6 +75,7 @@ import com.texfi.w0y.ui.screens.PlayerScreen
 import com.texfi.w0y.ui.screens.SearchScreen
 import com.texfi.w0y.ui.screens.SettingsScreen
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 
 private enum class Tab(val labelRes: Int, val sprite: List<String>) {
     HOME(R.string.tab_home, Sprites.home),
@@ -141,7 +144,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         }
     }
 
+    val downloadProgress by viewModel.downloads.progress.collectAsStateWithLifecycle()
+
     CompositionLocalProvider(
+        LocalDownloadProgress provides downloadProgress,
         LocalBrowseNavigator provides navigator,
         LocalCompactRows provides compactRows,
         LocalHaptics provides haptics,
@@ -150,7 +156,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(colors.background),
+            .screenBackground(),
     ) {
         // Фон экосистемы: он виден в промежутках между карточками и
         // строками — как на сайте, где чёрный тоже не пустой.
@@ -194,6 +200,16 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     onBack = { if (browseStack.isNotEmpty()) browseStack.removeAt(browseStack.lastIndex) },
                 )
             }
+            DownloadToast(
+                notices = viewModel.downloads.notices,
+                onOpen = {
+                    browseStack.clear()
+                    playerExpanded = false
+                    settingsOpen = false
+                    libraryViewModel.open(LibraryRoute.Downloads)
+                    tab = Tab.LIBRARY
+                },
+            )
             MiniPlayer(
                 state = playerState,
                 positionProvider = viewModel.player::positionMs,
@@ -286,7 +302,7 @@ private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> U
         Box(
             Modifier
                 .fillMaxSize()
-                .background(colors.background),
+                .screenBackground(),
         ) {
             when (route) {
                 is BrowseRoute.Artist -> ArtistScreen(route = route, onBack = onBack)

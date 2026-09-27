@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -73,6 +75,36 @@ class YouTubeRepository @Inject constructor(
                     params = SONGS_FILTER,
                 ).body<JsonObject>()
         YtJson.songs(response)
+    }
+
+    /**
+     * Видео из YouTube Music: клипы, лайвы, переделки и всё, что залито
+     * роликом, а не треком. Играют они так же — только звуком.
+     */
+    suspend fun searchVideos(query: String): List<SongItem> = withContext(Dispatchers.IO) {
+        val response =
+            innerTube
+                .search(
+                    client = YouTubeClient.WEB_REMIX,
+                    query = query,
+                    params = VIDEOS_FILTER,
+                ).body<JsonObject>()
+        YtJson.songs(response)
+    }
+
+    /**
+     * Готовая переделка трека — slowed или sped up, залитая кем-то.
+     *
+     * Ищем и среди треков, и среди видео: официальные slowed-релизы лежат
+     * треками, а большинство фанатских — роликами. Что из найденного
+     * действительно та же песня, решает [EditMatch], а не первая строка
+     * выдачи: поиск охотно отдаёт соседние песни того же артиста.
+     */
+    suspend fun findEdit(song: SongItem, kind: EditKind): SongItem? = coroutineScope {
+        val query = "${song.title} ${song.artist.substringBefore(',')} ${kind.query}"
+        val songs = async { runCatching { searchSongs(query) }.getOrDefault(emptyList()) }
+        val videos = async { runCatching { searchVideos(query) }.getOrDefault(emptyList()) }
+        EditMatch.pick(song, kind, songs.await() + videos.await())
     }
 
     /**
@@ -337,6 +369,7 @@ class YouTubeRepository @Inject constructor(
         const val SONGS_FILTER = "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"
         const val ALBUMS_FILTER = "EgWKAQIYAWoKEAkQChAFEAMQBA%3D%3D"
         const val ARTISTS_FILTER = "EgWKAQIgAWoKEAkQChAFEAMQBA%3D%3D"
+        const val VIDEOS_FILTER = "EgWKAQIQAWoKEAkQChAFEAMQBA%3D%3D"
 
         private val EXPIRY_MARGIN = kotlin.time.Duration.parse("30s")
 

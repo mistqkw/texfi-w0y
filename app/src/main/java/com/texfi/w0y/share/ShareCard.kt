@@ -73,7 +73,7 @@ class ShareCardRenderer @Inject constructor(
                 .allowHardware(false)
                 .build()
         val result = runCatching { loader.execute(request) }.getOrNull()
-        return (result as? SuccessResult)?.image?.let { runCatching { it.toBitmap() }.getOrNull() }
+        return (result as? SuccessResult)?.image?.let { runCatching { Thumbnails.squareOf(it.toBitmap(), url) }.getOrNull() }
     }
 
     private fun createBitmap(song: SongItem, sound: SoundProfile?, cover: Bitmap?): Bitmap {

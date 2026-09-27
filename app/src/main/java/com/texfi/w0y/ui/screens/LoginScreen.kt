@@ -1,11 +1,17 @@
 package com.texfi.w0y.ui.screens
 
+import android.accounts.AccountManager
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.net.Uri
 import android.webkit.CookieManager
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,9 +29,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +49,7 @@ import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelTitle
 
 /**
@@ -55,6 +65,13 @@ import com.texfi.w0y.ui.theme.PixelTitle
  * убираем, но полагаться на это нельзя — проверку могут вернуть в любой
  * момент. Поэтому рядом всегда доступен ручной путь: войти в обычном
  * браузере и вставить cookie сюда.
+ *
+ * Аккаунт берётся из системы: стандартный выбор аккаунтов Android показывает
+ * те, что уже есть на телефоне, и отдаёт только адрес — без разрешений и без
+ * доступа к самому аккаунту. Адрес подставляется в форму Google, так что
+ * остаётся одно действие: пароль или подтверждение на телефоне. Войти «само»
+ * по системному аккаунту стороннее приложение не может: токены, из которых
+ * получается сессия YouTube, Google выдаёт только своим приложениям.
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -67,6 +84,27 @@ fun LoginScreen(
     val colors = LocalW0yColors.current
     var manualMode by remember { mutableStateOf(false) }
     var manualCookie by remember { mutableStateOf("") }
+    // null — выбор ещё не закрыт; "" — выбрать отказались, форма пустая.
+    var account by rememberSaveable { mutableStateOf<String?>(null) }
+    val chooser =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            account =
+                result.data
+                    ?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
+                    ?.takeIf { result.resultCode == Activity.RESULT_OK }
+                    .orEmpty()
+        }
+    val pickAccount = {
+        runCatching {
+            chooser.launch(
+                AccountManager.newChooseAccountIntent(
+                    null, null, arrayOf(GOOGLE_ACCOUNT_TYPE), null, null, null, null,
+                ),
+            )
+        }.onFailure { account = "" }
+        Unit
+    }
+    LaunchedEffect(Unit) { if (account == null) pickAccount() }
 
     DisposableEffect(Unit) {
         onDispose { CookieManager.getInstance().flush() }
@@ -75,7 +113,7 @@ fun LoginScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .screenBackground()
             .statusBarsPadding(),
     ) {
         Row(
@@ -119,62 +157,141 @@ fun LoginScreen(
                 onSubmit = { onCookie(manualCookie.trim()) },
             )
         } else {
-            GoogleForm(onCookie = onCookie)
+            when (val email = account) {
+                null ->
+                    Text(
+                        text = stringResource(R.string.login_picking),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(18.dp),
+                    )
+                else ->
+                    key(email) {
+                        GoogleForm(email = email, onPickAccount = pickAccount, onCookie = onCookie)
+                    }
+            }
         }
     }
 }
 
 @Composable
-private fun GoogleForm(onCookie: (String) -> Unit) {
+private fun GoogleForm(
+    email: String,
+    onPickAccount: () -> Unit,
+    onCookie: (String) -> Unit,
+) {
     val colors = LocalW0yColors.current
     // Движок создаётся один раз, а лямбда приходит новая на каждую
     // рекомпозицию — держим ссылку живой, иначе сработает устаревшая.
     val callback by rememberUpdatedState(onCookie)
     val submitted = remember { booleanArrayOf(false) }
+    // Как только Google отпустил на YouTube, страницу музыки уже никто не
+    // ждёт: движок прячется, сессия забирается из cookie сразу.
+    var finishing by remember { mutableStateOf(false) }
 
     Text(
-        text = stringResource(R.string.login_google_note) + stringResource(R.string.login_google_blocked),
+        text =
+            if (email.isNotEmpty()) {
+                stringResource(R.string.login_account_hint, email)
+            } else {
+                stringResource(R.string.login_google_note) + stringResource(R.string.login_google_blocked)
+            },
         style = MaterialTheme.typography.bodySmall,
         color = colors.textMuted,
         modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
     )
-    AndroidView(
-        modifier = Modifier.fillMaxSize(),
-        factory = { context ->
-            WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                // Метка «; wv» в User-Agent — то, по чему Google узнаёт
-                // встроенный движок и отказывает во входе. Подменять агент
-                // на десктопный хуже: несовпадение с платформой — отдельный
-                // повод для отказа. Берём системный и убираем только метку.
-                settings.userAgentString =
-                    WebSettings
-                        .getDefaultUserAgent(context)
-                        .replace("; wv", "")
-                        .replace(" wv", "")
-                CookieManager.getInstance().setAcceptCookie(true)
-                CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
-                webViewClient =
-                    object : WebViewClient() {
-                        override fun onPageFinished(view: WebView?, url: String?) {
-                            val cookie =
-                                CookieManager.getInstance().getCookie("https://music.youtube.com")
+    PixelButton(
+        text = stringResource(R.string.login_other_account),
+        onClick = onPickAccount,
+        fill = colors.surfaceHigh,
+        modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
+    )
+    Box(Modifier.fillMaxSize()) {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { context ->
+                WebView(context).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    // Метка «; wv» в User-Agent — то, по чему Google узнаёт
+                    // встроенный движок и отказывает во входе. Подменять агент
+                    // на десктопный хуже: несовпадение с платформой — отдельный
+                    // повод для отказа. Берём системный и убираем только метку.
+                    settings.userAgentString =
+                        WebSettings
+                            .getDefaultUserAgent(context)
+                            .replace("; wv", "")
+                            .replace(" wv", "")
+                    CookieManager.getInstance().setAcceptCookie(true)
+                    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+                    webViewClient =
+                        object : WebViewClient() {
+                            // Проверяем на старте каждой страницы, а не на
+                            // конце: раньше вход ждал полной загрузки
+                            // music.youtube.com, и человек видел сайт музыки
+                            // перед тем, как попасть в приложение.
+                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                val host = url?.let(Uri::parse)?.host.orEmpty()
+                                if (host.endsWith("youtube.com") && !host.startsWith("accounts.")) {
+                                    finishing = true
+                                    if (trySubmit()) view?.stopLoading()
+                                }
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                // Страница догрузилась, а сессии так и нет —
+                                // значит, вход не прошёл; прятать её дальше
+                                // значило бы держать человека перед надписью.
+                                if (!trySubmit()) finishing = false
+                            }
+
                             // Ждём именно SAPISID: он появляется только после
                             // успешного входа, остальные cookie выставляются
                             // и анонимному посетителю. Отдаём один раз —
-                            // onPageFinished срабатывает на каждый редирект.
-                            if (cookie != null && "SAPISID" in cookie && !submitted[0]) {
+                            // страницы в цепочке редиректов идут одна за другой.
+                            private fun trySubmit(): Boolean {
+                                if (submitted[0]) return true
+                                val cookie =
+                                    CookieManager.getInstance().getCookie("https://music.youtube.com")
+                                if (cookie == null || "SAPISID" !in cookie) return false
                                 submitted[0] = true
                                 callback(cookie)
+                                return true
                             }
                         }
-                    }
-                loadUrl("https://accounts.google.com/ServiceLogin?service=youtube&continue=https://music.youtube.com/")
+                    loadUrl(loginUrl(email))
+                }
+            },
+        )
+        if (finishing) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(colors.background)
+                    .padding(18.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.login_finishing),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.accent,
+                )
             }
-        },
-    )
+        }
+    }
 }
+
+/** Адрес подставляется самой форме Google — никуда, кроме неё, он не уходит. */
+private fun loginUrl(email: String): String =
+    Uri
+        .parse("https://accounts.google.com/ServiceLogin")
+        .buildUpon()
+        .appendQueryParameter("service", "youtube")
+        .appendQueryParameter("continue", "https://music.youtube.com/")
+        .apply { if (email.isNotEmpty()) appendQueryParameter("Email", email) }
+        .build()
+        .toString()
+
+private const val GOOGLE_ACCOUNT_TYPE = "com.google"
 
 @Composable
 private fun ManualCookie(

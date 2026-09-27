@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.R
 import com.texfi.w0y.data.db.PinEntity
+import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.ArtistTile
 import com.texfi.w0y.ui.components.Gutter
 import com.texfi.w0y.ui.components.ReleaseTile
@@ -205,7 +206,7 @@ fun HomeScreen(
                     song = song,
                     modifier = Modifier.padding(horizontal = Gutter),
                     onClick = { viewModel.play(recent, recent.indexOf(song)) },
-                    actions = { SpriteButton(Sprites.download, onClick = { viewModel.download(song) }) },
+                    actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
             }
         }

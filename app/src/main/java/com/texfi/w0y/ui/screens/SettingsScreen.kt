@@ -71,6 +71,7 @@ import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import kotlinx.coroutines.launch
 
@@ -127,8 +128,13 @@ fun SettingsScreen(
     }
 
     if (aboutOpen) {
+        val experiments = viewModel.settings.collectAsStateWithLifecycle().value.experiments
         BackHandler { aboutOpen = false }
-        AboutScreen(onBack = { aboutOpen = false })
+        AboutScreen(
+            onBack = { aboutOpen = false },
+            experiments = experiments,
+            onUnlockExperiments = viewModel::unlockExperiments,
+        )
         return
     }
 
@@ -151,7 +157,7 @@ fun SettingsScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(colors.background)
+            .screenBackground()
             .statusBarsPadding(),
     ) {
         ScreenTitle(
@@ -927,7 +933,9 @@ private fun settingsRows(
                 keywords = "oled",
                 control =
                     SettingControl.Choice(
-                        options = ThemeMode.entries,
+                        // Стекло видно только тем, кто открыл эксперименты:
+                        // в семье TexFi оно чужое, и в общем списке сбивало бы.
+                        options = ThemeMode.entries.filter { it != ThemeMode.GLASS || settings.experiments || settings.theme == it },
                         selected = settings.theme,
                         label = { themeLabel(it) },
                         onSelect = viewModel::setTheme,
@@ -1062,4 +1070,5 @@ private fun themeLabel(mode: ThemeMode): String =
         ThemeMode.DARK -> stringResource(R.string.theme_dark)
         ThemeMode.OLED -> stringResource(R.string.theme_oled)
         ThemeMode.LIGHT -> stringResource(R.string.theme_light)
+        ThemeMode.GLASS -> stringResource(R.string.theme_glass)
     }

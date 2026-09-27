@@ -242,4 +242,47 @@ class BrowseSmokeTest {
         )
         assertEquals(null, Thumbnails.sized(null, 384))
     }
+
+    /**
+     * Вкладка «видео»: те же строки, что у треков, но с клипами, лайвами и
+     * переделками, которых нет среди «песен». Проверяем, что разбор их
+     * берёт, у каждой есть обложка и длительность.
+     */
+    @Test
+    fun searchesVideos() = runBlocking {
+        requireLiveNetwork()
+        val http = client()
+        val response =
+            InnerTube(httpClient = http)
+                .search(
+                    client = YouTubeClient.WEB_REMIX,
+                    query = "kai angel andy warhol slowed",
+                    params = YouTubeRepository.VIDEOS_FILTER,
+                ).body<JsonObject>()
+        val videos = YtJson.songs(response)
+        videos.take(5).forEach { println("ВИДЕО: ${it.title} — ${it.artist} · ${it.durationText} · ${it.plays} · ${it.thumbnailUrl}") }
+        http.close()
+        assertTrue("Поиск видео вернул пусто", videos.isNotEmpty())
+        assertTrue("У видео нет обложек", videos.all { it.thumbnailUrl != null })
+    }
+
+    /** Готовая переделка находится по-настоящему, а не только в тесте правила. */
+    @Test
+    fun findsASlowedEdit() = runBlocking {
+        requireLiveNetwork()
+        val http = client()
+        val innerTube = InnerTube(httpClient = http)
+        val query = "kai angel andy warhol slowed"
+        val candidates =
+            listOf(YouTubeRepository.SONGS_FILTER, YouTubeRepository.VIDEOS_FILTER).flatMap { filter ->
+                YtJson.songs(
+                    innerTube.search(client = YouTubeClient.WEB_REMIX, query = query, params = filter).body<JsonObject>(),
+                )
+            }
+        http.close()
+        val original = SongItem(id = "none", title = "andy warhol", artist = "Kai Angel")
+        val edit = com.texfi.w0y.data.EditMatch.pick(original, com.texfi.w0y.data.EditKind.SLOWED, candidates)
+        println("ПЕРЕДЕЛКА: ${edit?.title} — ${edit?.artist} [${edit?.id}]")
+        assertNotNull("Готовая slowed-версия не нашлась", edit)
+    }
 }

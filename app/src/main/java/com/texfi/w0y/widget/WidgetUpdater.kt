@@ -95,7 +95,7 @@ class WidgetUpdater @Inject constructor(
                 .allowHardware(false)
                 .build()
         val result = SingletonImageLoader.get(context).execute(request)
-        return (result.image as? BitmapImage)?.bitmap
+        return (result.image as? BitmapImage)?.bitmap?.let { Thumbnails.squareOf(it, url) }
     }
 
     private companion object {

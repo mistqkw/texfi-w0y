@@ -122,6 +122,9 @@ enum class ThemeMode {
     DARK,
     OLED,
     LIGHT,
+
+    /** Стекло — скрытая, экспериментальная; открывается в «О приложении». */
+    GLASS,
 }
 
 /**
@@ -188,6 +191,7 @@ data class W0ySettings(
     val haptics: Boolean = true,
     val seekStepSec: Int = 10,
     val playerCoverGlow: Boolean = true,
+    val experiments: Boolean = false,
 )
 
 @Singleton
@@ -236,6 +240,7 @@ class SettingsRepository @Inject constructor(
                     haptics = prefs[Keys.HAPTICS] ?: true,
                     seekStepSec = prefs[Keys.SEEK_STEP] ?: 10,
                     playerCoverGlow = prefs[Keys.COVER_GLOW] ?: true,
+                    experiments = prefs[Keys.EXPERIMENTS] ?: false,
                 )
             }
 
@@ -315,6 +320,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setSeekStep(seconds: Int) = put(Keys.SEEK_STEP, seconds)
 
     suspend fun setPlayerCoverGlow(value: Boolean) = put(Keys.COVER_GLOW, value)
+
+    suspend fun setExperiments(value: Boolean) = put(Keys.EXPERIMENTS, value)
 
     /**
      * Язык пишется сразу в двух местах.
@@ -417,6 +424,7 @@ class SettingsRepository @Inject constructor(
         val RESUME_ON_PLUG = booleanPreferencesKey("resume_on_plug")
         val SLEEP_MIN = intPreferencesKey("sleep_timer_default")
         val THEME = stringPreferencesKey("theme")
+        val EXPERIMENTS = booleanPreferencesKey("experiments")
         val LYRICS = booleanPreferencesKey("show_lyrics")
         val HISTORY = booleanPreferencesKey("keep_history")
         val QUEUE_MODE = stringPreferencesKey("queue_mode")

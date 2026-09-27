@@ -20,6 +20,24 @@ with your own account and downloads into phone storage.
   a long press on any track in search offers "play next" and "to the end".
   Previously "play next" was the only order there was: whatever YouTube
   gave back.
+- **Sign in with an account already on the phone.** The system account
+  picker shows the Google accounts the phone has; the chosen address is
+  filled into Google's own form, so what is left is the password or a
+  confirmation on the phone. The window closes the moment Google lets you
+  through, without loading YouTube Music first.
+- **Downloads say what they are doing.** The arrow turns into a clock
+  while waiting, then into a percentage with a bar, then into a check. A
+  line above the mini-player says what was queued, what finished and what
+  failed, with a button straight to Library → Downloads, and the downloads
+  screen now says where the files live.
+- **A black theme that is actually different.** Dark is now graphite with
+  cards clearly lighter than the background; Black is black down to the
+  cards, outlined by their borders only.
+- **Ready-made slowed and sped up.** Next to your own version of a track,
+  two buttons look for someone else's edit on YouTube and play it right
+  away; the original stays behind it in the queue.
+- **A Videos tab in search** — clips, live takes and edits that YouTube
+  Music keeps as videos, with wide frames, played as audio.
 - **Sleep timer: end of track.** The old timer cut the music mid-word. The
   new option waits for the track to finish and then stops.
 - **Playlists land in your YouTube account.** Create a playlist in w0y and
@@ -53,6 +71,13 @@ with your own account and downloads into phone storage.
 - **Audio outputs.** Settings list the outputs the system actually reports
   and mark the one in use; the player names it when it is not the phone
   itself — "playing through" explains silence in your headphones.
+
+## Fixed
+
+- Speed presets chosen in the player did not sound until the next track:
+  the choice was saved for the track, but the player only re-read it on a
+  track change. It now follows the saved version live.
+- Video frames used as covers showed black bars above and below.
 
 ## What got faster
 
@@ -107,6 +132,12 @@ with your own account and downloads into phone storage.
 - The share card is a picture, not a link: whoever gets it sees the track
   and your settings, and has to find the track themselves. Handing out
   playable links to YouTube's files is not something this app will do.
+- Google does not let a third-party app sign in with a phone's account on
+  its own: the tokens that make a YouTube session are only issued to
+  Google's apps. So the account is picked from the phone, and the password
+  or confirmation still happens on Google's page.
+- Downloads live inside the app, not in the Music folder: other players do
+  not see them, and they go away with the app.
 - There is no web version and none is planned.
 - Part of the delay when a track starts comes from YouTube's side. That is
   why the "tap → sound" time is measured and shown on the home screen:

@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
 import com.texfi.w0y.ui.components.EmptyState
@@ -293,11 +294,9 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                                 song = song,
                                 onClick = { viewModel.playFrom(songs, songs.indexOf(song)) },
                                 onLongClick = { pickPlaylistFor = song },
+                                wideCover = current.videos,
                                 actions = {
-                                    SpriteButton(
-                                        rows = Sprites.download,
-                                        onClick = { viewModel.download(song) },
-                                    )
+                                    DownloadButton(song.id, onDownload = { viewModel.download(song) })
                                     Spacer(Modifier.width(12.dp))
                                     SpriteButton(
                                         rows = Sprites.plus,

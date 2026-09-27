@@ -2,7 +2,9 @@ package com.texfi.w0y.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.texfi.w0y.data.EditKind
 import com.texfi.w0y.data.LibraryRepository
+import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.Lyrics
 import com.texfi.w0y.data.LyricsRepository
 import com.texfi.w0y.data.SettingsRepository
@@ -43,8 +45,35 @@ class PlayerViewModel @Inject constructor(
     private val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
     private val shareCards: ShareCardRenderer,
+    private val youtube: YouTubeRepository,
     devices: AudioDevicesRepository,
 ) : ViewModel() {
+    private val _edit = MutableStateFlow<EditSearch>(EditSearch.Idle)
+
+    /** Поиск готовой переделки: идёт, не нашлось или уже играет. */
+    val edit: StateFlow<EditSearch> = _edit
+
+    /**
+     * Ищет готовую slowed / sped up переделку играющего трека и включает её
+     * следующей же секундой. Оригинал остаётся в очереди позади — «назад»
+     * возвращает к нему.
+     */
+    fun findEdit(kind: EditKind) {
+        val song = player.state.value.song ?: return
+        if (_edit.value is EditSearch.Searching) return
+        _edit.value = EditSearch.Searching(song.id, kind)
+        viewModelScope.launch {
+            val found = runCatching { youtube.findEdit(song, kind) }.getOrNull()
+            if (found == null) {
+                _edit.value = EditSearch.NotFound(song.id, kind)
+                return@launch
+            }
+            player.playNext(found)
+            player.skipNext()
+            _edit.value = EditSearch.Playing(found.id, found.title)
+        }
+    }
+
     /**
      * Через что идёт звук прямо сейчас.
      *
@@ -222,4 +251,15 @@ class PlayerViewModel @Inject constructor(
     fun consumeShare() {
         _shareFile.value = null
     }
+}
+
+/** Состояние поиска переделки; [songId] — к какому треку относится ответ. */
+sealed interface EditSearch {
+    data object Idle : EditSearch
+
+    data class Searching(val songId: String, val kind: EditKind) : EditSearch
+
+    data class NotFound(val songId: String, val kind: EditKind) : EditSearch
+
+    data class Playing(val songId: String, val title: String) : EditSearch
 }

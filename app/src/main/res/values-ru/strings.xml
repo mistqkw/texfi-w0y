@@ -377,4 +377,27 @@
     <string name="queue_enqueue">В КОНЕЦ</string>
     <string name="share_card_version">Твоя версия этого трека</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
+    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <string name="login_picking">Выбираю аккаунт с телефона…</string>
+    <string name="login_account_hint">Аккаунт %1$s уже подставлен — Google спросит только пароль или подтверждение на телефоне.</string>
+    <string name="login_other_account">ДРУГОЙ АККАУНТ</string>
+    <string name="login_finishing">Вход прошёл. Забираю сессию…</string>
+    <string name="theme_glass">Стекло</string>
+    <string name="about_experiments_on">Эксперименты открыты: тема «Стекло» — в настройках, раздел «Вид».</string>
+    <string name="about_experiments_left">Ещё нажатий: %1$d</string>
+    <string name="download_open">ОТКРЫТЬ</string>
+    <string name="download_queued_one">Качаю «%1$s» — будет в Библиотеке → Загрузки</string>
+    <string name="download_queued_many">Треков в загрузке: %1$d — будут в Библиотеке → Загрузки</string>
+    <string name="download_wifi_one">«%1$s» ждёт Wi-Fi — так выставлено в настройках</string>
+    <string name="download_wifi_many">Ждут Wi-Fi: %1$d — так выставлено в настройках</string>
+    <string name="download_done_one">Скачано: «%1$s» — играет без сети</string>
+    <string name="download_done_many">Скачано треков: %1$d</string>
+    <string name="download_failed">Не скачалось: «%1$s»</string>
+    <string name="downloads_where">Лежат внутри приложения, а не в папке «Музыка»: другие плееры их не видят, и удаляются они вместе с приложением.</string>
+    <string name="search_filter_videos">ВИДЕО</string>
+    <string name="player_edit_title">ГОТОВЫЕ ПЕРЕДЕЛКИ</string>
+    <string name="player_edit_desc">Чужой slowed или sped up с YouTube — со своим сведением и эхом. Оригинал остаётся в очереди позади.</string>
+    <string name="player_edit_searching">Ищу…</string>
+    <string name="player_edit_none">Готовой переделки этого трека не нашлось. Своя версия выше замедляет сам оригинал.</string>
+    <string name="player_edit_playing">Играет: %1$s</string>
 </resources>

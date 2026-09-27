@@ -121,6 +121,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setTheme(value: ThemeMode) = update { repository.setTheme(value) }
 
+    fun unlockExperiments() = update { repository.setExperiments(true) }
+
     fun setShowLyrics(value: Boolean) = update { repository.setShowLyrics(value) }
 
     fun setKeepHistory(value: Boolean) = update { repository.setKeepHistory(value) }
