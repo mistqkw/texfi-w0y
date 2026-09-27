@@ -34,8 +34,7 @@
     <string name="home_dial_hint">долгое нажатие — закрепить или снять</string>
     <string name="home_empty">Здесь появится то, что ты слушаешь. Пока пусто — начни с поиска.</string>
     <string name="home_hint">Поиск и воспроизведение уже работают. Библиотека, загрузки и настройки — следующие шаги.</string>
-    <string name="home_meta">старт %1$d мс · сборка %2$s</string>
-    <string name="home_meta_plain">сборка %1$s</string>
+    <string name="home_meta">старт трека ≈ %1$d мс</string>
     <string name="home_recent">НЕДАВНО</string>
     <string name="home_recommendations">РЕКОМЕНДАЦИИ</string>
     <string name="home_recommendations_failed">Рекомендации не пришли. Нажми обновить или проверь сеть.</string>

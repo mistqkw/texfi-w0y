@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
+import com.texfi.w0y.ui.components.SectionHeader
 import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
@@ -492,10 +493,10 @@ private fun Hint(text: String) {
     )
 }
 
+/** Заголовок блока внутри экрана — тот же, что у разделов главной. */
 @Composable
 internal fun SectionLabel(text: String) {
-    val colors = LocalW0yColors.current
-    Text("❯ $text", style = PixelSectionLabel, color = colors.accent)
+    SectionHeader(label = text, modifier = Modifier.padding(bottom = 8.dp))
 }
 
 /** Панель выбора плейлиста живёт поверх экрана поиска. */

@@ -16,6 +16,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -86,25 +89,38 @@ fun SectionHeader(
 ) {
     val colors = LocalW0yColors.current
     Column(modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (index != null) {
+        // Подписи отдаётся столько, сколько ей нужно, но не больше 80%:
+        // иначе линия и действие делили бы ширину с ней поровну, и
+        // «Послушать ещё раз» обрезалось бы при свободном месте справа.
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val labelMax = maxWidth * 0.8f
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (index != null) {
+                    Text(
+                        text = index.toString().padStart(2, '0'),
+                        style = PixelSectionLabel,
+                        color = colors.textMuted,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(
-                    text = index.toString().padStart(2, '0'),
+                    text = "❯ ${label.uppercase()}",
                     style = PixelSectionLabel,
-                    color = colors.textMuted,
+                    color = colors.accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = labelMax),
                 )
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(2.dp)
+                        .background(colors.border),
+                )
+                Spacer(Modifier.width(10.dp))
+                action()
             }
-            Text("❯ $label", style = PixelSectionLabel, color = colors.accent)
-            Spacer(Modifier.width(10.dp))
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(2.dp)
-                    .background(colors.border),
-            )
-            Spacer(Modifier.width(10.dp))
-            action()
         }
         hint?.let {
             Spacer(Modifier.height(6.dp))
@@ -113,7 +129,14 @@ fun SectionHeader(
     }
 }
 
-/** Заголовок ленты, пришедшей от YouTube: его текст чужой, вид — наш. */
+/**
+ * Заголовок ленты, пришедшей от YouTube, — второй уровень под разделом.
+ *
+ * Раньше у лент был свой вид — жёлтый квадрат и обычный текст, — и на
+ * одной главной жили три разных заголовка. Теперь уровней два: раздел
+ * (синий, с линией) и лента внутри него — тот же шрифт, цвет текста,
+ * без линии. Иерархия видна без третьего стиля.
+ */
 @Composable
 fun ShelfTitle(text: String, modifier: Modifier = Modifier) {
     val colors = LocalW0yColors.current
@@ -121,13 +144,15 @@ fun ShelfTitle(text: String, modifier: Modifier = Modifier) {
         Box(
             Modifier
                 .size(6.dp)
-                .background(colors.secondary),
+                .background(colors.accent),
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
+            text = text.uppercase(),
+            style = PixelSectionLabel,
             color = colors.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

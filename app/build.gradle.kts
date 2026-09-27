@@ -19,7 +19,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 4
-        versionName = "0.0.2-beta-2"
+        versionName = "0.0.2-beta-1"
     }
 
     // Подпись берётся из переменных окружения — так один и тот же файл

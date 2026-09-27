@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
@@ -35,7 +37,15 @@ fun CoverImage(
         modifier
             .clip(shape)
             .background(colors.surfaceHigh),
+        contentAlignment = Alignment.Center,
     ) {
+        // Нота лежит под картинкой: пока та грузится или если не пришла
+        // вовсе, на месте обложки видно, что это трек, а не чёрная дыра.
+        PixelSprite(
+            rows = Sprites.note,
+            color = colors.border,
+            modifier = Modifier.fillMaxSize(0.38f),
+        )
         AsyncImage(
             model =
                 ImageRequest

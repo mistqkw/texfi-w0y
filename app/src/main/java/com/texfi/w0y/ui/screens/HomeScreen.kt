@@ -81,11 +81,9 @@ fun HomeScreen(
             ScreenTitle(
                 title = stringResource(R.string.app_name),
                 // Замер старта стоит рядом с названием: обещание «быстро»
-                // проверяется на этом же экране, а не на слово.
-                subtitle =
-                    startupAverage?.let {
-                        stringResource(R.string.home_meta, it.toInt(), BuildConfig.VERSION_NAME)
-                    } ?: stringResource(R.string.home_meta_plain, BuildConfig.VERSION_NAME),
+                // проверяется на этом же экране, а не на слово. Номер сборки
+                // отсюда ушёл — он для отладки и живёт в «О приложении».
+                subtitle = startupAverage?.let { stringResource(R.string.home_meta, it.toInt()) },
                 actions = { SpriteButton(Sprites.gear, onClick = onOpenSettings, size = 22) },
             )
         }

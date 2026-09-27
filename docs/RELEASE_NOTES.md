@@ -1,4 +1,4 @@
-# TexFi w0y v0.0.2-beta-2
+# TexFi w0y v0.0.2-beta-1
 
 A YouTube Music client for Android: no ads, no Premium restrictions,
 with your own account and downloads into phone storage.
