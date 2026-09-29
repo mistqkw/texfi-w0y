@@ -34,6 +34,59 @@ class LyricsRepository @Inject constructor(
     private val okHttp: OkHttpClient,
 ) {
     private val cache = ConcurrentHashMap<String, Lyrics>()
+    private val translations = ConcurrentHashMap<String, List<String>>()
+
+    /**
+     * Перевод строк лирики на [lang]: по одной строке на каждую строку оригинала
+     * (синхронизированную, если она есть, иначе строки простого текста).
+     * Переводит неофициальный публичный endpoint Google Translate. При сбое возвращаем null,
+     * а не выдумываем текст.
+     */
+    suspend fun translate(songId: String, lyrics: Lyrics, lang: String): List<String>? =
+        withContext(Dispatchers.IO) {
+            val key = "$songId|$lang|${lyrics.synced.size}"
+            translations[key]?.let { return@withContext it }
+            val source =
+                if (lyrics.synced.isNotEmpty()) {
+                    lyrics.synced.map { it.text }
+                } else {
+                    lyrics.plain.orEmpty().lines()
+                }
+            if (source.isEmpty()) return@withContext null
+            val out = ArrayList<String>(source.size)
+            for (chunk in source.chunked(40)) {
+                val translated = runCatching { translateChunk(chunk, lang) }.getOrNull() ?: return@withContext null
+                out += translated
+            }
+            out.also { translations[key] = it }
+        }
+
+    private fun translateChunk(lines: List<String>, lang: String): List<String>? {
+        val body =
+            okhttp3.FormBody
+                .Builder()
+                .add("q", lines.joinToString("\n"))
+                .build()
+        val request =
+            Request
+                .Builder()
+                .url("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=$lang&dt=t")
+                .header("User-Agent", "Mozilla/5.0")
+                .post(body)
+                .build()
+        val raw =
+            okHttp.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                response.body?.string()
+            } ?: return null
+        val segments = JSONArray(raw).getJSONArray(0)
+        val joined = StringBuilder()
+        for (i in 0 until segments.length()) {
+            joined.append(segments.getJSONArray(i).optString(0))
+        }
+        val result = joined.toString().split("\n")
+        return if (result.size == lines.size) result else null
+    }
 
     suspend fun lyrics(song: SongItem): Lyrics? = withContext(Dispatchers.IO) {
         cache[song.id]?.let { return@withContext it }

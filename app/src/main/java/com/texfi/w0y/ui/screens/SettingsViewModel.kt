@@ -125,6 +125,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowLyrics(value: Boolean) = update { repository.setShowLyrics(value) }
 
+    fun setLyricsLang(value: String) = update { repository.setLyricsLang(value) }
+
     fun setKeepHistory(value: Boolean) = update { repository.setKeepHistory(value) }
 
     /**
@@ -169,6 +171,10 @@ class SettingsViewModel @Inject constructor(
     fun setHaptics(value: Boolean) = update { repository.setHaptics(value) }
 
     fun setSeekStep(seconds: Int) = update { repository.setSeekStep(seconds) }
+
+    fun setFallbackAudio(value: Boolean) = update { repository.setFallbackAudio(value) }
+
+    fun setFallbackSource(value: com.texfi.w0y.data.FallbackSource) = update { repository.setFallbackSource(value) }
 
     fun setPlayerCoverGlow(value: Boolean) = update { repository.setPlayerCoverGlow(value) }
 

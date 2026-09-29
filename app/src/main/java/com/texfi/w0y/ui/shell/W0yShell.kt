@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
@@ -51,7 +52,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.ui.components.LocalCompactRows
+import com.texfi.w0y.ui.components.Buzz
 import com.texfi.w0y.ui.components.LocalHaptics
+import com.texfi.w0y.ui.components.rememberHaptics
 import com.texfi.w0y.ui.components.LocalPlayingSongId
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.pressScale
@@ -153,6 +156,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         LocalHaptics provides haptics,
         LocalPlayingSongId provides playerState.song?.id,
     ) {
+    val haptic = rememberHaptics()
     Box(
         Modifier
             .fillMaxSize()
@@ -172,8 +176,8 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 AnimatedContent(
                     targetState = tab,
                     transitionSpec = {
-                        (fadeIn(tween(180)) + scaleIn(tween(180), initialScale = 0.98f)) togetherWith
-                            fadeOut(tween(120))
+                        (fadeIn(tween(110)) + scaleIn(tween(180), initialScale = 0.98f)) togetherWith
+                            fadeOut(tween(80))
                     },
                     label = "tab",
                 ) { current ->
@@ -220,18 +224,20 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             PixelNavBar(selected = tab, onSelect = { tab = it })
         }
 
-        AnimatedVisibility(
-            visible = playerExpanded && playerState.song != null,
-            enter = slideInVertically(tween(220)) { it } + fadeIn(tween(160)),
-            exit = slideOutVertically(tween(180)) { it } + fadeOut(tween(140)),
+        PlayerSheet(
+            expanded = playerExpanded && playerState.song != null,
+            onCollapse = { playerExpanded = false },
         ) {
             PlayerScreen(onCollapse = { playerExpanded = false })
         }
 
         AnimatedVisibility(
             visible = settingsOpen,
-            enter = slideInVertically(tween(200)) { it / 3 } + fadeIn(tween(150)),
-            exit = fadeOut(tween(120)),
+            enter =
+                slideInVertically(spring(dampingRatio = 0.85f, stiffness = 1000f)) { it / 3 } +
+                    scaleIn(spring(dampingRatio = 0.85f, stiffness = 1000f), initialScale = 0.94f) +
+                    fadeIn(tween(90)),
+            exit = scaleOut(tween(90), targetScale = 0.96f) + fadeOut(tween(90)),
         ) {
             SettingsScreen(
                 onClose = { settingsOpen = false },
@@ -248,7 +254,9 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 onTheme = viewModel::setTheme,
                 onStartTab = viewModel::setStartTab,
                 onSignIn = { loginOpen = true },
-                onDone = viewModel::completeWelcome,
+                onDone = {
+                    viewModel.completeWelcome()
+                },
             )
         }
 
@@ -258,8 +266,11 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
 
         AnimatedVisibility(
             visible = loginOpen,
-            enter = fadeIn(tween(150)),
-            exit = fadeOut(tween(120)),
+            enter =
+                slideInVertically(spring(dampingRatio = 0.8f, stiffness = 900f)) { it / 2 } +
+                    scaleIn(spring(dampingRatio = 0.8f, stiffness = 900f), initialScale = 0.92f) +
+                    fadeIn(tween(90)),
+            exit = slideOutVertically(tween(110)) { it / 3 } + fadeOut(tween(90)),
         ) {
             LoginScreen(
                 busy = loginBusy,
@@ -271,6 +282,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                         libraryViewModel.onSignedIn(cookie) { message ->
                             loginBusy = false
                             loginError = message
+                            haptic(if (message == null) Buzz.DONE else Buzz.ERROR)
                             if (message == null) loginOpen = false
                         }
                     }
@@ -296,8 +308,8 @@ private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> U
     val colors = LocalW0yColors.current
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally(tween(220)) { it / 3 } + fadeIn(tween(160)),
-        exit = slideOutHorizontally(tween(180)) { it / 3 } + fadeOut(tween(140)),
+        enter = slideInHorizontally(tween(140)) { it / 3 } + fadeIn(tween(100)),
+        exit = slideOutHorizontally(tween(110)) { it / 3 } + fadeOut(tween(90)),
     ) {
         Box(
             Modifier

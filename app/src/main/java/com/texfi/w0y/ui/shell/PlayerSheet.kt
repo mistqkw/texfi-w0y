@@ -1,0 +1,134 @@
+package com.texfi.w0y.ui.shell
+
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
+import com.texfi.w0y.ui.components.Buzz
+import com.texfi.w0y.ui.components.rememberHaptics
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+
+private val OpenSpring = spring<Float>(dampingRatio = 0.78f, stiffness = 900f)
+private val CloseSpring = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessHigh)
+
+/**
+ * Полноэкранный плеер как шторка над мини-плеером.
+ *
+ * Открытие и закрытие идут одной пружиной: плеер вырастает из нижней
+ * кромки (где стоит мини-плеер) и в неё же уходит, слегка сжимаясь. Шторку
+ * можно тянуть вниз с любого места, где список уже прокручен к началу, —
+ * она идёт за пальцем, а на отпускании либо закрывается, либо
+ * возвращается пружиной.
+ */
+@Composable
+fun PlayerSheet(
+    expanded: Boolean,
+    onCollapse: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val haptic = rememberHaptics()
+    val scope = rememberCoroutineScope()
+    var openness by remember { mutableFloatStateOf(if (expanded) 1f else 0f) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    var firstRun by remember { mutableStateOf(true) }
+    val travelHolder = remember { floatArrayOf(1f) }
+    val visible by remember { derivedStateOf { openness > 0.001f } }
+
+    fun settle(target: Float) {
+        job?.cancel()
+        job =
+            scope.launch {
+                animate(openness, target, animationSpec = if (target > 0.5f) OpenSpring else CloseSpring) { value, _ ->
+                    openness = value
+                }
+            }
+    }
+
+    LaunchedEffect(expanded) {
+        if (firstRun) {
+            firstRun = false
+            return@LaunchedEffect
+        }
+        settle(if (expanded) 1f else 0f)
+    }
+
+    val connection =
+        remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source != NestedScrollSource.UserInput) return Offset.Zero
+                    val dragged = (1f - openness) * travelHolder[0]
+                    if (dragged > 0f && available.y < 0f) {
+                        val next = (dragged + available.y).coerceAtLeast(0f)
+                        job?.cancel()
+                        openness = 1f - next / travelHolder[0]
+                        return Offset(0f, next - dragged)
+                    }
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                    if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                    job?.cancel()
+                    val next = ((1f - openness) * travelHolder[0] + available.y).coerceAtMost(travelHolder[0])
+                    openness = 1f - next / travelHolder[0]
+                    return Offset(0f, available.y)
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    val dragged = 1f - openness
+                    if (dragged <= 0f) return Velocity.Zero
+                    if (dragged > 0.22f || available.y > 1600f) {
+                        onCollapse()
+                    } else {
+                        settle(1f)
+                    }
+                    return available
+                }
+            }
+        }
+
+    if (!visible && !expanded) return
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .nestedScroll(connection)
+            .graphicsLayer {
+                val travel = size.height.coerceAtLeast(1f) * 0.92f
+                travelHolder[0] = travel
+                val closed = 1f - openness
+                translationY = closed * travel
+                val scale = 1f - 0.1f * closed.coerceIn(0f, 1f)
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0.5f, 1f)
+                alpha = (openness * 2.4f).coerceIn(0f, 1f)
+                clip = true
+                shape = RoundedCornerShape(closed.coerceIn(0f, 1f) * 20.dp.toPx())
+            },
+    ) {
+        content()
+    }
+}

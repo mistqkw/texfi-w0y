@@ -399,4 +399,17 @@
     <string name="player_edit_searching">Шукаю…</string>
     <string name="player_edit_none">Готової переробки цього треку не знайшлося. Своя версія вище сповільнює сам оригінал.</string>
     <string name="player_edit_playing">Грає: %1$s</string>
+    <string name="fallback_auto">Автоматично</string>
+    <string name="fallback_youtube">Інше завантаження на YouTube</string>
+    <string name="fallback_piped">Дзеркала Piped</string>
+    <string name="settings_fallback_title">Запасний звук</string>
+    <string name="settings_fallback_desc">Якщо трек не вантажиться, обкладинка лишається з YT Music, а звук береться з іншого джерела</string>
+    <string name="settings_fallback_source_title">Джерело запасного звуку</string>
+    <string name="settings_fallback_source_desc">Де шукати звук для треку, що не завантажився</string>
+    <string name="egg_feather">Пір’їнка бачить тебе.</string>
+    <string name="egg_many_taps">Стільки натискань. Повага.</string>
+    <string name="player_lyrics_translate">Переклад</string>
+    <string name="player_lyrics_translate_off">Вимк</string>
+    <string name="player_lyrics_translate_fail">Не вдалося перекласти</string>
+    <string name="player_speed_custom">Своя швидкість</string>
 </resources>

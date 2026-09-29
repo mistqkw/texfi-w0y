@@ -95,6 +95,13 @@ enum class ExplicitFallback(@StringRes val label: Int) {
     SKIP(R.string.explicit_skip),
 }
 
+/** Откуда брать звук, когда YouTube Music не отдал трек. */
+enum class FallbackSource(@StringRes val label: Int) {
+    AUTO(R.string.fallback_auto),
+    YOUTUBE(R.string.fallback_youtube),
+    PIPED(R.string.fallback_piped),
+}
+
 /** Куда попадаешь при запуске. */
 enum class StartTab(@StringRes val label: Int) {
     HOME(R.string.start_tab_home),
@@ -191,6 +198,9 @@ data class W0ySettings(
     val haptics: Boolean = true,
     val seekStepSec: Int = 10,
     val playerCoverGlow: Boolean = true,
+    val fallbackAudio: Boolean = true,
+    val fallbackSource: FallbackSource = FallbackSource.AUTO,
+    val lyricsLang: String = "",
     val experiments: Boolean = false,
 )
 
@@ -240,6 +250,9 @@ class SettingsRepository @Inject constructor(
                     haptics = prefs[Keys.HAPTICS] ?: true,
                     seekStepSec = prefs[Keys.SEEK_STEP] ?: 10,
                     playerCoverGlow = prefs[Keys.COVER_GLOW] ?: true,
+                    fallbackAudio = prefs[Keys.FALLBACK_AUDIO] ?: true,
+                    fallbackSource = prefs.enum(Keys.FALLBACK_SOURCE, FallbackSource.AUTO),
+                    lyricsLang = prefs[Keys.LYRICS_LANG].orEmpty(),
                     experiments = prefs[Keys.EXPERIMENTS] ?: false,
                 )
             }
@@ -321,6 +334,12 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setPlayerCoverGlow(value: Boolean) = put(Keys.COVER_GLOW, value)
 
+    suspend fun setFallbackAudio(value: Boolean) = put(Keys.FALLBACK_AUDIO, value)
+
+    suspend fun setLyricsLang(value: String) = put(Keys.LYRICS_LANG, value)
+
+    suspend fun setFallbackSource(value: FallbackSource) = put(Keys.FALLBACK_SOURCE, value.name)
+
     suspend fun setExperiments(value: Boolean) = put(Keys.EXPERIMENTS, value)
 
     /**
@@ -359,6 +378,8 @@ class SettingsRepository @Inject constructor(
             .put("haptics", current.haptics)
             .put("seekStepSec", current.seekStepSec)
             .put("playerCoverGlow", current.playerCoverGlow)
+            .put("fallbackAudio", current.fallbackAudio)
+            .put("fallbackSource", current.fallbackSource.name)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -386,6 +407,8 @@ class SettingsRepository @Inject constructor(
             if (obj.has("haptics")) prefs[Keys.HAPTICS] = obj.getBoolean("haptics")
             if (obj.has("seekStepSec")) prefs[Keys.SEEK_STEP] = obj.getInt("seekStepSec")
             if (obj.has("playerCoverGlow")) prefs[Keys.COVER_GLOW] = obj.getBoolean("playerCoverGlow")
+            if (obj.has("fallbackAudio")) prefs[Keys.FALLBACK_AUDIO] = obj.getBoolean("fallbackAudio")
+            obj.optString("fallbackSource").takeIf { it.isNotBlank() }?.let { prefs[Keys.FALLBACK_SOURCE] = it }
             // Язык из выгрузки нужно продублировать в синхронное хранилище:
             // именно оттуда его читает attachBaseContext при следующем старте.
             obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
@@ -449,5 +472,8 @@ class SettingsRepository @Inject constructor(
         val HAPTICS = booleanPreferencesKey("haptics")
         val SEEK_STEP = intPreferencesKey("seek_step_sec")
         val COVER_GLOW = booleanPreferencesKey("player_cover_glow")
+        val FALLBACK_AUDIO = booleanPreferencesKey("fallback_audio")
+        val FALLBACK_SOURCE = stringPreferencesKey("fallback_source")
+        val LYRICS_LANG = stringPreferencesKey("lyrics_lang")
     }
 }

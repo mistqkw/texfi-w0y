@@ -179,6 +179,47 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    val lyricsLang: StateFlow<String> =
+        settingsRepository.settings
+            .map { it.lyricsLang }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    fun setLyricsLang(lang: String) {
+        viewModelScope.launch { settingsRepository.setLyricsLang(lang) }
+    }
+
+    private val _translating = MutableStateFlow(false)
+    val translating: StateFlow<Boolean> = _translating.asStateFlow()
+
+    /** Перевод строк лирики на выбранный язык; null — выключен, ещё грузится или не вышло. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val translation: StateFlow<List<String>?> =
+        combine(_lyrics, lyricsLang) { text, lang -> text to lang }
+            .flatMapLatest { (text, lang) ->
+                kotlinx.coroutines.flow.flow {
+                    _translating.value = text != null && lang.isNotBlank()
+                    emit(null)
+                    val id = player.state.value.song?.id
+                    if (text != null && lang.isNotBlank() && id != null) {
+                        _translating.value = true
+                        try {
+                            emit(lyricsRepository.translate(id, text, lang))
+                        } finally {
+                            _translating.value = false
+                        }
+                    } else {
+                        _translating.value = false
+                    }
+                }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Своя скорость трека с ползунка: тон и эхо остаются как звучат сейчас. */
+    fun setTrackSpeed(speed: Float) {
+        val song = player.state.value.song ?: return
+        val now = effectiveSound.value
+        viewModelScope.launch { library.setSound(song, SoundProfile(speed, now.pitch, now.reverb)) }
+    }
+
     fun toggleLike(song: SongItem) {
         viewModelScope.launch {
             val liked = library.toggleLike(song)

@@ -1,11 +1,27 @@
 package com.texfi.w0y.playback
 
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.ResolvingDataSource
+import com.texfi.w0y.data.SettingsRepository
+import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import timber.log.Timber
+
+/** Адрес трека для плеера: id в хосте, название и исполнитель — для запасного источника. */
+fun w0yUri(song: SongItem): Uri =
+    Uri
+        .Builder()
+        .scheme("w0y")
+        .authority(song.id)
+        .appendQueryParameter("t", song.title)
+        .appendQueryParameter("a", song.artist)
+        .apply { song.durationText?.let { appendQueryParameter("d", it) } }
+        .build()
 
 /**
  * Подменяет схему `w0y://<videoId>` на настоящую ссылку потока в момент
@@ -18,17 +34,36 @@ import kotlinx.coroutines.runBlocking
 @OptIn(UnstableApi::class)
 class StreamResolver(
     private val repository: YouTubeRepository,
+    private val fallback: FallbackAudio,
+    private val settings: SettingsRepository,
 ) : ResolvingDataSource.Resolver {
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
         val videoId = dataSpec.key ?: dataSpec.uri.host ?: return dataSpec
         // Блокирующий вызов здесь уместен: метод вызывается на загрузочном
         // потоке ExoPlayer, который именно этого результата и ждёт.
-        val stream = runBlocking { repository.stream(videoId) }
+        fallback.remember(videoId, dataSpec.uri.getQueryParameter("t"), dataSpec.uri.getQueryParameter("a"), dataSpec.uri.getQueryParameter("d"))
+        val audio =
+            try {
+                val stream = runBlocking { repository.stream(videoId) }
+                ResolvedAudio(stream.audioUrl, stream.headers)
+            } catch (error: Exception) {
+                val prefs = runBlocking { settings.settings.first() }
+                if (!prefs.fallbackAudio) throw error
+                Timber.w(error, "Основной поток $videoId недоступен, ищу запасной")
+                runBlocking {
+                    fallback.resolve(
+                        videoId = videoId,
+                        title = dataSpec.uri.getQueryParameter("t"),
+                        artist = dataSpec.uri.getQueryParameter("a"),
+                        source = prefs.fallbackSource,
+                    )
+                } ?: throw error
+            }
         return dataSpec
             .buildUpon()
-            .setUri(stream.audioUrl)
+            .setUri(audio.url)
             .setKey(videoId)
-            .setHttpRequestHeaders(stream.headers)
+            .setHttpRequestHeaders(audio.headers)
             .build()
     }
 }

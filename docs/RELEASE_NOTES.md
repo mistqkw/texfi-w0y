@@ -1,9 +1,27 @@
-# TexFi w0y v0.0.2-beta-1
+# TexFi w0y v0.0.2-beta-2
 
 A YouTube Music client for Android: no ads, no Premium restrictions,
 with your own account and downloads into phone storage.
 
 ## What is new in 0.0.2
+
+- **The player folds away.** Drag it down or tap collapse and it sinks into
+  the mini player with a spring; let go early and it springs back.
+- **Tracks that would not play now do.** When YouTube Music gives no stream
+  or refuses the file, the cover and metadata stay and only the sound is
+  swapped: another upload of the same track (matched by artist and title,
+  remixes and covers skipped) or a Piped mirror. A setting, on by default,
+  with a choice of source. A track that has not started within 10 seconds is
+  skipped.
+- **Lyrics translation.** Pick a language above the lyrics and every line
+  gets a translation under it. It uses a public, unofficial translation
+  endpoint, so it can stop working; the app says so instead of inventing
+  text.
+- **Speed slider** from 0.2× to 2.0× in the player's Sound tab, next to the
+  presets. Like the presets, it belongs to the track.
+- **Snappier interface:** stiffer springs and shorter transitions, lighter
+  mini player, calmer and more varied vibration, and a few easter eggs in
+  About.
 
 - **Your own version of a track.** Speed, pitch and reverb used to be one
   global setting, which is not how slowed edits are listened to: a track

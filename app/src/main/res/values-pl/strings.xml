@@ -399,4 +399,17 @@
     <string name="player_edit_searching">Szukam…</string>
     <string name="player_edit_none">Nie znalazło się gotowej przeróbki tego utworu. Twoja wersja wyżej zwalnia sam oryginał.</string>
     <string name="player_edit_playing">Gra: %1$s</string>
+    <string name="fallback_auto">Automatycznie</string>
+    <string name="fallback_youtube">Inny plik na YouTube</string>
+    <string name="fallback_piped">Lustra Piped</string>
+    <string name="settings_fallback_title">Zapasowy dźwięk</string>
+    <string name="settings_fallback_desc">Gdy utwór się nie wczytuje, okładka zostaje z YT Music, a dźwięk pochodzi z innego źródła</string>
+    <string name="settings_fallback_source_title">Źródło zapasowego dźwięku</string>
+    <string name="settings_fallback_source_desc">Gdzie szukać dźwięku dla utworu, który się nie wczytał</string>
+    <string name="egg_feather">Piórko cię widzi.</string>
+    <string name="egg_many_taps">Ale dużo stuknięć. Szacunek.</string>
+    <string name="player_lyrics_translate">Tłumaczenie</string>
+    <string name="player_lyrics_translate_off">Wył.</string>
+    <string name="player_lyrics_translate_fail">Nie udało się przetłumaczyć</string>
+    <string name="player_speed_custom">Własna prędkość</string>
 </resources>

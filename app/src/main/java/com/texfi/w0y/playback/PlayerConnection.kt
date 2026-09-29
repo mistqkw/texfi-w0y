@@ -348,7 +348,7 @@ class PlayerConnection @Inject constructor(
             .setMediaId(song.id)
             // Схему разворачивает StreamResolver уже во время загрузки:
             // очередь собирается мгновенно, без сетевых запросов.
-            .setUri("w0y://${song.id}")
+            .setUri(w0yUri(song))
             .setCustomCacheKey(song.id)
             .setMediaMetadata(
                 MediaMetadata

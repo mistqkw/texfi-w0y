@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -65,8 +66,11 @@ import com.texfi.w0y.data.EditKind
 import com.texfi.w0y.data.Reverb
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.SoundPreset
+import com.texfi.w0y.ui.components.PixelSlider
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.playback.OutputKind
+import androidx.compose.ui.graphics.graphicsLayer
+import com.texfi.w0y.ui.components.Buzz
 import com.texfi.w0y.ui.components.DownloadButton
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.CoverImage
@@ -114,6 +118,7 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
+    val haptic = com.texfi.w0y.ui.components.rememberHaptics()
     val navigator = LocalBrowseNavigator.current
     val state by viewModel.player.state.collectAsStateWithLifecycle()
     val liked by viewModel.isLiked.collectAsStateWithLifecycle()
@@ -123,6 +128,9 @@ fun PlayerScreen(
     val radioLoading by viewModel.loadingRadio.collectAsStateWithLifecycle()
     val findingClean by viewModel.findingClean.collectAsStateWithLifecycle()
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+    val translation by viewModel.translation.collectAsStateWithLifecycle()
+    val lyricsLang by viewModel.lyricsLang.collectAsStateWithLifecycle()
+    val translating by viewModel.translating.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val sleepLeft by viewModel.player.sleepRemainingMs.collectAsStateWithLifecycle()
     val output by viewModel.activeOutput.collectAsStateWithLifecycle()
@@ -254,11 +262,28 @@ fun PlayerScreen(
             }
 
             item {
+                // Обложка «дышит»: на паузе чуть сжимается, при смене трека
+                // подпрыгивает пружиной. Оба движения читаются только в слое.
+                val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+                LaunchedEffect(song.id) {
+                    pop.snapTo(0.9f)
+                    pop.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 380f))
+                }
+                val rest by androidx.compose.animation.core.animateFloatAsState(
+                    targetValue = if (state.isPlaying) 1f else 0.94f,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 300f),
+                    label = "coverRest",
+                )
                 // Обложка на весь экран — единственное место, где нужен
                 // самый крупный вариант картинки.
                 Box(
                     Modifier
                         .fillMaxWidth()
+                        .graphicsLayer {
+                            val scale = pop.value * rest
+                            scaleX = scale
+                            scaleY = scale
+                        }
                         // Смахивание по обложке переключает трек: на ходу
                         // и в кармане так удобнее, чем попадать в кнопку.
                         .pointerInput(song.id) {
@@ -267,8 +292,8 @@ fun PlayerScreen(
                                 onDragStart = { total = 0f },
                                 onDragEnd = {
                                     when {
-                                        total <= -SWIPE_THRESHOLD_PX -> viewModel.player.skipNext()
-                                        total >= SWIPE_THRESHOLD_PX -> viewModel.player.skipPrevious()
+                                        total <= -SWIPE_THRESHOLD_PX -> { haptic(Buzz.TRACK); viewModel.player.skipNext() }
+                                        total >= SWIPE_THRESHOLD_PX -> { haptic(Buzz.TRACK); viewModel.player.skipPrevious() }
                                     }
                                 },
                             ) { _, dragAmount -> total += dragAmount }
@@ -329,7 +354,7 @@ fun PlayerScreen(
                             }
                         }
                     }
-                    SpriteButton(Sprites.heart, onClick = { viewModel.toggleLike(song) }, active = liked)
+                    SpriteButton(Sprites.heart, onClick = { haptic(if (liked) Buzz.OFF else Buzz.LIKE); viewModel.toggleLike(song) }, active = liked)
                     Spacer(Modifier.width(14.dp))
                     SpriteButton(Sprites.pin, onClick = { viewModel.togglePin(song) }, active = pinned)
                     Spacer(Modifier.width(14.dp))
@@ -556,6 +581,15 @@ fun PlayerScreen(
 
                 PlayerTab.LYRICS -> {
                     val text = lyrics
+                    if (text != null) {
+                        item(key = "lang-chips") {
+                            LyricsLangRow(
+                                selected = lyricsLang,
+                                failed = lyricsLang.isNotBlank() && translation == null && !translating,
+                                onSelect = viewModel::setLyricsLang,
+                            )
+                        }
+                    }
                     when {
                         text == null ->
                             item {
@@ -573,23 +607,38 @@ fun PlayerScreen(
                                 items = text.synced,
                                 key = { index, line -> "$index-${line.timeMs}" },
                             ) { index, line ->
-                                Text(
-                                    text = line.text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (index == activeIndex) colors.accent else colors.textMuted,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .clickable { viewModel.player.seekTo(line.timeMs) }
-                                            .padding(vertical = 3.dp),
-                                )
+                                Column(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { viewModel.player.seekTo(line.timeMs) }
+                                        .padding(vertical = 3.dp),
+                                ) {
+                                    Text(
+                                        text = line.text,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = if (index == activeIndex) colors.accent else colors.textMuted,
+                                    )
+                                    translation?.getOrNull(index)?.takeIf { it.isNotBlank() && it != line.text }?.let {
+                                        Text(
+                                            text = it,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = if (index == activeIndex) colors.accent else colors.textMuted.copy(alpha = 0.7f),
+                                        )
+                                    }
+                                }
                             }
                         }
 
                         else ->
                             item {
                                 Text(
-                                    text = text.plain.orEmpty(),
+                                    text =
+                                        translation?.let { tr ->
+                                            text.plain.orEmpty().lines().mapIndexed { i, l ->
+                                                val t = tr.getOrNull(i).orEmpty()
+                                                if (l.isBlank() || t.isBlank() || t == l) l else "$l\n$t"
+                                            }.joinToString("\n")
+                                        } ?: text.plain.orEmpty(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colors.textMuted,
                                 )
@@ -620,6 +669,18 @@ fun PlayerScreen(
                             onSelect = { viewModel.setSoundPreset(SoundPreset.entries[it]) },
                         )
                         Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.player_speed_custom) + "  " + "%.2f×".format(effectiveSound.speed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                        )
+                        PixelSlider(
+                            value = effectiveSound.speed,
+                            range = 0.2f..2.0f,
+                            step = 0.05f,
+                            onValueChange = viewModel::setTrackSpeed,
+                        )
+                        Spacer(Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text =
@@ -940,5 +1001,41 @@ private fun EditFinder(
             style = MaterialTheme.typography.bodySmall,
             color = if (edit is EditSearch.NotFound) colors.secondary else colors.accent,
         )
+    }
+}
+
+private val LYRICS_LANGS = listOf("en", "ru", "uk", "pl", "es", "de", "fr", "it", "pt", "tr", "ja", "ko", "zh-CN")
+
+@Composable
+private fun LyricsLangRow(selected: String, failed: Boolean, onSelect: (String) -> Unit) {
+    val colors = LocalW0yColors.current
+    Column(Modifier.padding(bottom = 10.dp)) {
+        Text(
+            text =
+                if (failed) {
+                    stringResource(R.string.player_lyrics_translate_fail)
+                } else {
+                    stringResource(R.string.player_lyrics_translate)
+                },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (failed) colors.accent else colors.textMuted,
+        )
+        Spacer(Modifier.height(6.dp))
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(listOf("") + LYRICS_LANGS) { code ->
+                val active = code == selected
+                Text(
+                    text = if (code.isEmpty()) stringResource(R.string.player_lyrics_translate_off) else code.substringBefore('-').uppercase(),
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = if (active) colors.text else colors.textMuted,
+                    modifier =
+                        Modifier
+                            .background(if (active) colors.accentDeep else colors.surface)
+                            .border(2.dp, if (active) colors.accent else colors.border)
+                            .clickable { onSelect(code) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
     }
 }

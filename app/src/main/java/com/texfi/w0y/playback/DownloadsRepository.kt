@@ -148,7 +148,7 @@ class DownloadsRepository @Inject constructor(
         scope.launch { library.saveSong(song) }
         val request =
             DownloadRequest
-                .Builder(song.id, android.net.Uri.parse("w0y://${song.id}"))
+                .Builder(song.id, w0yUri(song))
                 .setCustomCacheKey(song.id)
                 // Название едет вместе с запросом: по нему потом говорится,
                 // что именно скачалось, без похода в базу.

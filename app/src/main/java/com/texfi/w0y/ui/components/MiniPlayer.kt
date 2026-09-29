@@ -29,6 +29,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.R
@@ -53,40 +55,60 @@ fun MiniPlayer(
     val colors = LocalW0yColors.current
     AnimatedVisibility(
         visible = state.song != null,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
+        enter =
+            fadeIn(androidx.compose.animation.core.tween(100)) +
+                expandVertically(
+                    androidx.compose.animation.core.spring(
+                        dampingRatio = 0.7f,
+                        stiffness = 1000f,
+                    ),
+                ),
+        exit = fadeOut(androidx.compose.animation.core.tween(80)) + shrinkVertically(androidx.compose.animation.core.tween(100)),
         modifier = modifier,
     ) {
         val song = state.song ?: return@AnimatedVisibility
         var position by remember { mutableLongStateOf(0L) }
+        // На паузе позиция стоит на месте: опрашиваем один раз, а не
+        // каждые полсекунды вхолостую.
         LaunchedEffect(state.isPlaying, song.id) {
-            while (true) {
-                position = positionProvider()
+            position = positionProvider()
+            while (state.isPlaying) {
                 delay(500)
+                position = positionProvider()
             }
+        }
+        val bump = remember { androidx.compose.animation.core.Animatable(1f) }
+        LaunchedEffect(song.id) {
+            bump.snapTo(0.78f)
+            bump.animateTo(
+                1f,
+                androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 1000f),
+            )
         }
         Column(
             Modifier
                 .fillMaxWidth()
                 .background(colors.surfaceHigh),
         ) {
-            val progress =
-                if (state.durationMs > 0) {
-                    (position.toFloat() / state.durationMs).coerceIn(0f, 1f)
-                } else {
-                    0f
-                }
+            val duration = state.durationMs
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(3.dp)
                     .background(colors.border),
             ) {
+                // Позиция читается только при рисовании: полоса двигается,
+                // а строка мини-плеера не пересобирается.
+                val barColor = colors.secondary
                 Box(
                     Modifier
-                        .fillMaxWidth(progress)
+                        .fillMaxWidth()
                         .height(3.dp)
-                        .background(colors.secondary),
+                        .drawBehind {
+                            val progress =
+                                if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+                            drawRect(barColor, size = androidx.compose.ui.geometry.Size(size.width * progress, size.height))
+                        },
                 )
             }
             Row(
@@ -101,6 +123,10 @@ fun MiniPlayer(
                     modifier =
                         Modifier
                             .size(42.dp)
+                            .graphicsLayer {
+                                scaleX = bump.value
+                                scaleY = bump.value
+                            }
                             .border(2.dp, colors.border, RoundedCornerShape(4.dp))
                             .clickable(onClick = onExpand),
                 )

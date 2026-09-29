@@ -595,6 +595,31 @@ private fun settingsRows(
             ),
         )
 
+        add(
+            SettingRow(
+                section = SettingsSection.SOUND,
+                title = stringResource(R.string.settings_fallback_title),
+                description = stringResource(R.string.settings_fallback_desc),
+                keywords = "fallback piped alternative not loading",
+                control = SettingControl.Toggle(settings.fallbackAudio, viewModel::setFallbackAudio),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.SOUND,
+                title = stringResource(R.string.settings_fallback_source_title),
+                description = stringResource(R.string.settings_fallback_source_desc),
+                keywords = "fallback piped source",
+                control =
+                    SettingControl.Choice(
+                        options = com.texfi.w0y.data.FallbackSource.entries,
+                        selected = settings.fallbackSource,
+                        label = { stringResource(it.label) },
+                        onSelect = viewModel::setFallbackSource,
+                    ),
+            ),
+        )
+
         // ЗВУЧАНИЕ
         add(
             SettingRow(

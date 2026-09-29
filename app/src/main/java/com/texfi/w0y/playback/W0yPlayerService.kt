@@ -445,6 +445,7 @@ class W0yPlayerService : MediaSessionService() {
         private val player: Player,
     ) : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            armStuckWatch()
             prefetchNext()
             // Версия принадлежит треку, а не приложению: на каждом
             // переключении её надо перечитать, иначе следующий трек
@@ -468,6 +469,40 @@ class W0yPlayerService : MediaSessionService() {
         }
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) = prefetchNext()
+
+        private var stuckJob: Job? = null
+
+        /** Трек, который 10 секунд не стартует, пропускаем: тишина хуже следующей песни. */
+        private fun armStuckWatch() {
+            stuckJob?.cancel()
+            if (!player.playWhenReady) return
+            val state = player.playbackState
+            if (state == Player.STATE_READY || state == Player.STATE_ENDED) return
+            if (player.mediaItemCount == 0) return
+            stuckJob =
+                scope.launch {
+                    delay(STUCK_MS)
+                    if (player.playWhenReady && player.playbackState != Player.STATE_READY) skipStuck()
+                }
+        }
+
+        private fun skipStuck() {
+            Timber.w("Трек не запустился за ${STUCK_MS / 1000} с, иду дальше")
+            if (player.hasNextMediaItem()) {
+                player.seekToNextMediaItem()
+                player.prepare()
+                player.play()
+            }
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) = armStuckWatch()
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = armStuckWatch()
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            Timber.w(error, "Ошибка воспроизведения")
+            skipStuck()
+        }
 
         /** Греет ссылку следующего трека — переход должен быть без паузы. */
         private fun prefetchNext() {
@@ -513,6 +548,8 @@ class W0yPlayerService : MediaSessionService() {
         const val REVERB_PRIORITY = 1
 
         /** Сколько держать заглушение на последней строке лирики. */
+        const val STUCK_MS = 10_000L
+
         const val LAST_LINE_MS = 6_000L
 
         /** Шаг проверки позиции: чаще незачем, реже — слышно край слова. */

@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.shell
 
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,9 +24,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,9 @@ import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.Sprites
+import com.texfi.w0y.ui.components.Stagger
+import com.texfi.w0y.ui.components.Buzz
+import com.texfi.w0y.ui.components.rememberHaptics
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelScreenTitle
@@ -62,6 +70,9 @@ fun WelcomeScreen(
     val colors = LocalW0yColors.current
     val state = rememberPagerState(pageCount = { 3 })
     val scope = rememberCoroutineScope()
+    val haptic = rememberHaptics()
+    LaunchedEffect(state.currentPage) {
+    }
 
     Column(
         Modifier
@@ -110,10 +121,15 @@ fun WelcomeScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             repeat(3) { index ->
+                val width by androidx.compose.animation.core.animateDpAsState(
+                    targetValue = if (index == state.currentPage) 22.dp else 7.dp,
+                    animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.6f, stiffness = 500f),
+                    label = "dot",
+                )
                 Box(
                     Modifier
                         .padding(end = 6.dp)
-                        .size(if (index == state.currentPage) 9.dp else 7.dp)
+                        .size(width = width, height = 7.dp)
                         .background(if (index == state.currentPage) colors.accent else colors.border),
                 )
             }
@@ -142,25 +158,44 @@ private fun Hello() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Image(
-            painter = painterResource(R.mipmap.ic_launcher_foreground),
-            contentDescription = null,
-            modifier = Modifier.size(230.dp),
+        val bob by rememberInfiniteTransition(label = "bob").animateFloat(
+            initialValue = -6f,
+            targetValue = 6f,
+            animationSpec =
+                androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    androidx.compose.animation.core.RepeatMode.Reverse,
+                ),
+            label = "bobY",
         )
-        Text(stringResource(R.string.app_name), style = PixelScreenTitle, color = colors.text)
+        Stagger(0) {
+            Image(
+                painter = painterResource(R.mipmap.ic_launcher_foreground),
+                contentDescription = null,
+                modifier =
+                    Modifier
+                        .size(230.dp)
+                        .graphicsLayer { translationY = bob.dp.toPx() },
+            )
+        }
+        Stagger(1) { Text(stringResource(R.string.app_name), style = PixelScreenTitle, color = colors.text) }
         Spacer(Modifier.height(12.dp))
-        Box(
-            Modifier
-                .width(40.dp)
-                .height(3.dp)
-                .background(colors.accent),
-        )
+        Stagger(2) {
+            Box(
+                Modifier
+                    .width(40.dp)
+                    .height(3.dp)
+                    .background(colors.accent),
+            )
+        }
         Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.welcome_intro),
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.textMuted,
-        )
+        Stagger(3) {
+            Text(
+                text = stringResource(R.string.welcome_intro),
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.textMuted,
+            )
+        }
     }
 }
 
@@ -177,26 +212,31 @@ private fun Features() {
         Text(stringResource(R.string.welcome_own_title), style = PixelScreenTitle, color = colors.text)
         Spacer(Modifier.height(20.dp))
         Feature(
+            0,
             Sprites.sliders,
             stringResource(R.string.welcome_sound_title),
             stringResource(R.string.welcome_sound_text),
         )
         Feature(
+            1,
             Sprites.stats,
             stringResource(R.string.welcome_stats_title),
             stringResource(R.string.welcome_stats_text),
         )
         Feature(
+            2,
             Sprites.check,
             stringResource(R.string.welcome_clean_title),
             stringResource(R.string.welcome_clean_text),
         )
         Feature(
+            3,
             Sprites.pin,
             stringResource(R.string.welcome_dial_title),
             stringResource(R.string.welcome_dial_text),
         )
         Feature(
+            4,
             Sprites.timer,
             stringResource(R.string.welcome_fast_title),
             stringResource(R.string.welcome_fast_text),
@@ -205,16 +245,16 @@ private fun Features() {
 }
 
 @Composable
-private fun Feature(sprite: List<String>, title: String, text: String) {
+private fun Feature(index: Int, sprite: List<String>, title: String, text: String) {
     val colors = LocalW0yColors.current
-    Row(Modifier.padding(bottom = 18.dp)) {
+    Stagger(index + 1, Modifier.padding(bottom = 18.dp)) { Row {
         PixelSprite(rows = sprite, color = colors.accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
         Column {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = colors.text)
             Text(text, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         }
-    }
+    } }
 }
 
 @Composable

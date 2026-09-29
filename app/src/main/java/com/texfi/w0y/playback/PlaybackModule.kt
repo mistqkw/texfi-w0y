@@ -87,10 +87,14 @@ object PlaybackModule {
     fun resolvingFactory(
         okHttpClient: OkHttpClient,
         repository: YouTubeRepository,
+        fallback: FallbackAudio,
+        settings: com.texfi.w0y.data.SettingsRepository,
     ): DataSource.Factory =
         ResolvingDataSource.Factory(
-            OkHttpDataSource.Factory(okHttpClient),
-            StreamResolver(repository),
+            DataSource.Factory {
+                FallbackDataSource(OkHttpDataSource.Factory(okHttpClient), fallback, settings)
+            },
+            StreamResolver(repository, fallback, settings),
         )
 
     /**

@@ -399,4 +399,17 @@
     <string name="player_edit_searching">Looking…</string>
     <string name="player_edit_none">No ready-made edit of this track was found. Your own version above slows down the original.</string>
     <string name="player_edit_playing">Playing: %1$s</string>
+    <string name="fallback_auto">Automatic</string>
+    <string name="fallback_youtube">Other YouTube upload</string>
+    <string name="fallback_piped">Piped mirrors</string>
+    <string name="settings_fallback_title">Fallback audio</string>
+    <string name="settings_fallback_desc">If a track will not load, keep the YT Music cover and take the sound from another source</string>
+    <string name="settings_fallback_source_title">Fallback source</string>
+    <string name="settings_fallback_source_desc">Where to look for the sound of a track that failed</string>
+    <string name="egg_feather">The feather sees you.</string>
+    <string name="egg_many_taps">That is a lot of taps. Respect.</string>
+    <string name="player_lyrics_translate">Translation</string>
+    <string name="player_lyrics_translate_off">Off</string>
+    <string name="player_lyrics_translate_fail">Could not translate this one</string>
+    <string name="player_speed_custom">Custom speed</string>
 </resources>

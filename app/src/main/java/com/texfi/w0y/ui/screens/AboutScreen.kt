@@ -29,6 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -190,11 +195,24 @@ private fun AppFacts(
     // это не секрет, просто не то, что стоит показывать каждому.
     var versionTaps by remember { mutableIntStateOf(0) }
     val colors = LocalW0yColors.current
+    val haptic = com.texfi.w0y.ui.components.rememberHaptics()
+    val bounce = remember { androidx.compose.animation.core.Animatable(1f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var egg by remember { mutableStateOf<Int?>(null) }
     PixelCard {
         Text(
             text = "texfi w0y",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textMuted,
+            modifier =
+                Modifier.pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = {
+                            haptic(com.texfi.w0y.ui.components.Buzz.EGG)
+                            egg = R.string.egg_feather
+                        },
+                    )
+                },
         )
         // Крупный пиксельный шрифт широкий, и длинная версия в него не
         // влезает: у debug-сборки к имени добавляется суффикс, и «v0.0.1-
@@ -209,11 +227,36 @@ private fun AppFacts(
             modifier =
                 Modifier
                     .padding(top = 4.dp)
+                    .graphicsLayer {
+                        scaleX = bounce.value
+                        scaleY = bounce.value
+                    }
                     .clickable(indication = null, interactionSource = null) {
                         versionTaps++
-                        if (versionTaps >= UNLOCK_TAPS && !experiments) onUnlockExperiments()
+                        scope.launch {
+                            bounce.snapTo(0.9f)
+                            bounce.animateTo(
+                                1f,
+                                androidx.compose.animation.core.spring(dampingRatio = 0.3f, stiffness = 700f),
+                            )
+                        }
+                        if (versionTaps == UNLOCK_TAPS && !experiments) {
+                            haptic(com.texfi.w0y.ui.components.Buzz.EGG)
+                            onUnlockExperiments()
+                        } else if (versionTaps == MANY_TAPS) {
+                            haptic(com.texfi.w0y.ui.components.Buzz.ERROR)
+                            egg = R.string.egg_many_taps
+                        }
                     },
         )
+        egg?.let {
+            Text(
+                text = stringResource(it),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.accent,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         val left = UNLOCK_TAPS - versionTaps
         when {
             experiments && versionTaps > 0 ->
@@ -381,5 +424,6 @@ private const val DONATE_URL = "https://github.com/sponsors/mistqkw"
 /** Сколько знаков версии влезает в строку крупным пиксельным шрифтом. */
 private const val VERSION_FITS = 12
 
+private const val MANY_TAPS = 25
 private const val UNLOCK_TAPS = 7
 private const val UNLOCK_HINT_FROM = 3

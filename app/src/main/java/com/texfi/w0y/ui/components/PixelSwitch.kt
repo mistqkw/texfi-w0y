@@ -25,7 +25,7 @@ import com.texfi.w0y.ui.theme.LocalW0yColors
 @Composable
 fun PixelSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val colors = LocalW0yColors.current
-    val tap = rememberTapHaptic()
+    val haptic = rememberHaptics()
     val offset by animateDpAsState(if (checked) 18.dp else 0.dp, tween(120), label = "switch")
     Box(
         Modifier
@@ -34,7 +34,7 @@ fun PixelSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
             .background(if (checked) colors.accentDeep else colors.surface)
             .border(2.dp, colors.border)
             .clickable {
-                tap()
+                haptic(if (checked) Buzz.OFF else Buzz.ON)
                 onCheckedChange(!checked)
             }
             .padding(2.dp),
