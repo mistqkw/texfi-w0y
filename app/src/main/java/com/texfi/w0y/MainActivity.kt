@@ -51,7 +51,8 @@ class MainActivity : ComponentActivity() {
             val shellViewModel: ShellViewModel = hiltViewModel()
             val theme by shellViewModel.theme.collectAsStateWithLifecycle()
             val accent by shellViewModel.accent.collectAsStateWithLifecycle()
-            W0yTheme(mode = theme, accent = accent) {
+            val customAccent by shellViewModel.customAccent.collectAsStateWithLifecycle()
+            W0yTheme(mode = theme, accent = accent, customAccent = customAccent) {
                 W0yShell(shellViewModel)
             }
         }

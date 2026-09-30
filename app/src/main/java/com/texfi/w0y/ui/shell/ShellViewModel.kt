@@ -55,6 +55,11 @@ class ShellViewModel @Inject constructor(
             .map { it.accent }
             .stateIn(viewModelScope, SharingStarted.Eagerly, Accent.BLUE)
 
+    val customAccent: StateFlow<Int> =
+        settings.settings
+            .map { it.customAccent }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 0xFFA06CFF.toInt())
+
     val haptics: StateFlow<Boolean> =
         settings.settings
             .map { it.haptics }

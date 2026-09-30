@@ -152,10 +152,13 @@ enum class Accent(
 ) {
     BLUE(R.string.accent_blue, 0xFF4A7CFB, 0xFF1E3F8F, 0xFFE0A860),
     PINK(R.string.accent_pink, 0xFFFB4A8D, 0xFF8F1E4C, 0xFFFFB2CF),
-    VIOLET(R.string.accent_violet, 0xFF9A6BFF, 0xFF4C2E99, 0xFFFF9F45),
-    MINT(R.string.accent_mint, 0xFF3ED9A4, 0xFF167A5B, 0xFFFFD166),
-    CRIMSON(R.string.accent_crimson, 0xFFFF5A5A, 0xFF8F2020, 0xFFFFC46B),
+    VIOLET(R.string.accent_violet, 0xFF9A6BFF, 0xFF4C2E99, 0xFFE0A860),
+    MINT(R.string.accent_mint, 0xFF3ED9A4, 0xFF167A5B, 0xFFE0A860),
+    CRIMSON(R.string.accent_crimson, 0xFFFF5A5A, 0xFF8F2020, 0xFFE0A860),
     SAND(R.string.accent_sand, 0xFFE0A860, 0xFF8A5F26, 0xFF7FB5FF),
+
+    /** Свой цвет: значение лежит в настройках, здесь только заглушка. */
+    CUSTOM(R.string.accent_custom, 0xFFA06CFF, 0xFF4E3580, 0xFFE0A860),
 }
 
 /**
@@ -193,6 +196,8 @@ data class W0ySettings(
     val language: Language = Language.SYSTEM,
     val animatedBackground: Boolean = true,
     val accent: Accent = Accent.BLUE,
+    /** Свой цвет схемы CUSTOM, ARGB. */
+    val customAccent: Int = 0xFFA06CFF.toInt(),
     val syncPlaylists: Boolean = true,
     val searchSuggestions: Boolean = true,
     val haptics: Boolean = true,
@@ -245,6 +250,7 @@ class SettingsRepository @Inject constructor(
                     language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
                     animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
                     accent = prefs.enum(Keys.ACCENT, Accent.BLUE),
+                    customAccent = prefs[Keys.CUSTOM_ACCENT] ?: 0xFFA06CFF.toInt(),
                     syncPlaylists = prefs[Keys.SYNC_PLAYLISTS] ?: true,
                     searchSuggestions = prefs[Keys.SEARCH_SUGGESTIONS] ?: true,
                     haptics = prefs[Keys.HAPTICS] ?: true,
@@ -324,6 +330,14 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setAccent(value: Accent) = put(Keys.ACCENT, value.name)
 
+    /** Свой цвет сразу включает схему CUSTOM: выбрал цвет — увидел его. */
+    suspend fun setCustomAccent(argb: Int) {
+        context.dataStore.edit {
+            it[Keys.CUSTOM_ACCENT] = argb
+            it[Keys.ACCENT] = Accent.CUSTOM.name
+        }
+    }
+
     suspend fun setSyncPlaylists(value: Boolean) = put(Keys.SYNC_PLAYLISTS, value)
 
     suspend fun setSearchSuggestions(value: Boolean) = put(Keys.SEARCH_SUGGESTIONS, value)
@@ -373,6 +387,7 @@ class SettingsRepository @Inject constructor(
             .put("language", current.language.name)
             .put("animatedBackground", current.animatedBackground)
             .put("accent", current.accent.name)
+            .put("customAccent", current.customAccent)
             .put("syncPlaylists", current.syncPlaylists)
             .put("searchSuggestions", current.searchSuggestions)
             .put("haptics", current.haptics)
@@ -402,6 +417,7 @@ class SettingsRepository @Inject constructor(
                 prefs[Keys.ANIMATED_BACKGROUND] = obj.getBoolean("animatedBackground")
             }
             obj.optString("accent").takeIf { it.isNotBlank() }?.let { prefs[Keys.ACCENT] = it }
+            if (obj.has("customAccent")) prefs[Keys.CUSTOM_ACCENT] = obj.getInt("customAccent")
             if (obj.has("syncPlaylists")) prefs[Keys.SYNC_PLAYLISTS] = obj.getBoolean("syncPlaylists")
             if (obj.has("searchSuggestions")) prefs[Keys.SEARCH_SUGGESTIONS] = obj.getBoolean("searchSuggestions")
             if (obj.has("haptics")) prefs[Keys.HAPTICS] = obj.getBoolean("haptics")
@@ -467,6 +483,7 @@ class SettingsRepository @Inject constructor(
         val LANGUAGE = stringPreferencesKey("language")
         val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")
         val ACCENT = stringPreferencesKey("accent")
+        val CUSTOM_ACCENT = intPreferencesKey("custom_accent")
         val SYNC_PLAYLISTS = booleanPreferencesKey("sync_playlists")
         val SEARCH_SUGGESTIONS = booleanPreferencesKey("search_suggestions")
         val HAPTICS = booleanPreferencesKey("haptics")

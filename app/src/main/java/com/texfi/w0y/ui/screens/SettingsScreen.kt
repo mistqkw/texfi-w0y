@@ -288,6 +288,9 @@ private sealed interface SettingControl {
     data class Action(val button: String, val onClick: () -> Unit) : SettingControl
 
     data class Info(val value: String) : SettingControl
+
+    /** Свой виджет под названием пункта: образцы цвета и подобное. */
+    class Custom(val content: @Composable () -> Unit) : SettingControl
 }
 
 /**
@@ -428,6 +431,12 @@ private fun SettingRowView(row: SettingRow, sectionHint: String? = null) {
                 Labels(row, Modifier.fillMaxWidth())
                 Spacer(Modifier.height(10.dp))
                 ChoiceControl(control)
+            }
+
+            is SettingControl.Custom -> {
+                Labels(row, Modifier.fillMaxWidth())
+                Spacer(Modifier.height(10.dp))
+                control.content()
             }
         }
     }
@@ -972,13 +981,16 @@ private fun settingsRows(
                 section = SettingsSection.LOOK,
                 title = stringResource(R.string.settings_accent_title),
                 description = stringResource(R.string.settings_accent_desc),
+                keywords = "hex custom colour color swatch",
                 control =
-                    SettingControl.Choice(
-                        options = Accent.entries,
-                        selected = settings.accent,
-                        label = { stringResource(it.label) },
-                        onSelect = viewModel::setAccent,
-                    ),
+                    SettingControl.Custom {
+                        AccentPicker(
+                            selected = settings.accent,
+                            customArgb = settings.customAccent,
+                            onSelect = viewModel::setAccent,
+                            onCustom = viewModel::setCustomAccent,
+                        )
+                    },
             ),
         )
         add(

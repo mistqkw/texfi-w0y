@@ -412,4 +412,7 @@
     <string name="player_lyrics_translate_off">Выкл</string>
     <string name="player_lyrics_translate_fail">Не удалось перевести</string>
     <string name="player_speed_custom">Своя скорость</string>
+    <string name="accent_custom">СВОЙ</string>
+    <string name="accent_preview">ВИД</string>
+    <string name="accent_custom_hue">Оттенок или HEX-код ниже</string>
 </resources>

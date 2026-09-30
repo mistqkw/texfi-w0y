@@ -412,4 +412,7 @@
     <string name="player_lyrics_translate_off">Wył.</string>
     <string name="player_lyrics_translate_fail">Nie udało się przetłumaczyć</string>
     <string name="player_speed_custom">Własna prędkość</string>
+    <string name="accent_custom">WŁASNY</string>
+    <string name="accent_preview">PODGLĄD</string>
+    <string name="accent_custom_hue">Odcień lub kod HEX poniżej</string>
 </resources>

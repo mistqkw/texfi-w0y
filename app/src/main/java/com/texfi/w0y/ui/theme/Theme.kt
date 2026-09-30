@@ -114,6 +114,7 @@ val LocalW0yColors = staticCompositionLocalOf { DarkColors }
 fun W0yTheme(
     mode: ThemeMode = ThemeMode.DARK,
     accent: Accent = Accent.BLUE,
+    customAccent: Int = 0xFFA06CFF.toInt(),
     content: @Composable () -> Unit,
 ) {
     val base =
@@ -130,9 +131,10 @@ fun W0yTheme(
         if (accent == Accent.BLUE) {
             base
         } else {
+            val main = if (accent == Accent.CUSTOM) Color(customAccent) else Color(accent.accent)
             base.copy(
-                accent = Color(accent.accent),
-                accentDeep = Color(accent.deep),
+                accent = main,
+                accentDeep = if (accent == Accent.CUSTOM) deepen(main) else Color(accent.deep),
                 secondary = Color(accent.secondary),
                 secondaryDeep = deepen(Color(accent.secondary)),
             )

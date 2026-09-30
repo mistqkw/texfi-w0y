@@ -150,6 +150,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setAccent(value: Accent) = update { repository.setAccent(value) }
 
+    fun setCustomAccent(argb: Int) = update { repository.setCustomAccent(argb) }
+
     fun setSaveSearchHistory(value: Boolean) = update { repository.setSaveSearchHistory(value) }
 
     fun setDownloadOnWifiOnly(value: Boolean) = update { repository.setDownloadOnWifiOnly(value) }

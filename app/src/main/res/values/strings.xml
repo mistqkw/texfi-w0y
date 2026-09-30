@@ -412,4 +412,7 @@
     <string name="player_lyrics_translate_off">Off</string>
     <string name="player_lyrics_translate_fail">Could not translate this one</string>
     <string name="player_speed_custom">Custom speed</string>
+    <string name="accent_custom">CUSTOM</string>
+    <string name="accent_preview">PREVIEW</string>
+    <string name="accent_custom_hue">Hue, or type a HEX code below</string>
 </resources>
