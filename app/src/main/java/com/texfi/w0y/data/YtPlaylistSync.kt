@@ -82,6 +82,16 @@ class YtPlaylistSync @Inject constructor(
             true
         } ?: false
 
+    /**
+     * Убирает чужой плейлист из библиотеки аккаунта. Удалить его нельзя —
+     * он не наш, — можно только отписаться.
+     */
+    suspend fun unsave(remoteId: String): Boolean =
+        attempt("unsave") {
+            innerTube.unlikePlaylist(YouTubeClient.WEB_REMIX, remoteId)
+            true
+        } ?: false
+
     suspend fun delete(remoteId: String): Boolean =
         attempt("delete") {
             innerTube.deletePlaylist(YouTubeClient.WEB_REMIX, remoteId)
@@ -99,6 +109,104 @@ class YtPlaylistSync @Inject constructor(
         missing.forEach { innerTube.addToPlaylist(YouTubeClient.WEB_REMIX, remoteId, it) }
         missing.size
     }
+
+    /** Плейлист аккаунта целиком: треки, места в нём, обложка, права. */
+    data class RemotePlaylist(
+        val songs: List<SongItem>,
+        val setVideoIds: Map<String, String>,
+        val cover: String?,
+        val editable: Boolean,
+        /** Все ли страницы прочитаны: по неполному списку нельзя решать, что трек убрали. */
+        val complete: Boolean,
+        /** false — YouTube ответил, но такого плейлиста нет (удалён в аккаунте). */
+        val exists: Boolean,
+    )
+
+    /**
+     * Читает плейлист со всеми страницами. Неудачу не выносит в общий
+     * [failure]: это фоновая сверка, и красная плашка при каждом
+     * моргнувшем соединении только пугала бы. Возвращает null, если
+     * сеть или ответ не дались.
+     */
+    suspend fun fetch(remoteId: String, maxPages: Int): RemotePlaylist? =
+        runCatching {
+            withContext(Dispatchers.IO) {
+                val first =
+                    innerTube
+                        .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId(remoteId), setLogin = true)
+                val status = first.status.value
+                if (status in 400..499) {
+                    return@withContext RemotePlaylist(emptyList(), emptyMap(), null, false, true, exists = false)
+                }
+                val root = first.body<JsonObject>()
+                val header = YtJson.playlistHeader(root)
+                val songs = YtJson.playlistTracks(root, first = true).toMutableList()
+                val videoIds = YtJson.setVideoIds(root).toMutableMap()
+                var token = YtJson.continuation(root)
+                var page = 1
+                var complete = true
+                while (token != null) {
+                    if (page >= maxPages) {
+                        complete = false
+                        break
+                    }
+                    val next =
+                        runCatching {
+                            innerTube
+                                .browse(
+                                    client = YouTubeClient.WEB_REMIX,
+                                    browseId = null,
+                                    continuation = token,
+                                    setLogin = true,
+                                ).body<JsonObject>()
+                        }.getOrNull()
+                    if (next == null) {
+                        complete = false
+                        break
+                    }
+                    val more = YtJson.playlistTracks(next, first = false)
+                    if (more.isEmpty()) break
+                    songs += more
+                    videoIds += YtJson.setVideoIds(next)
+                    token = YtJson.continuation(next)
+                    page++
+                }
+                Timber.d(
+                    "Плейлист %s: треков %d, правка %s, обложка %s, полный %s",
+                    remoteId,
+                    songs.size,
+                    header.editable,
+                    header.cover != null,
+                    complete,
+                )
+                RemotePlaylist(
+                    songs = songs.distinctBy { it.id },
+                    setVideoIds = videoIds,
+                    cover = header.cover,
+                    editable = header.editable,
+                    complete = complete,
+                    exists = header.found || songs.isNotEmpty(),
+                )
+            }
+        }.onFailure { Timber.w(it, "Плейлист %s не прочитан", remoteId) }.getOrNull()
+
+    /** Убирает трек, место которого уже известно из только что прочитанного плейлиста. */
+    suspend fun removeKnown(remoteId: String, videoId: String, setVideoId: String): Boolean =
+        attempt("remove") {
+            innerTube.removePlaylistSong(YouTubeClient.WEB_REMIX, remoteId, videoId, setVideoId)
+            true
+        } ?: false
+
+    /** Лайк или снятие лайка в аккаунте. */
+    suspend fun like(videoId: String, liked: Boolean): Boolean =
+        attempt("like") {
+            if (liked) {
+                innerTube.likeVideo(YouTubeClient.WEB_REMIX, videoId)
+            } else {
+                innerTube.unlikeVideo(YouTubeClient.WEB_REMIX, videoId)
+            }
+            true
+        } ?: false
 
     private suspend fun setVideoId(remoteId: String, videoId: String): String? =
         withContext(Dispatchers.IO) {

@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PinEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class W0yDatabase : RoomDatabase() {
@@ -60,6 +60,21 @@ abstract class W0yDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE songs ADD COLUMN speed REAL")
                     db.execSQL("ALTER TABLE songs ADD COLUMN pitch REAL")
                     db.execSQL("ALTER TABLE songs ADD COLUMN reverb TEXT")
+                }
+            }
+
+        /**
+         * Плейлисты аккаунта как свои: обложка, признак «можно править» и
+         * снимок для двустороннего слияния. Старые плейлисты остаются как
+         * были — правимые, без снимка (первая сверка его заведёт).
+         */
+        val MIGRATION_4_5 =
+            object : Migration(4, 5) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE playlists ADD COLUMN coverUrl TEXT")
+                    db.execSQL("ALTER TABLE playlists ADD COLUMN remoteEditable INTEGER NOT NULL DEFAULT 1")
+                    db.execSQL("ALTER TABLE playlists ADD COLUMN syncBase TEXT")
+                    db.execSQL("ALTER TABLE playlists ADD COLUMN syncedAt INTEGER NOT NULL DEFAULT 0")
                 }
             }
 

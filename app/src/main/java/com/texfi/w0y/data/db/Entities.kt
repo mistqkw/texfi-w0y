@@ -1,5 +1,6 @@
 package com.texfi.w0y.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -94,6 +95,22 @@ data class PlaylistEntity(
     val createdAt: Long,
     /** Идентификатор плейлиста в аккаунте, если он пришёл синхронизацией. */
     val remoteId: String? = null,
+    /** Обложка плейлиста из аккаунта, в том числе выбранная самим пользователем. */
+    val coverUrl: String? = null,
+    /**
+     * Можно ли менять плейлист в аккаунте. У своих — да; плейлист, который
+     * только добавлен в библиотеку, YouTube править не даёт, и показывать
+     * для него кнопки правки значило бы обещать невозможное.
+     */
+    @ColumnInfo(defaultValue = "1") val remoteEditable: Boolean = true,
+    /**
+     * Какие треки были в плейлисте при последней синхронизации, через
+     * перевод строки. С этим снимком видно, что изменилось здесь, а что
+     * в аккаунте, — и слияние не теряет правки ни с одной из сторон.
+     */
+    val syncBase: String? = null,
+    /** Когда плейлист последний раз сверялся с аккаунтом, мс. */
+    @ColumnInfo(defaultValue = "0") val syncedAt: Long = 0L,
 )
 
 @Entity(

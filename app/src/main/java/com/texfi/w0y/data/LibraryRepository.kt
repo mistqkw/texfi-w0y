@@ -7,8 +7,13 @@ import com.texfi.w0y.data.db.SongEntity
 import com.texfi.w0y.data.db.W0yDao
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /** Всё, что приложение хранит у себя: плейлисты, лайки, история. */
 @Singleton
@@ -16,7 +21,23 @@ class LibraryRepository @Inject constructor(
     private val dao: W0yDao,
     private val sync: YtPlaylistSync,
 ) {
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     val playlists: Flow<List<PlaylistEntity>> = dao.playlists()
+
+    /** Куда можно добавлять треки: чужие плейлисты из библиотеки аккаунта YouTube править не даёт. */
+    val editablePlaylists: Flow<List<PlaylistEntity>> =
+        playlists.map { list -> list.filter { it.remoteId == null || it.remoteEditable } }
+
+    /**
+     * Обложки плейлистов: своя из аккаунта, а если её нет — картинка
+     * первого трека. Так плейлист не остаётся серым квадратом.
+     */
+    val playlistCovers: Flow<Map<Long, String>> =
+        combine(playlists, dao.playlistFirstCovers()) { lists, firsts ->
+            val first = firsts.associate { it.playlistId to it.url }
+            lists.mapNotNull { p -> (p.coverUrl ?: first[p.id])?.let { p.id to it } }.toMap()
+        }
     val liked: Flow<List<SongItem>> = dao.likedSongs().map { list -> list.map(SongEntity::toItem) }
     val recent: Flow<List<SongItem>> = dao.recentSongs().map { list -> list.map(SongEntity::toItem) }
     val downloaded: Flow<List<SongItem>> =
@@ -57,9 +78,11 @@ class LibraryRepository @Inject constructor(
 
     suspend fun deletePlaylist(id: Long) {
         // Ссылку читаем до удаления: после него строки уже нет.
+        val playlist = dao.playlistOnce(id)
         val remote = remoteId(id)
         dao.deletePlaylist(id)
-        remote?.let { sync.delete(it) }
+        // Чужой плейлист из библиотеки не удаляют, а убирают из неё.
+        remote?.let { if (playlist?.remoteEditable == false) sync.unsave(it) else sync.delete(it) }
     }
 
     suspend fun addToPlaylist(playlistId: Long, song: SongItem) {
@@ -97,6 +120,9 @@ class LibraryRepository @Inject constructor(
         if (stored == null) dao.saveSongMeta(SongEntity.from(song))
         val liked = stored?.liked != true
         dao.setLiked(song.id, liked, if (liked) now() else null)
+        // Лайк уходит в аккаунт в фоне: сердце уже переключилось, ждать сети ни к чему.
+        // Не дошёл — сверка подхватит: снимок лайков не содержит этого трека.
+        scope.launch { if (sync.enabled()) sync.like(song.id, liked) }
         return liked
     }
 

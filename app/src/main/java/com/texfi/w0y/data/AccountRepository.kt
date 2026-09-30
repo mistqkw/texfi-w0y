@@ -45,6 +45,9 @@ class AccountRepository @Inject constructor(
     val isSignedIn: Flow<Boolean> = cookie.map { !it.isNullOrBlank() }
     val accountName: Flow<String?> = context.accountStore.data.map { it[Keys.NAME] }
 
+    /** Аватарка аккаунта — та же, что у ника на YouTube. */
+    val accountAvatar: Flow<String?> = context.accountStore.data.map { it[Keys.AVATAR] }
+
     init {
         // Сессия восстанавливается при старте процесса: иначе первый запрос
         // после перезапуска уходит без аккаунта и возвращает чужую выдачу.
@@ -54,7 +57,7 @@ class AccountRepository @Inject constructor(
     suspend fun applyStoredSession() {
         val stored = cookie.first()
         applySession(stored)
-        if (!stored.isNullOrBlank()) refreshAccountName()
+        if (!stored.isNullOrBlank()) refreshAccountInfo()
     }
 
     /**
@@ -72,18 +75,19 @@ class AccountRepository @Inject constructor(
             return Result.failure(IllegalArgumentException(context.getString(R.string.account_no_sapisid)))
         }
         applySession(sanitized)
-        val name = runCatching { fetchAccountName() }
-        if (name.isFailure) {
+        val info = runCatching { fetchAccountInfo() }
+        if (info.isFailure) {
             applySession(null)
-            Timber.w(name.exceptionOrNull(), "Cookie не подошла")
-            return Result.failure(name.exceptionOrNull() ?: IllegalStateException(context.getString(R.string.account_cookie_rejected)))
+            Timber.w(info.exceptionOrNull(), "Cookie не подошла")
+            return Result.failure(info.exceptionOrNull() ?: IllegalStateException(context.getString(R.string.account_cookie_rejected)))
         }
+        val fetched = info.getOrNull()
         context.accountStore.edit {
             it[Keys.COOKIE] = sanitized
-            val fetched = name.getOrNull()
-            if (!fetched.isNullOrBlank()) it[Keys.NAME] = fetched else it.remove(Keys.NAME)
+            if (!fetched?.name.isNullOrBlank()) it[Keys.NAME] = fetched!!.name!! else it.remove(Keys.NAME)
+            if (!fetched?.avatar.isNullOrBlank()) it[Keys.AVATAR] = fetched!!.avatar!! else it.remove(Keys.AVATAR)
         }
-        return Result.success(name.getOrNull())
+        return Result.success(fetched?.name)
     }
 
     suspend fun signOut() {
@@ -91,16 +95,72 @@ class AccountRepository @Inject constructor(
         applySession(null)
     }
 
-    /** Лайкнутые треки из аккаунта. */
+    /** Лайкнутые треки из аккаунта — первая страница, для быстрых мест. */
     suspend fun likedSongs(): List<SongItem> = browseSongs("FEmusic_liked_videos")
 
+    /** Выдача, прочитанная целиком или нет: обрыв нельзя путать с концом списка. */
+    data class Paged<T>(val items: List<T>, val complete: Boolean)
+
+    /**
+     * Все лайки аккаунта по страницам. Признак полноты нужен синхронизации:
+     * по оборванному списку нельзя решать, что трек разлайкали.
+     */
+    suspend fun allLikedSongs(): Paged<SongItem> =
+        paged("FEmusic_liked_videos", LIKED_PAGES) { page, _ -> YtJson.songs(page) }
+
+    /** Плейлисты аккаунта, включая подписанные и альбомы, со всеми страницами. */
+    suspend fun allPlaylists(): Paged<PlaylistCard> =
+        paged("FEmusic_liked_playlists", PLAYLIST_PAGES) { page, _ -> YtJson.playlistCards(page) }
+
     /** Плейлисты аккаунта, включая подписанные. */
-    suspend fun playlists(): List<PlaylistCard> = withContext(Dispatchers.IO) {
-        val response =
+    suspend fun playlists(): List<PlaylistCard> = allPlaylists().items
+
+    private suspend fun <T> paged(
+        browseId: String,
+        maxPages: Int,
+        parse: (JsonObject, Boolean) -> List<T>,
+    ): Paged<T> = withContext(Dispatchers.IO) {
+        val first =
             innerTube
-                .browse(client = YouTubeClient.WEB_REMIX, browseId = "FEmusic_liked_playlists", setLogin = true)
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, setLogin = true)
                 .body<JsonObject>()
-        YtJson.playlistCards(response)
+        val collected = parse(first, true).toMutableList()
+        var token = YtJson.continuation(first)
+        var page = 1
+        var complete = true
+        while (token != null) {
+            if (page >= maxPages) {
+                complete = false
+                break
+            }
+            val next =
+                runCatching {
+                    innerTube
+                        .browse(client = YouTubeClient.WEB_REMIX, browseId = null, continuation = token, setLogin = true)
+                        .body<JsonObject>()
+                }.getOrNull()
+            if (next == null) {
+                complete = false
+                break
+            }
+            val more = parse(next, false)
+            if (more.isEmpty()) break
+            collected += more
+            token = YtJson.continuation(next)
+            page++
+        }
+        Paged(collected, complete)
+    }
+
+    /** Какие лайки были в аккаунте при прошлой сверке; null — сверки ещё не было. */
+    suspend fun likesBase(): Set<String>? =
+        context.accountStore.data.first()[Keys.LIKES_BASE]
+            ?.lineSequence()
+            ?.filter { it.isNotEmpty() }
+            ?.toSet()
+
+    suspend fun setLikesBase(ids: Collection<String>) {
+        context.accountStore.edit { it[Keys.LIKES_BASE] = ids.joinToString("\n") }
     }
 
     suspend fun history(): List<SongItem> = browseSongs("FEmusic_history")
@@ -123,27 +183,39 @@ class AccountRepository @Inject constructor(
         )
     }
 
-    private suspend fun refreshAccountName() {
-        val name =
-            runCatching { fetchAccountName() }
-                .onFailure { Timber.w(it, "Имя аккаунта не получено") }
-                .getOrNull()
-        if (!name.isNullOrBlank()) {
-            context.accountStore.edit { it[Keys.NAME] = name }
+    private suspend fun refreshAccountInfo() {
+        val info =
+            runCatching { fetchAccountInfo() }
+                .onFailure { Timber.w(it, "Данные аккаунта не получены") }
+                .getOrNull() ?: return
+        context.accountStore.edit {
+            if (!info.name.isNullOrBlank()) it[Keys.NAME] = info.name
+            if (!info.avatar.isNullOrBlank()) it[Keys.AVATAR] = info.avatar
         }
     }
 
+    private data class AccountInfo(val name: String?, val avatar: String?)
+
     /**
-     * Имя владельца аккаунта. Бросает, если YouTube не принял сессию, —
+     * Имя и аватарка владельца. Бросает, если YouTube не принял сессию, —
      * это и есть проверка cookie на входе.
      */
-    private suspend fun fetchAccountName(): String? = withContext(Dispatchers.IO) {
+    private suspend fun fetchAccountInfo(): AccountInfo = withContext(Dispatchers.IO) {
         val menu = innerTube.accountMenu(YouTubeClient.WEB_REMIX).body<JsonObject>()
-        with(YtJson) { menu.findAll("accountName").firstOrNull()?.firstString("text") }
+        val name = with(YtJson) { menu.findAll("accountName").firstOrNull()?.firstString("text") }
+        AccountInfo(name, YtJson.accountAvatar(menu))
     }
 
     private object Keys {
         val COOKIE = stringPreferencesKey("cookie")
         val NAME = stringPreferencesKey("name")
+        val AVATAR = stringPreferencesKey("avatar")
+        val LIKES_BASE = stringPreferencesKey("likes_base")
+    }
+
+    private companion object {
+        /** По сто штук на страницу: две тысячи лайков и триста плейлистов. */
+        const val LIKED_PAGES = 20
+        const val PLAYLIST_PAGES = 6
     }
 }

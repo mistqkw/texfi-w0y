@@ -23,6 +23,7 @@ object DataModule {
                 W0yDatabase.MIGRATION_1_2,
                 W0yDatabase.MIGRATION_2_3,
                 W0yDatabase.MIGRATION_3_4,
+                W0yDatabase.MIGRATION_4_5,
             )
             .build()
 

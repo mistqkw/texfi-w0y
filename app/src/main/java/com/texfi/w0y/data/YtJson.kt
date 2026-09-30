@@ -265,6 +265,66 @@ object YtJson {
                 videoId to setVideoId
             }.toMap()
 
+    /**
+     * Аватарка владельца из меню аккаунта.
+     *
+     * Миниатюры у неё бывают без ширины, поэтому если «самой крупной» нет —
+     * берём последнюю в списке: YouTube кладёт их по возрастанию. Адрес
+     * с размером 48 px растягиваем до 192: на круге в библиотеке он
+     * иначе расплывается.
+     */
+    fun accountAvatar(menu: JsonElement): String? {
+        val photo = menu.findAll("accountPhoto").firstOrNull() ?: return null
+        val url =
+            photo.bestThumbnail()
+                ?: (photo["thumbnails"] as? JsonArray)
+                    ?.lastOrNull()
+                    ?.let { (it as? JsonObject)?.get("url").asString() }
+        return url?.replace(Regex("=s\\d+"), "=s192")
+    }
+
+    /** Шапка плейлиста: своя обложка и можно ли его править. */
+    data class PlaylistHeader(val cover: String?, val editable: Boolean, val found: Boolean)
+
+    private val HEADER_KEYS =
+        listOf(
+            "musicEditablePlaylistDetailHeaderRenderer",
+            "musicResponsiveHeaderRenderer",
+            "musicDetailHeaderRenderer",
+            "musicImmersiveHeaderRenderer",
+        )
+
+    /**
+     * Правка доступна, если YouTube отдал редактируемую шапку или хотя бы
+     * один трек с playlistSetVideoId — это место трека в плейлисте, и оно
+     * приходит только владельцу. Чужой плейлист в библиотеке такого не
+     * имеет: менять его нельзя, и кнопок правки для него быть не должно.
+     */
+    fun playlistHeader(root: JsonElement): PlaylistHeader {
+        val index = root.findAll(HEADER_KEYS.toSet())
+        val cover =
+            HEADER_KEYS.firstNotNullOfOrNull { key ->
+                index[key].orEmpty().firstNotNullOfOrNull { it["thumbnail"]?.bestThumbnail() }
+            }
+        val editable =
+            index["musicEditablePlaylistDetailHeaderRenderer"].orEmpty().isNotEmpty() ||
+                setVideoIds(root).isNotEmpty()
+        return PlaylistHeader(cover, editable, found = index.values.any { it.isNotEmpty() })
+    }
+
+    /**
+     * Треки страницы плейлиста. На первой странице у своего плейлиста
+     * под списком идут «рекомендации» — такие же строки, но не из плейлиста,
+     * поэтому берём только полку самого плейлиста, если она нашлась.
+     */
+    fun playlistTracks(root: JsonElement, first: Boolean): List<SongItem> {
+        if (first) {
+            val shelves = root.findAll("musicPlaylistShelfRenderer")
+            if (shelves.isNotEmpty()) return songsOf(shelves.flatMap { it.findAll(ROW) })
+        }
+        return songs(root)
+    }
+
     /** Идентификатор только что созданного в аккаунте плейлиста. */
     fun createdPlaylistId(root: JsonElement): String? =
         (root as? JsonObject)?.get("playlistId").asString()

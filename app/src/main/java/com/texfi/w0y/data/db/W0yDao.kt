@@ -138,6 +138,37 @@ interface W0yDao {
     @Query("SELECT * FROM playlists WHERE id = :id")
     suspend fun playlistOnce(id: Long): PlaylistEntity?
 
+    @Query("SELECT * FROM playlists WHERE remoteId IS NOT NULL")
+    suspend fun remotePlaylists(): List<PlaylistEntity>
+
+    @Query("SELECT * FROM playlists WHERE remoteId IS NULL")
+    suspend fun localOnlyPlaylists(): List<PlaylistEntity>
+
+    @Query("UPDATE playlists SET name = :name, coverUrl = COALESCE(:cover, coverUrl) WHERE id = :id")
+    suspend fun updatePlaylistInfo(id: Long, name: String, cover: String?)
+
+    @Query("UPDATE playlists SET remoteEditable = :editable, syncBase = :base, syncedAt = :at, coverUrl = COALESCE(:cover, coverUrl) WHERE id = :id")
+    suspend fun markSynced(id: Long, editable: Boolean, base: String, at: Long, cover: String?)
+
+    /** Обложка по умолчанию — картинка первого трека: у плейлиста без своей она всё же есть. */
+    @Query(
+        """
+        SELECT ps.playlistId AS playlistId, s.thumbnailUrl AS url
+        FROM playlist_songs ps JOIN songs s ON s.id = ps.songId
+        WHERE s.thumbnailUrl IS NOT NULL AND ps.position = (
+            SELECT MIN(p2.position) FROM playlist_songs p2 JOIN songs s2 ON s2.id = p2.songId
+            WHERE p2.playlistId = ps.playlistId AND s2.thumbnailUrl IS NOT NULL
+        )
+        """,
+    )
+    fun playlistFirstCovers(): Flow<List<PlaylistCoverRow>>
+
+    @Query("DELETE FROM playlist_songs WHERE playlistId = :playlistId")
+    suspend fun clearPlaylistSongs(playlistId: Long)
+
+    @Query("SELECT id FROM songs WHERE liked = 1")
+    suspend fun likedIds(): List<String>
+
     /** Ссылка на плейлист в аккаунте: появляется, когда он там создан. */
     @Query("UPDATE playlists SET remoteId = :remoteId WHERE id = :id")
     suspend fun setRemoteId(id: Long, remoteId: String?)
@@ -304,3 +335,6 @@ interface W0yDao {
     @Query("SELECT COUNT(*) FROM pins WHERE key = :key")
     suspend fun isPinned(key: String): Int
 }
+
+/** Первая картинка плейлиста — обложка, когда своей нет. */
+data class PlaylistCoverRow(val playlistId: Long, val url: String)
