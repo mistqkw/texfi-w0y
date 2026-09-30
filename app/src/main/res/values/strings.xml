@@ -415,4 +415,7 @@
     <string name="accent_custom">CUSTOM</string>
     <string name="accent_preview">PREVIEW</string>
     <string name="accent_custom_hue">Hue, or type a HEX code below</string>
+    <string name="start_tab_last">LAST</string>
+    <string name="track_download">DOWNLOAD</string>
+    <string name="swipe_remove">REMOVE</string>
 </resources>

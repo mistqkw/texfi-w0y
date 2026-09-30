@@ -261,6 +261,8 @@ class PlayerViewModel @Inject constructor(
 
     fun moveUpInQueue(index: Int) = player.moveUp(index)
 
+    fun moveInQueue(from: Int, to: Int) = player.moveInQueue(from, to)
+
     private val _shareFile = MutableStateFlow<File?>(null)
 
     /** Готовая карточка трека: экран забирает её и отдаёт системе. */

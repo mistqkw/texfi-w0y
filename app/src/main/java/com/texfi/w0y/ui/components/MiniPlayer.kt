@@ -49,6 +49,7 @@ fun MiniPlayer(
     positionProvider: () -> Long,
     onToggle: () -> Unit,
     onNext: () -> Unit,
+    onPrevious: () -> Unit,
     onExpand: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,6 +95,14 @@ fun MiniPlayer(
                 height = 4.dp,
                 cell = 10.dp,
             )
+            // Смахивание мини-плеера: вправо — предыдущий трек, влево — следующий.
+            SwipeRow(
+                onSwipeRight = onPrevious,
+                rightLabel = "<<",
+                onSwipeLeft = onNext,
+                leftLabel = ">>",
+                backdrop = colors.surfaceHigh,
+            ) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -136,6 +145,7 @@ fun MiniPlayer(
                 // мимо «паузы» проще, чем попасть.
                 PlayPauseButton(isPlaying = state.isPlaying, size = 22, onClick = onToggle, touchPadding = 8)
                 TransportButton(Sprites.next, size = 22, onClick = onNext, touchPadding = 8)
+            }
             }
         }
     }

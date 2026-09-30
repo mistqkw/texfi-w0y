@@ -56,7 +56,11 @@ import com.texfi.w0y.ui.components.Buzz
 import com.texfi.w0y.ui.components.LocalHaptics
 import com.texfi.w0y.ui.components.rememberHaptics
 import com.texfi.w0y.ui.components.LocalPlayingSongId
+import com.texfi.w0y.ui.components.AddToPlaylistPanel
+import com.texfi.w0y.ui.components.LocalSongActions
 import com.texfi.w0y.ui.components.MiniPlayer
+import com.texfi.w0y.ui.components.SongActions
+import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.components.PixelCurtain
 import com.texfi.w0y.ui.components.W0yMotion
 import com.texfi.w0y.ui.components.pressScale
@@ -93,18 +97,32 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val colors = LocalW0yColors.current
     var tab by remember { mutableStateOf(Tab.HOME) }
     val startTab by viewModel.startTab.collectAsStateWithLifecycle()
+    val launchTab by viewModel.launchTab.collectAsStateWithLifecycle()
     val compactRows by viewModel.compactRows.collectAsStateWithLifecycle()
     var startTabApplied by remember { mutableStateOf(false) }
     // Стартовый экран применяется один раз за запуск: иначе возврат на
     // «дом» перекидывал бы обратно при каждом чтении настроек.
-    LaunchedEffect(startTab) {
-        if (!startTabApplied && startTab != null) {
-            tab = when (startTab) {
+    LaunchedEffect(launchTab) {
+        if (!startTabApplied && launchTab != null) {
+            tab = when (launchTab) {
                 StartTab.SEARCH -> Tab.SEARCH
                 StartTab.LIBRARY -> Tab.LIBRARY
                 else -> Tab.HOME
             }
             startTabApplied = true
+        }
+    }
+    // Последняя вкладка запоминается после применения стартовой, иначе
+    // начальное «дом» затёрло бы сохранённое значение.
+    LaunchedEffect(tab, startTabApplied) {
+        if (startTabApplied) {
+            viewModel.setLastTab(
+                when (tab) {
+                    Tab.HOME -> StartTab.HOME
+                    Tab.SEARCH -> StartTab.SEARCH
+                    Tab.LIBRARY -> StartTab.LIBRARY
+                },
+            )
         }
     }
     val playerState by viewModel.player.state.collectAsStateWithLifecycle()
@@ -150,6 +168,18 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     }
 
     val downloadProgress by viewModel.downloads.progress.collectAsStateWithLifecycle()
+    val menuViewModel: SongMenuViewModel = hiltViewModel()
+    val menuPlaylists by menuViewModel.playlists.collectAsStateWithLifecycle()
+    var menuSong by remember { mutableStateOf<SongItem?>(null) }
+    var menuNewName by remember { mutableStateOf<String?>(null) }
+    val songActions =
+        remember(menuViewModel) {
+            SongActions(
+                playNext = menuViewModel.player::playNext,
+                enqueue = menuViewModel.player::enqueue,
+                openMenu = { menuSong = it },
+            )
+        }
 
     CompositionLocalProvider(
         LocalDownloadProgress provides downloadProgress,
@@ -157,6 +187,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         LocalCompactRows provides compactRows,
         LocalHaptics provides haptics,
         LocalPlayingSongId provides playerState.song?.id,
+        LocalSongActions provides songActions,
     ) {
     val haptic = rememberHaptics()
     Box(
@@ -215,6 +246,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 positionProvider = viewModel.player::positionMs,
                 onToggle = viewModel.player::togglePlayPause,
                 onNext = { viewModel.player.skipNext() },
+                onPrevious = { viewModel.player.skipPrevious() },
                 onExpand = { playerExpanded = true },
             )
             PixelNavBar(selected = tab, onSelect = { tab = it })
@@ -225,6 +257,54 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             onCollapse = { playerExpanded = false },
         ) {
             PlayerScreen(onCollapse = { playerExpanded = false })
+        }
+
+        menuSong?.let { song ->
+            val close = {
+                menuSong = null
+                menuNewName = null
+            }
+            AddToPlaylistPanel(
+                song = song,
+                playlists = menuPlaylists.map { it.id to it.name },
+                newName = menuNewName,
+                onNewNameChange = { menuNewName = it },
+                onPick = {
+                    menuViewModel.addToPlaylist(it, song)
+                    close()
+                },
+                onCreate = {
+                    menuViewModel.createPlaylistWith(it, song)
+                    close()
+                },
+                onDismiss = close,
+                onPlayNext = {
+                    menuViewModel.player.playNext(song)
+                    close()
+                },
+                onEnqueue = {
+                    menuViewModel.player.enqueue(song)
+                    close()
+                },
+                onDownload = {
+                    menuViewModel.download(song)
+                    close()
+                },
+                onArtist =
+                    song.artistId?.let { id ->
+                        {
+                            navigator.open(BrowseRoute.Artist(id, song.artist, song.thumbnailUrl))
+                            close()
+                        }
+                    },
+                onAlbum =
+                    song.albumId?.let { id ->
+                        {
+                            navigator.open(BrowseRoute.Album(id, song.album ?: song.title, song.thumbnailUrl))
+                            close()
+                        }
+                    },
+            )
         }
 
         AnimatedVisibility(

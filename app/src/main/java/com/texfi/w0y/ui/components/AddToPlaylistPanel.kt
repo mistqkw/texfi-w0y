@@ -45,6 +45,9 @@ fun AddToPlaylistPanel(
     onDismiss: () -> Unit,
     onPlayNext: (() -> Unit)? = null,
     onEnqueue: (() -> Unit)? = null,
+    onDownload: (() -> Unit)? = null,
+    onArtist: (() -> Unit)? = null,
+    onAlbum: (() -> Unit)? = null,
 ) {
     val colors = LocalW0yColors.current
     Box(
@@ -76,6 +79,20 @@ fun AddToPlaylistPanel(
                             onClick = it,
                             fill = colors.surfaceHigh,
                         )
+                    }
+                }
+                if (onDownload != null || onArtist != null || onAlbum != null) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        onDownload?.let {
+                            PixelButton(text = stringResource(R.string.track_download), onClick = it, fill = colors.surfaceHigh)
+                        }
+                        onArtist?.let {
+                            PixelButton(text = stringResource(R.string.player_to_artist), onClick = it, fill = colors.surfaceHigh)
+                        }
+                        onAlbum?.let {
+                            PixelButton(text = stringResource(R.string.player_to_album), onClick = it, fill = colors.surfaceHigh)
+                        }
                     }
                 }
                 Spacer(Modifier.height(14.dp))

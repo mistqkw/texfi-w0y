@@ -415,4 +415,7 @@
     <string name="accent_custom">WŁASNY</string>
     <string name="accent_preview">PODGLĄD</string>
     <string name="accent_custom_hue">Odcień lub kod HEX poniżej</string>
+    <string name="start_tab_last">OSTATNI</string>
+    <string name="track_download">POBIERZ</string>
+    <string name="swipe_remove">USUŃ</string>
 </resources>

@@ -31,6 +31,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.texfi.w0y.R
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
@@ -74,7 +76,18 @@ fun SongRow(
     val compact = LocalCompactRows.current
     val cover = if (compact) 40.dp else 48.dp
     val rowInteraction = remember { MutableInteractionSource() }
-    Column(modifier.fillMaxWidth()) {
+    val actionsHost = LocalSongActions.current
+    // Свой обработчик сильнее общего меню: экран, которому нужно другое
+    // действие по долгому нажатию, по-прежнему может его задать.
+    val longClick = onLongClick ?: actionsHost?.let { host -> { host.openMenu(song) } }
+    SwipeRow(
+        modifier = modifier.fillMaxWidth(),
+        onSwipeRight = actionsHost?.let { host -> { host.playNext(song) } },
+        rightLabel = stringResource(R.string.queue_play_next),
+        onSwipeLeft = actionsHost?.let { host -> { host.enqueue(song) } },
+        leftLabel = stringResource(R.string.queue_enqueue),
+    ) {
+    Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -85,7 +98,7 @@ fun SongRow(
                     interactionSource = rowInteraction,
                     indication = null,
                     onClick = onClick,
-                    onLongClick = onLongClick,
+                    onLongClick = longClick,
                 ).padding(vertical = if (compact) 5.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -150,6 +163,7 @@ fun SongRow(
                 cell = 8.dp,
             )
         }
+    }
     }
 }
 
@@ -280,3 +294,17 @@ private const val MARK_PERIOD_MS = 1_100
 private const val MARK_FPS = 30
 
 private const val MARK_BARS = 3
+
+/**
+ * Действия над треком, общие для всех списков: «следующим», «в конец
+ * очереди» и меню по долгому нажатию. Раздаются оболочкой один раз, чтобы
+ * каждая строка любого списка умела смахивание и меню без передачи
+ * колбэков через каждый экран.
+ */
+class SongActions(
+    val playNext: (SongItem) -> Unit,
+    val enqueue: (SongItem) -> Unit,
+    val openMenu: (SongItem) -> Unit,
+)
+
+val LocalSongActions = androidx.compose.runtime.staticCompositionLocalOf<SongActions?> { null }

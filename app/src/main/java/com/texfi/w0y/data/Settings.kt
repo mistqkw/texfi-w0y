@@ -107,6 +107,9 @@ enum class StartTab(@StringRes val label: Int) {
     HOME(R.string.start_tab_home),
     SEARCH(R.string.start_tab_search),
     LIBRARY(R.string.start_tab_library),
+
+    /** Там, где закрыл приложение в прошлый раз. */
+    LAST(R.string.start_tab_last),
 }
 
 /**
@@ -187,7 +190,9 @@ data class W0ySettings(
     val compactRows: Boolean = false,
     val saveSearchHistory: Boolean = true,
     val downloadOnWifiOnly: Boolean = true,
-    val startTab: StartTab = StartTab.HOME,
+    val startTab: StartTab = StartTab.LAST,
+    /** Вкладка, на которой приложение закрыли: HOME, SEARCH или LIBRARY. */
+    val lastTab: StartTab = StartTab.HOME,
     val cleanMode: Boolean = false,
     val explicitFallback: ExplicitFallback = ExplicitFallback.PLAY,
     val hideExplicit: Boolean = false,
@@ -241,7 +246,8 @@ class SettingsRepository @Inject constructor(
                     compactRows = prefs[Keys.COMPACT_ROWS] ?: false,
                     saveSearchHistory = prefs[Keys.SAVE_SEARCHES] ?: true,
                     downloadOnWifiOnly = prefs[Keys.WIFI_ONLY_DOWNLOADS] ?: true,
-                    startTab = prefs.enum(Keys.START_TAB, StartTab.HOME),
+                    startTab = prefs.enum(Keys.START_TAB, StartTab.LAST),
+                    lastTab = prefs.enum(Keys.LAST_TAB, StartTab.HOME),
                     cleanMode = prefs[Keys.CLEAN_MODE] ?: false,
                     explicitFallback = prefs.enum(Keys.EXPLICIT_FALLBACK, ExplicitFallback.PLAY),
                     hideExplicit = prefs[Keys.HIDE_EXPLICIT] ?: false,
@@ -315,6 +321,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setDownloadOnWifiOnly(value: Boolean) = put(Keys.WIFI_ONLY_DOWNLOADS, value)
 
     suspend fun setStartTab(value: StartTab) = put(Keys.START_TAB, value.name)
+
+    suspend fun setLastTab(value: StartTab) = put(Keys.LAST_TAB, value.name)
 
     suspend fun setCleanMode(value: Boolean) = put(Keys.CLEAN_MODE, value)
 
@@ -475,6 +483,7 @@ class SettingsRepository @Inject constructor(
         val SAVE_SEARCHES = booleanPreferencesKey("save_searches")
         val WIFI_ONLY_DOWNLOADS = booleanPreferencesKey("wifi_only_downloads")
         val START_TAB = stringPreferencesKey("start_tab")
+        val LAST_TAB = stringPreferencesKey("last_tab")
         val CLEAN_MODE = booleanPreferencesKey("clean_mode")
         val EXPLICIT_FALLBACK = stringPreferencesKey("explicit_fallback")
         val HIDE_EXPLICIT = booleanPreferencesKey("hide_explicit")

@@ -415,4 +415,7 @@
     <string name="accent_custom">СВОЙ</string>
     <string name="accent_preview">ВИД</string>
     <string name="accent_custom_hue">Оттенок или HEX-код ниже</string>
+    <string name="start_tab_last">ПОСЛЕДНИЙ</string>
+    <string name="track_download">СКАЧАТЬ</string>
+    <string name="swipe_remove">УБРАТЬ</string>
 </resources>

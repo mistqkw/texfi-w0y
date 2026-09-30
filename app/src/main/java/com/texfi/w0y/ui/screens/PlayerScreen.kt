@@ -37,6 +37,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import com.texfi.w0y.ui.components.SwipeRow
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -121,6 +128,20 @@ fun PlayerScreen(
     val haptic = com.texfi.w0y.ui.components.rememberHaptics()
     val navigator = LocalBrowseNavigator.current
     val state by viewModel.player.state.collectAsStateWithLifecycle()
+    // Перетаскивание очереди: какая строка поднята и насколько сдвинута.
+    // Ключи строк — id трека (с номером повтора), а не позиция: иначе при
+    // каждой перестановке строка «менялась» бы на новую и жест обрывался.
+    var dragFrom by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var rowPx by remember { mutableFloatStateOf(0f) }
+    val queueKeys =
+        remember(state.queue) {
+            val seen = HashMap<String, Int>()
+            state.queue.map { song ->
+                val n = seen.merge(song.id, 1, Int::plus) ?: 1
+                "q-${song.id}-$n"
+            }
+        }
     val liked by viewModel.isLiked.collectAsStateWithLifecycle()
     val pinned by viewModel.isPinned.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -512,17 +533,48 @@ fun PlayerScreen(
 
             when (tab) {
                 PlayerTab.QUEUE -> {
-                    itemsIndexed(state.queue, key = { index, item -> "$index-${item.id}" }) { index, item ->
-                        QueueRow(
-                            index = index,
-                            song = item,
-                            active = index == state.currentIndex,
-                            onClick = { viewModel.player.playAt(index) },
-                            // Играющий трек из очереди не убираем: это не
-                            // «убрать из очереди», а «выключить».
-                            onRemove = if (index == state.currentIndex) null else ({ viewModel.removeFromQueue(index) }),
-                            onMoveUp = if (index <= state.currentIndex + 1) null else ({ viewModel.moveUpInQueue(index) }),
-                        )
+                    itemsIndexed(state.queue, key = { index, _ -> queueKeys.getOrElse(index) { "q$index" } }) { index, item ->
+                        val removable = index != state.currentIndex
+                        // Смахнуть трек вбок — убрать из очереди; играющий не
+                        // трогаем: это не «убрать из очереди», а «выключить».
+                        SwipeRow(
+                            onSwipeRight = if (removable) ({ viewModel.removeFromQueue(index) }) else null,
+                            rightLabel = stringResource(R.string.swipe_remove),
+                            onSwipeLeft = if (removable) ({ viewModel.removeFromQueue(index) }) else null,
+                            leftLabel = stringResource(R.string.swipe_remove),
+                        ) {
+                            QueueRow(
+                                index = index,
+                                song = item,
+                                active = index == state.currentIndex,
+                                lifted = dragFrom == index,
+                                liftOffset = { if (dragFrom == index) dragOffset else 0f },
+                                onClick = { viewModel.player.playAt(index) },
+                                onRemove = if (removable) ({ viewModel.removeFromQueue(index) }) else null,
+                                onMeasured = { rowPx = it },
+                                // Перетаскивать можно только то, что ещё не играло:
+                                // очередь до играющего трека — уже прошлое.
+                                onDragStart = if (index > state.currentIndex) ({ dragFrom = index; dragOffset = 0f }) else null,
+                                onDrag = { dy ->
+                                    dragOffset += dy
+                                    val step = rowPx.coerceAtLeast(1f)
+                                    while (dragOffset > step / 2 && dragFrom + 1 < state.queue.size) {
+                                        viewModel.moveInQueue(dragFrom, dragFrom + 1)
+                                        dragFrom += 1
+                                        dragOffset -= step
+                                    }
+                                    while (dragOffset < -step / 2 && dragFrom - 1 > state.currentIndex) {
+                                        viewModel.moveInQueue(dragFrom, dragFrom - 1)
+                                        dragFrom -= 1
+                                        dragOffset += step
+                                    }
+                                },
+                                onDragEnd = {
+                                    dragFrom = -1
+                                    dragOffset = 0f
+                                },
+                            )
+                        }
                     }
                     item {
                         Spacer(Modifier.height(14.dp))
@@ -778,14 +830,23 @@ private fun QueueRow(
     index: Int,
     song: SongItem,
     active: Boolean,
+    lifted: Boolean,
+    liftOffset: () -> Float,
     onClick: () -> Unit,
     onRemove: (() -> Unit)?,
-    onMoveUp: (() -> Unit)?,
+    onMeasured: (Float) -> Unit,
+    onDragStart: (() -> Unit)?,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit,
 ) {
     val colors = LocalW0yColors.current
     Row(
         Modifier
             .fillMaxWidth()
+            .onSizeChanged { onMeasured(it.height.toFloat()) }
+            // Поднятая строка едет за пальцем и заметно светлее соседей.
+            .graphicsLayer { translationY = liftOffset() }
+            .background(if (lifted) colors.surfaceHigh else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -819,16 +880,54 @@ private fun QueueRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Поднять и убрать — то, чего в очереди не было вообще. Перетаскивание
-        // не делаю, пока не могу проверить жест на живом телефоне: жест,
-        // который срабатывает через раз, хуже кнопки.
-        onMoveUp?.let {
-            Spacer(Modifier.width(10.dp))
-            SpriteButton(Sprites.chevronUp, onClick = it, size = 16)
+        // Ручка переноса: зажал и повёл вверх-вниз, трек меняется местами
+        // с соседями на ходу. Только у треков после играющего.
+        onDragStart?.let { start ->
+            Spacer(Modifier.width(6.dp))
+            DragGrip(onStart = start, onDrag = onDrag, onEnd = onDragEnd)
         }
         onRemove?.let {
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(6.dp))
             SpriteButton(Sprites.close, onClick = it, size = 16)
+        }
+    }
+}
+
+/** Ручка перетаскивания: два ряда квадратов, область нажатия шире рисунка. */
+@Composable
+private fun DragGrip(onStart: () -> Unit, onDrag: (Float) -> Unit, onEnd: () -> Unit) {
+    val colors = LocalW0yColors.current
+    val start by rememberUpdatedState(onStart)
+    val drag by rememberUpdatedState(onDrag)
+    val end by rememberUpdatedState(onEnd)
+    Box(
+        Modifier
+            .size(36.dp)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { start() },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        drag(amount.y)
+                    },
+                    onDragEnd = { end() },
+                    onDragCancel = { end() },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(14.dp, 12.dp)) {
+            val cell = 4.dp.toPx()
+            val gap = 2.dp.toPx()
+            for (row in 0 until 3) {
+                for (col in 0 until 2) {
+                    drawRect(
+                        color = colors.textMuted,
+                        topLeft = Offset(col * (cell + gap), row * (cell + gap) - if (row == 2) 2.dp.toPx() else 0f),
+                        size = Size(cell, cell),
+                    )
+                }
+            }
         }
     }
 }

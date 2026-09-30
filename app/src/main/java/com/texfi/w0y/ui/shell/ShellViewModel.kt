@@ -40,6 +40,14 @@ class ShellViewModel @Inject constructor(
             .map { it.startTab }
             .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Куда идти на старте: выбранная вкладка или последняя открытая. null, пока не прочитано. */
+    val launchTab: StateFlow<StartTab?> =
+        settings.settings
+            .map { if (it.startTab == StartTab.LAST) it.lastTab else it.startTab }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setLastTab(tab: StartTab) = viewModelScope.launch { settings.setLastTab(tab) }
+
     val compactRows: StateFlow<Boolean> =
         settings.settings
             .map { it.compactRows }

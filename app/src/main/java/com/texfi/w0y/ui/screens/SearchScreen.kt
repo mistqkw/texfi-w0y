@@ -294,7 +294,6 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                             SongRow(
                                 song = song,
                                 onClick = { viewModel.playFrom(songs, songs.indexOf(song)) },
-                                onLongClick = { pickPlaylistFor = song },
                                 wideCover = current.videos,
                                 actions = {
                                     DownloadButton(song.id, onDownload = { viewModel.download(song) })

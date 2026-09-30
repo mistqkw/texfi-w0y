@@ -47,6 +47,7 @@ data class PlayerUiState(
 @Singleton
 class PlayerConnection @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val queueStore: QueueStore,
 ) {
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
@@ -65,7 +66,17 @@ class PlayerConnection @Inject constructor(
 
     private val listener =
         object : Player.Listener {
-            override fun onEvents(player: Player, events: Player.Events) = push(player)
+            override fun onEvents(player: Player, events: Player.Events) {
+                push(player)
+                if (events.containsAny(
+                        Player.EVENT_TIMELINE_CHANGED,
+                        Player.EVENT_MEDIA_ITEM_TRANSITION,
+                        Player.EVENT_IS_PLAYING_CHANGED,
+                    )
+                ) {
+                    scheduleSave(player)
+                }
+            }
 
             /**
              * «До конца трека» — засыпают именно так, а не по круглым
@@ -113,6 +124,7 @@ class PlayerConnection @Inject constructor(
             controller = media
             media.addListener(listener)
             push(media)
+            restoreQueue(media)
         }, ContextCompat.getMainExecutor(context))
     }
 
@@ -223,7 +235,60 @@ class PlayerConnection @Inject constructor(
 
     fun togglePlayPause() {
         val media = controller ?: return
-        if (media.isPlaying) media.pause() else media.play()
+        if (media.isPlaying) {
+            media.pause()
+        } else {
+            // После восстановления очереди плеер стоит в IDLE: поток ещё не
+            // запрашивался, и «играть» без prepare() не делает ничего.
+            if (media.playbackState == Player.STATE_IDLE && media.mediaItemCount > 0) media.prepare()
+            media.play()
+        }
+    }
+
+    /** Переставляет трек очереди на новое место; играющий остаётся на месте. */
+    fun moveInQueue(from: Int, to: Int) {
+        val media = controller ?: return
+        val count = media.mediaItemCount
+        if (from !in 0 until count || to !in 0 until count || from == to) return
+        if (from == media.currentMediaItemIndex || to <= media.currentMediaItemIndex) return
+        media.moveMediaItem(from, to)
+    }
+
+    private var saveJob: Job? = null
+    private var restored = false
+
+    /**
+     * Сохраняет очередь, но не на каждое событие подряд: смена трека,
+     * пауза и правка очереди часто приходят пачкой. Пока играет, позиция
+     * дописывается раз в [SAVE_TICK_MS] — хватит, чтобы после закрытия
+     * приложения вернуться на то же место с точностью до секунд.
+     */
+    private fun scheduleSave(player: Player) {
+        if (!restored) return
+        saveJob?.cancel()
+        saveJob =
+            scope.launch {
+                do {
+                    delay(SAVE_DEBOUNCE_MS)
+                    val songs = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).toSong() }
+                    runCatching { queueStore.save(songs, player.currentMediaItemIndex, player.currentPosition) }
+                    if (player.isPlaying) delay(SAVE_TICK_MS)
+                } while (player.isPlaying)
+            }
+    }
+
+    /** Возвращает очередь после перезапуска: трек на паузе, поток не запрашивается. */
+    private fun restoreQueue(media: MediaController) {
+        scope.launch {
+            // Сервис мог пережить приложение: тогда очередь уже у него.
+            if (media.mediaItemCount == 0) {
+                queueStore.load()?.let { saved ->
+                    media.setMediaItems(saved.songs.map(::toMediaItem), saved.index, saved.positionMs)
+                }
+            }
+            restored = true
+            push(media)
+        }
     }
 
     fun skipNext() = controller?.seekToNextMediaItem()
@@ -366,6 +431,8 @@ class PlayerConnection @Inject constructor(
             ).build()
 
     private companion object {
+        const val SAVE_DEBOUNCE_MS = 600L
+        const val SAVE_TICK_MS = 15_000L
         const val EXTRA_ARTIST_ID = "w0y.artistId"
         const val EXTRA_ALBUM_ID = "w0y.albumId"
     }
