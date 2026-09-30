@@ -137,7 +137,7 @@ enum class ThemeMode {
 /**
  * Цветовая схема: пара «акцент + вторичный».
  *
- * Синяя — по умолчанию и остаётся фирменной: `#4a7dfb` — цвет всей
+ * Синяя — по умолчанию и остаётся фирменной: `#4a7cfb` — цвет всей
  * экосистемы TexFi, по нему приложения читаются как семья. Остальные
  * схемы — выбор пользователя, а не новое лицо приложения.
  *
@@ -150,7 +150,7 @@ enum class Accent(
     val deep: Long,
     val secondary: Long,
 ) {
-    BLUE(R.string.accent_blue, 0xFF4A7DFB, 0xFF1E3F8F, 0xFFFFB84D),
+    BLUE(R.string.accent_blue, 0xFF4A7CFB, 0xFF1E3F8F, 0xFFE0A860),
     PINK(R.string.accent_pink, 0xFFFB4A8D, 0xFF8F1E4C, 0xFFFFB2CF),
     VIOLET(R.string.accent_violet, 0xFF9A6BFF, 0xFF4C2E99, 0xFFFF9F45),
     MINT(R.string.accent_mint, 0xFF3ED9A4, 0xFF167A5B, 0xFFFFD166),

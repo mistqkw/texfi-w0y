@@ -26,6 +26,8 @@ data class W0yColors(
     val accent: Color,
     val accentDeep: Color,
     val secondary: Color,
+    /** Тень песочной заливки: как accentDeep у синей. */
+    val secondaryDeep: Color,
     val text: Color,
     val textMuted: Color,
     /** Стеклянная тема: скругления, полупрозрачность, без офсетной тени. */
@@ -46,7 +48,8 @@ private val DarkColors =
         shadow = Color(0xFF0A0A0E),
         accent = TexFiBlue,
         accentDeep = TexFiBlueDeep,
-        secondary = W0yAmber,
+        secondary = TexFiSand,
+        secondaryDeep = TexFiSandDeep,
         text = W0yText,
         textMuted = W0yTextMuted,
     )
@@ -79,7 +82,8 @@ private val GlassColors =
         shadow = Color(0x00000000),
         accent = TexFiBlue,
         accentDeep = TexFiBlueDeep,
-        secondary = W0yAmber,
+        secondary = TexFiSand,
+        secondaryDeep = TexFiSandDeep,
         text = W0yText,
         textMuted = Color(0xFFA3A8BC),
         glass = true,
@@ -98,7 +102,8 @@ private val LightColors =
         shadow = Color(0xFFC9B99B),
         accent = TexFiBlue,
         accentDeep = TexFiBlueDeep,
-        secondary = Color(0xFFD9822B),
+        secondary = Color(0xFFB98232),
+        secondaryDeep = TexFiSandDeep,
         text = Color(0xFF191921),
         textMuted = Color(0xFF6B6455),
     )
@@ -129,6 +134,7 @@ fun W0yTheme(
                 accent = Color(accent.accent),
                 accentDeep = Color(accent.deep),
                 secondary = Color(accent.secondary),
+                secondaryDeep = deepen(Color(accent.secondary)),
             )
         }
     val scheme =
@@ -174,3 +180,6 @@ fun W0yTheme(
 }
 
 private val GlassOpaqueSurface = Color(0xFF1A2036)
+
+/** Тень цвета: тот же оттенок, темнее на 45% — так считаются смещённые тени. */
+internal fun deepen(color: Color): Color = androidx.compose.ui.graphics.lerp(color, Color.Black, 0.45f)

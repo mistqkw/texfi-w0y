@@ -308,7 +308,7 @@ class ShareCardRenderer @Inject constructor(
         const val SURFACE = 0xFF20202A.toInt()
         const val SHADOW = 0xFF05050A.toInt()
         const val BORDER_COLOR = 0xFF2E2E3A.toInt()
-        const val ACCENT = 0xFF4A7DFB.toInt()
+        const val ACCENT = 0xFF4A7CFB.toInt()
         const val TEXT = 0xFFF2F2F5.toInt()
         const val TEXT_MUTED = 0xFF8A8A96.toInt()
     }

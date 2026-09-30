@@ -57,7 +57,14 @@ fun PixelButton(
                 .matchParentSize()
                 .offset(4.dp, 4.dp)
                 .clip(ButtonShape)
-                .background(if (enabled) colors.accentDeep else colors.shadow),
+                // Песочная заливка тенью уходит в тёмный песочный, а не в синий.
+                .background(
+                    when {
+                        !enabled -> colors.shadow
+                        body == colors.secondary -> colors.secondaryDeep
+                        else -> colors.accentDeep
+                    },
+                ),
         )
         Box(
             Modifier
