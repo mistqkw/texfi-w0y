@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.texfi.w0y.R
 import com.texfi.w0y.data.AccountRepository
+import com.texfi.w0y.data.DialHiddenRepository
 import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
@@ -54,6 +55,7 @@ class LibraryViewModel @Inject constructor(
     val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
+    private val dialHidden: DialHiddenRepository,
 ) : ViewModel() {
     val playlists: StateFlow<List<PlaylistEntity>> =
         library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -73,7 +75,7 @@ class LibraryViewModel @Inject constructor(
      * слушается чаще всего. Закреплённое не дублируется в хвосте, иначе
      * один и тот же трек занимал бы две плитки из девяти.
      */
-    val speedDial: StateFlow<List<DialItem>> =
+    private val rawDial: kotlinx.coroutines.flow.Flow<List<DialItem>> =
         combine(
             library.pins,
             library.mostPlayed,
@@ -133,8 +135,33 @@ class LibraryViewModel @Inject constructor(
                 }
             (pinned + songs + localPlaylists)
                 .distinctBy { it.kind to it.id }
-                .take(SPEED_DIAL_SIZE)
+                // С запасом: убранные плитки вычитаются ниже, и на их место
+                // должны встать следующие кандидаты, а не пустые клетки.
+                .take(SPEED_DIAL_SIZE + SPEED_DIAL_SPARE)
+        }
+
+    /** Быстрый набор без временно убранных плиток; просроченные скрытия уже не считаются. */
+    val speedDial: StateFlow<List<DialItem>> =
+        combine(rawDial, dialHidden.hidden) { items, hidden ->
+            val now = System.currentTimeMillis()
+            val gone = hidden.filter { it.untilMs > now }.map { it.kind to it.id }.toSet()
+            items.filterNot { (it.kind to it.id) in gone }.take(SPEED_DIAL_SIZE)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Убирает плитку из набора на время. Закреплённая сначала открепляется —
+     * иначе она вернулась бы в начало набора, как только скрытие кончится.
+     */
+    fun hideDial(item: DialItem) = viewModelScope.launch {
+        if (item.pinned) library.togglePin(item.kind, item.id, item.title, item.subtitle, item.thumbnailUrl)
+        dialHidden.hide(item.kind, item.id, item.title)
+    }
+
+    /** Отмена «убрать»: плитка возвращается на место, закрепление тоже. */
+    fun undoHideDial(item: DialItem) = viewModelScope.launch {
+        dialHidden.restore(item.kind, item.id)
+        if (item.pinned) library.togglePin(item.kind, item.id, item.title, item.subtitle, item.thumbnailUrl)
+    }
 
     /** Треки быстрого набора подряд — чтобы плитка запускала очередь, а не один трек. */
     fun playDial(item: DialItem) {
@@ -320,3 +347,6 @@ data class DialItem(
 private const val SPEED_DIAL_PAGE = 9
 private const val SPEED_DIAL_PAGES = 5
 private const val SPEED_DIAL_SIZE = SPEED_DIAL_PAGE * SPEED_DIAL_PAGES
+
+/** Запас кандидатов на случай скрытых плиток. */
+private const val SPEED_DIAL_SPARE = 40

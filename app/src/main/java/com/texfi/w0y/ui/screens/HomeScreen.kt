@@ -19,6 +19,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import com.texfi.w0y.ui.components.PixelButton
+import com.texfi.w0y.ui.components.PixelCard
+import com.texfi.w0y.ui.components.PixelPullRefresh
+import com.texfi.w0y.ui.components.Stagger
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.MaterialTheme
@@ -75,7 +86,29 @@ fun HomeScreen(
     val recommendationsFailed by home.failed.collectAsStateWithLifecycle()
     val showRecommendations by home.showRecommendations.collectAsStateWithLifecycle()
     val startupAverage by home.startupAverage.collectAsStateWithLifecycle()
+    val syncing by viewModel.syncing.collectAsStateWithLifecycle()
+    val signedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
+    // Меню плитки и плашка «отменить» после того, как плитку убрали на время.
+    var menuItem by remember { mutableStateOf<DialItem?>(null) }
+    var undoItem by remember { mutableStateOf<DialItem?>(null) }
+    LaunchedEffect(undoItem) {
+        if (undoItem != null) {
+            delay(UNDO_MS)
+            undoItem = null
+        }
+    }
 
+    Box(Modifier.fillMaxSize()) {
+    PixelPullRefresh(
+        refreshing = loadingShelves || syncing,
+        onRefresh = {
+            // Обновляется всё, что приходит из сети: рекомендации и, если
+            // вошли в аккаунт, плейлисты и лайки. Закреплённое не трогаем.
+            home.refresh()
+            if (signedIn) viewModel.sync()
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             ScreenTitle(
@@ -134,7 +167,7 @@ fun HomeScreen(
                             else -> viewModel.playDial(item)
                         }
                     },
-                    onPin = viewModel::togglePin,
+                    onLongPress = { menuItem = it },
                 )
             }
         }
@@ -165,7 +198,10 @@ fun HomeScreen(
                 items(3) { SkeletonRow(Modifier.padding(horizontal = Gutter)) }
             }
 
-            items(shelves, key = { "shelf-${it.title}" }) { shelf ->
+            itemsIndexed(shelves, key = { _, it -> "shelf-${it.title}" }) { shelfIndex, shelf ->
+                // Новые ленты после обновления приходят ступенями, по одной,
+                // а не мгновенной подменой всего списка.
+                Stagger(index = shelfIndex * 3) {
                 Column(Modifier.padding(top = 16.dp)) {
                     ShelfTitle(shelf.title, Modifier.padding(horizontal = Gutter))
                     Spacer(Modifier.height(12.dp))
@@ -187,6 +223,7 @@ fun HomeScreen(
                             }
                         }
                     }
+                }
                 }
             }
         }
@@ -228,7 +265,99 @@ fun HomeScreen(
 
         item { Spacer(Modifier.height(28.dp)) }
     }
+    }
+
+    menuItem?.let { item ->
+        DialMenu(
+            item = item,
+            onPin = {
+                viewModel.togglePin(item)
+                menuItem = null
+            },
+            onHide = {
+                viewModel.hideDial(item)
+                undoItem = item
+                menuItem = null
+            },
+            onDismiss = { menuItem = null },
+        )
+    }
+
+    undoItem?.let { item ->
+        UndoBar(
+            onUndo = {
+                viewModel.undoHideDial(item)
+                undoItem = null
+            },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+    }
 }
+
+/**
+ * Меню плитки быстрого набора: закрепить или убрать на время.
+ *
+ * Прежнее долгое нажатие «закрепить/открепить» осталось первой кнопкой,
+ * новое действие стоит рядом и не мешает ему.
+ */
+@Composable
+private fun DialMenu(
+    item: DialItem,
+    onPin: () -> Unit,
+    onHide: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(colors.shadow.copy(alpha = 0.85f))
+            .clickable(onClick = onDismiss),
+        contentAlignment = Alignment.Center,
+    ) {
+        PixelCard(label = stringResource(R.string.track_panel_title), modifier = Modifier.padding(24.dp)) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textMuted,
+                maxLines = 1,
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PixelButton(
+                    text = stringResource(if (item.pinned) R.string.dial_unpin else R.string.dial_pin),
+                    onClick = onPin,
+                )
+                PixelButton(text = stringResource(R.string.dial_hide), onClick = onHide, fill = colors.surfaceHigh)
+            }
+        }
+    }
+}
+
+/** Плашка после «убрать на время»: можно сразу вернуть. */
+@Composable
+private fun UndoBar(onUndo: () -> Unit, modifier: Modifier = Modifier) {
+    val colors = LocalW0yColors.current
+    Row(
+        modifier
+            .padding(16.dp)
+            .background(colors.surfaceHigh)
+            .border(2.dp, colors.border)
+            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.dial_hidden_toast),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.text,
+        )
+        Spacer(Modifier.width(12.dp))
+        PixelButton(text = stringResource(R.string.dial_undo), onClick = onUndo, fill = colors.secondary)
+    }
+}
+
+private const val UNDO_MS = 5_000L
 
 /**
  * Пустое место быстрого набора.
@@ -267,7 +396,7 @@ private fun GhostTile(modifier: Modifier = Modifier) {
 private fun SpeedDialPager(
     items: List<DialItem>,
     onOpen: (DialItem) -> Unit,
-    onPin: (DialItem) -> Unit,
+    onLongPress: (DialItem) -> Unit,
 ) {
     val colors = LocalW0yColors.current
     // Страница всегда из девяти мест: на неполной странице плитки иначе
@@ -308,7 +437,7 @@ private fun SpeedDialPager(
                                     round = item.kind == PinEntity.KIND_ARTIST,
                                     modifier = Modifier.weight(1f),
                                     onClick = { onOpen(item) },
-                                    onLongClick = { onPin(item) },
+                                    onLongClick = { onLongPress(item) },
                                 )
                             }
                         }

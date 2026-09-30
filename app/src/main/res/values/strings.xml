@@ -418,4 +418,17 @@
     <string name="start_tab_last">LAST</string>
     <string name="track_download">DOWNLOAD</string>
     <string name="swipe_remove">REMOVE</string>
+    <string name="settings_dial_hide_title">Hide from speed dial for</string>
+    <string name="settings_dial_hide_desc">A tile you remove comes back on its own after this time. Nothing is deleted from your library.</string>
+    <string name="settings_dial_hidden_title">Hidden from speed dial</string>
+    <string name="settings_dial_hidden_desc">What you removed for now. Restore any time.</string>
+    <string name="settings_dial_hidden_empty">Nothing is hidden.</string>
+    <string name="dial_days">%1$d d</string>
+    <string name="dial_restore">RESTORE</string>
+    <string name="dial_restore_all">RESTORE ALL</string>
+    <string name="dial_pin">PIN</string>
+    <string name="dial_unpin">UNPIN</string>
+    <string name="dial_hide">HIDE FOR NOW</string>
+    <string name="dial_hidden_toast">Removed from speed dial</string>
+    <string name="dial_undo">UNDO</string>
 </resources>

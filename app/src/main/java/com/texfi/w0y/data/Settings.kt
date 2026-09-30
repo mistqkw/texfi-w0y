@@ -203,6 +203,8 @@ data class W0ySettings(
     val accent: Accent = Accent.BLUE,
     /** Свой цвет схемы CUSTOM, ARGB. */
     val customAccent: Int = 0xFFA06CFF.toInt(),
+    /** На сколько дней убранная плитка скрывается из быстрого набора. */
+    val dialHideDays: Int = 28,
     val syncPlaylists: Boolean = true,
     val searchSuggestions: Boolean = true,
     val haptics: Boolean = true,
@@ -257,6 +259,7 @@ class SettingsRepository @Inject constructor(
                     animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
                     accent = prefs.enum(Keys.ACCENT, Accent.BLUE),
                     customAccent = prefs[Keys.CUSTOM_ACCENT] ?: 0xFFA06CFF.toInt(),
+                    dialHideDays = prefs[Keys.DIAL_HIDE_DAYS] ?: 28,
                     syncPlaylists = prefs[Keys.SYNC_PLAYLISTS] ?: true,
                     searchSuggestions = prefs[Keys.SEARCH_SUGGESTIONS] ?: true,
                     haptics = prefs[Keys.HAPTICS] ?: true,
@@ -335,6 +338,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setWelcomeSeen(value: Boolean) = put(Keys.WELCOME_SEEN, value)
 
     suspend fun setAnimatedBackground(value: Boolean) = put(Keys.ANIMATED_BACKGROUND, value)
+
+    suspend fun setDialHideDays(value: Int) = put(Keys.DIAL_HIDE_DAYS, value)
 
     suspend fun setAccent(value: Accent) = put(Keys.ACCENT, value.name)
 
@@ -493,6 +498,7 @@ class SettingsRepository @Inject constructor(
         val ANIMATED_BACKGROUND = booleanPreferencesKey("animated_background")
         val ACCENT = stringPreferencesKey("accent")
         val CUSTOM_ACCENT = intPreferencesKey("custom_accent")
+        val DIAL_HIDE_DAYS = intPreferencesKey("dial_hide_days")
         val SYNC_PLAYLISTS = booleanPreferencesKey("sync_playlists")
         val SEARCH_SUGGESTIONS = booleanPreferencesKey("search_suggestions")
         val HAPTICS = booleanPreferencesKey("haptics")

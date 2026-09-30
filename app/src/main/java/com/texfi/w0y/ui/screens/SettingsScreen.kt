@@ -553,6 +553,7 @@ private fun settingsRows(
     val cacheBytes by viewModel.cacheBytes.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
+    val hiddenDial by viewModel.hiddenDial.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     return buildList {
@@ -1039,6 +1040,37 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.LOOK,
+                title = stringResource(R.string.settings_dial_hide_title),
+                description = stringResource(R.string.settings_dial_hide_desc),
+                keywords = "speed dial hide",
+                control =
+                    SettingControl.Choice(
+                        options = listOf(7, 14, 28, 56),
+                        selected = settings.dialHideDays,
+                        label = { stringResource(R.string.dial_days, it) },
+                        onSelect = viewModel::setDialHideDays,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.LOOK,
+                title = stringResource(R.string.settings_dial_hidden_title),
+                description = stringResource(R.string.settings_dial_hidden_desc),
+                keywords = "speed dial hidden restore",
+                control =
+                    SettingControl.Custom {
+                        HiddenDialList(
+                            items = hiddenDial.filter { it.untilMs > System.currentTimeMillis() },
+                            onRestore = viewModel::restoreDial,
+                            onRestoreAll = viewModel::restoreAllDial,
+                        )
+                    },
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.LOOK,
                 title = stringResource(R.string.settings_live_background_title),
                 description = stringResource(R.string.settings_live_background_desc),
                 control = SettingControl.Toggle(settings.animatedBackground, viewModel::setAnimatedBackground),
@@ -1109,3 +1141,43 @@ private fun themeLabel(mode: ThemeMode): String =
         ThemeMode.LIGHT -> stringResource(R.string.theme_light)
         ThemeMode.GLASS -> stringResource(R.string.theme_glass)
     }
+
+/** Скрытое из быстрого набора: что убрано и кнопки «вернуть» у каждой записи и «вернуть все». */
+@Composable
+private fun HiddenDialList(
+    items: List<com.texfi.w0y.data.HiddenDial>,
+    onRestore: (String, String) -> Unit,
+    onRestoreAll: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    if (items.isEmpty()) {
+        Text(
+            text = stringResource(R.string.settings_dial_hidden_empty),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+        )
+        return
+    }
+    Column(Modifier.fillMaxWidth()) {
+        items.forEach { item ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.text,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(10.dp))
+                PixelButton(
+                    text = stringResource(R.string.dial_restore),
+                    onClick = { onRestore(item.kind, item.id) },
+                    fill = colors.surfaceHigh,
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        PixelButton(text = stringResource(R.string.dial_restore_all), onClick = onRestoreAll)
+    }
+}

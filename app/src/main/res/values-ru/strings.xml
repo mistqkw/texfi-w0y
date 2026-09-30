@@ -418,4 +418,17 @@
     <string name="start_tab_last">ПОСЛЕДНИЙ</string>
     <string name="track_download">СКАЧАТЬ</string>
     <string name="swipe_remove">УБРАТЬ</string>
+    <string name="settings_dial_hide_title">Убирать из быстрого набора на</string>
+    <string name="settings_dial_hide_desc">Убранная плитка вернётся сама по истечении срока. Из библиотеки ничего не удаляется.</string>
+    <string name="settings_dial_hidden_title">Скрыто из быстрого набора</string>
+    <string name="settings_dial_hidden_desc">Что вы убрали на время. Вернуть можно в любой момент.</string>
+    <string name="settings_dial_hidden_empty">Ничего не скрыто.</string>
+    <string name="dial_days">%1$d дн.</string>
+    <string name="dial_restore">ВЕРНУТЬ</string>
+    <string name="dial_restore_all">ВЕРНУТЬ ВСЕ</string>
+    <string name="dial_pin">ЗАКРЕПИТЬ</string>
+    <string name="dial_unpin">ОТКРЕПИТЬ</string>
+    <string name="dial_hide">УБРАТЬ НА ВРЕМЯ</string>
+    <string name="dial_hidden_toast">Убрано из быстрого набора</string>
+    <string name="dial_undo">ОТМЕНИТЬ</string>
 </resources>
