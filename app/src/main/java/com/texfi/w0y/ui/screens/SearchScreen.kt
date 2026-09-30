@@ -171,16 +171,21 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                         }
                         Spacer(Modifier.height(4.dp))
                         recentQueries.forEach { entry ->
-                            Text(
-                                text = entry,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = colors.text,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.submit(entry) }
-                                        .padding(vertical = 10.dp),
-                            )
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { viewModel.submit(entry) }
+                                    .padding(vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = entry,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = colors.text,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                SpriteButton(Sprites.close, onClick = { viewModel.forgetQuery(entry) }, size = 14)
+                            }
                         }
                     }
                 }

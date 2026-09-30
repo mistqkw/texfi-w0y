@@ -44,6 +44,12 @@ class SearchHistoryRepository @Inject constructor(
         context.searchStore.edit { it[Keys.RECENT] = updated.joinToString(SEPARATOR) }
     }
 
+    /** Убирает одну запись, не трогая остальные. */
+    suspend fun remove(query: String) {
+        val updated = recent.first().filterNot { it.equals(query, ignoreCase = true) }
+        context.searchStore.edit { it[Keys.RECENT] = updated.joinToString(SEPARATOR) }
+    }
+
     suspend fun clear() = context.searchStore.edit { it.remove(Keys.RECENT) }
 
     private object Keys {
@@ -54,7 +60,7 @@ class SearchHistoryRepository @Inject constructor(
         const val SEPARATOR = "\n"
         const val LIMIT = 20
 
-        /** Одна-две буквы — это не запрос, а промежуточное состояние набора. */
-        const val MIN_LENGTH = 2
+        /** Пустое и из одних пробелов не сохраняется; остальное — запрос пользователя. */
+        const val MIN_LENGTH = 1
     }
 }

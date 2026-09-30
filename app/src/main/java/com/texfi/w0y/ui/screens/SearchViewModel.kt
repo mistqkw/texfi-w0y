@@ -244,9 +244,6 @@ class SearchViewModel @Inject constructor(
                         result.fold(
                             onSuccess = {
                                 cache[query to filter] = it
-                                // Запоминаем только то, что действительно
-                                // нашлось: опечатки в подсказках не нужны.
-                                if (!it.isEmpty) viewModelScope.launch { history.remember(query) }
                                 it
                             },
                             onFailure = { error ->
@@ -297,6 +294,10 @@ class SearchViewModel @Inject constructor(
         val clean = value.trim()
         if (clean.isEmpty()) return
         _query.value = clean
+        // История пишется только по явному подтверждению — Enter, подсказка
+        // или запись из истории. Раньше запрос запоминался сам, по паузе в
+        // наборе, и в историю попадали обрывки вроде «ра», «рад», «радио».
+        viewModelScope.launch { history.remember(clean) }
         viewModelScope.launch { submitted.emit(clean) }
     }
 
@@ -320,6 +321,8 @@ class SearchViewModel @Inject constructor(
     fun playFrom(songs: List<SongItem>, index: Int) = playback.play(songs, index)
 
     fun clearHistory() = viewModelScope.launch { history.clear() }
+
+    fun forgetQuery(query: String) = viewModelScope.launch { history.remove(query) }
 
     private companion object {
         const val SEARCH_DEBOUNCE_MS = 280L
