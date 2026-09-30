@@ -56,6 +56,16 @@ android {
             )
             signingConfig = signingConfigs.findByName("release")
         }
+        // Для замеров на телефоне: всё как в release (R8, без debug-кода),
+        // но подпись debug-ключом и отдельный id — встаёт рядом с рабочей
+        // сборкой и не трогает её данные. Раздавать такой APK нельзя.
+        create("bench") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".bench"
+            versionNameSuffix = "-bench"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
 
     // Схемы Room в репозитории: без них миграции пишутся вслепую.
