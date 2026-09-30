@@ -327,8 +327,8 @@
     <string name="settings_account_unnamed">no name</string>
     <string name="settings_account_sign_in">SIGN IN</string>
     <string name="settings_account_sign_out">SIGN OUT</string>
-    <string name="settings_sync_playlists_title">Playlists on YouTube</string>
-    <string name="settings_sync_playlists_desc">Create a playlist here and it appears in the account; add a track and it is added there too. Nothing is removed from the account behind your back.</string>
+    <string name="settings_sync_playlists_title">Playlists and likes on YouTube</string>
+    <string name="settings_sync_playlists_desc">What you change here goes to the account, and what you change in YouTube Music comes here: playlists, tracks, likes. Without a connection edits wait and go out at the next sync.</string>
     <string name="settings_sync_playlists_desc_out">Works once you sign in: without an account there is nowhere to write.</string>
     <string name="settings_haptics_title">Vibration</string>
     <string name="settings_haptics_desc">A short response to button and switch presses.</string>
@@ -431,4 +431,9 @@
     <string name="dial_hide">HIDE FOR NOW</string>
     <string name="dial_hidden_toast">Removed from speed dial</string>
     <string name="dial_undo">UNDO</string>
+    <string name="library_albums">SAVED ALBUMS</string>
+    <string name="library_playlist_saved">Saved playlist · read-only</string>
+    <string name="playlist_readonly">A playlist from your library that is not yours: you can play and download it, but only its author can edit it.</string>
+    <string name="playlist_rename">rename</string>
+    <string name="playlist_rename_save">save</string>
 </resources>

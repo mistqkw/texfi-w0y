@@ -327,8 +327,8 @@
     <string name="settings_account_unnamed">без імені</string>
     <string name="settings_account_sign_in">УВІЙТИ</string>
     <string name="settings_account_sign_out">ВИЙТИ</string>
-    <string name="settings_sync_playlists_title">Плейлисти в YouTube</string>
-    <string name="settings_sync_playlists_desc">Створили плейлист тут — він зʼявиться в акаунті; додали трек — додасться й там. З акаунта за вашою спиною нічого не видаляємо.</string>
+    <string name="settings_sync_playlists_title">Плейлисти й лайки в YouTube</string>
+    <string name="settings_sync_playlists_desc">Що змінюєте тут — іде в акаунт, що змінюєте в YouTube Music — приходить сюди: плейлисти, треки, лайки. Без мережі правки чекають і йдуть під час наступної звірки.</string>
     <string name="settings_sync_playlists_desc_out">Запрацює після входу: без акаунта записувати нікуди.</string>
     <string name="settings_haptics_title">Вібрація</string>
     <string name="settings_haptics_desc">Короткий відгук на натискання кнопок і перемикачів.</string>
@@ -431,4 +431,9 @@
     <string name="dial_hide">ПРИБРАТИ НА ЧАС</string>
     <string name="dial_hidden_toast">Прибрано зі швидкого набору</string>
     <string name="dial_undo">СКАСУВАТИ</string>
+    <string name="library_albums">ЗБЕРЕЖЕНІ АЛЬБОМИ</string>
+    <string name="library_playlist_saved">Збережений плейлист · лише читання</string>
+    <string name="playlist_readonly">Чужий плейлист із вашої бібліотеки: його можна слухати й завантажувати, але редагувати може лише автор.</string>
+    <string name="playlist_rename">перейменувати</string>
+    <string name="playlist_rename_save">зберегти</string>
 </resources>

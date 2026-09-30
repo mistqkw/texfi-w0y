@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,11 +83,17 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
     val downloaded by viewModel.downloaded.collectAsStateWithLifecycle()
     val signedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
-    val accountPlaylists by viewModel.accountPlaylists.collectAsStateWithLifecycle()
+    val accountAvatar by viewModel.accountAvatar.collectAsStateWithLifecycle()
+    val accountAlbums by viewModel.accountAlbums.collectAsStateWithLifecycle()
+    val covers by viewModel.playlistCovers.collectAsStateWithLifecycle()
     val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val syncError by viewModel.syncError.collectAsStateWithLifecycle()
     val mirrorFailure by viewModel.mirrorFailure.collectAsStateWithLifecycle()
     var newPlaylist by remember { mutableStateOf<String?>(null) }
+
+    // Плейлисты подтягиваются сами при входе в «Моё»: без ручного «обновить».
+    // Повторные входы в течение минуты сверку не запускают (см. AccountSync).
+    LaunchedEffect(signedIn) { if (signedIn) viewModel.sync(force = false) }
 
     LazyColumn(
         Modifier
@@ -99,11 +106,23 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
         item {
             PixelCard(label = stringResource(R.string.library_account), modifier = Modifier.fillMaxWidth()) {
                 if (signedIn) {
-                    Text(
-                        text = accountName ?: stringResource(R.string.library_signed_in),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.text,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Аватарка — как у ника на YouTube: круглая, слева от имени.
+                        // Пока она не пришла, под картинкой видна нота-заглушка.
+                        CoverImage(
+                            url = accountAvatar,
+                            px = Thumbnails.ROW,
+                            modifier = Modifier.size(40.dp),
+                            corner = 20,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = accountName ?: stringResource(R.string.library_signed_in),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.text,
+                            maxLines = 1,
+                        )
+                    }
                     Spacer(Modifier.height(10.dp))
                     Row {
                         PixelButton(
@@ -223,37 +242,31 @@ private fun LibraryRoot(viewModel: LibraryViewModel, onOpenLogin: () -> Unit) {
                 // ещё и в аккаунте. Без этой строчки «синхронизация» — слово
                 // из настроек, которое никак не проверить.
                 subtitle =
-                    if (playlist.remoteId != null) {
-                        stringResource(R.string.library_playlist_mirrored)
-                    } else {
-                        stringResource(R.string.library_own_playlist)
+                    when {
+                        playlist.remoteId != null && !playlist.remoteEditable ->
+                            stringResource(R.string.library_playlist_saved)
+                        playlist.remoteId != null -> stringResource(R.string.library_playlist_mirrored)
+                        else -> stringResource(R.string.library_own_playlist)
                     },
-                thumbnailUrl = null,
+                thumbnailUrl = covers[playlist.id],
                 sprite = Sprites.library,
                 onClick = { viewModel.open(LibraryRoute.Local(playlist.id)) },
             )
         }
 
-        if (accountPlaylists.isNotEmpty()) {
+        if (accountAlbums.isNotEmpty()) {
             item {
                 Spacer(Modifier.height(6.dp))
-                SectionHeader(stringResource(R.string.library_from_account))
+                SectionHeader(stringResource(R.string.library_albums))
             }
-            items(accountPlaylists, key = { it.browseId }) { card ->
+            items(accountAlbums, key = { it.browseId }) { card ->
                 CollectionRow(
                     title = card.title,
-                    subtitle = card.subtitle ?: if (card.isAlbum) stringResource(R.string.card_album) else stringResource(R.string.card_playlist),
+                    subtitle = card.subtitle ?: stringResource(R.string.card_album),
                     thumbnailUrl = card.thumbnailUrl,
                     sprite = Sprites.release,
-                    onClick = {
-                        // Альбом открывается своей страницей, плейлист — списком:
-                        // у альбома есть обложка и год, у плейлиста только треки.
-                        if (card.isAlbum) {
-                            navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl))
-                        } else {
-                            viewModel.open(LibraryRoute.Remote(card))
-                        }
-                    },
+                    // У альбома своя страница: обложка, год, треклист.
+                    onClick = { navigator.open(BrowseRoute.Album(card.browseId, card.title, card.thumbnailUrl)) },
                 )
             }
         }
@@ -435,9 +448,11 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
     val songs by viewModel.currentPlaylistSongs.collectAsStateWithLifecycle()
     val playlist by viewModel.playlists.collectAsStateWithLifecycle()
     val signedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
-    val pushResult by viewModel.pushResult.collectAsStateWithLifecycle()
     val entry = playlist.firstOrNull { it.id == playlistId }
     val name = entry?.name ?: stringResource(R.string.playlist_title)
+    // Чужой плейлист из библиотеки аккаунта YouTube править не даёт — и мы не обещаем.
+    val editable = entry == null || entry.remoteId == null || entry.remoteEditable
+    var renaming by remember { mutableStateOf<String?>(null) }
     Column(
         Modifier
             .fillMaxSize()
@@ -448,30 +463,66 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             Spacer(Modifier.width(12.dp))
             SpriteButton(Sprites.trash, onClick = { viewModel.deletePlaylist(playlistId) })
         }
-        if (signedIn) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                PixelSprite(
-                    rows = Sprites.sync,
-                    color = if (entry?.remoteId != null) colors.accent else colors.textMuted,
-                    modifier = Modifier.size(14.dp),
+        renaming?.let { value ->
+            PixelCard(modifier = Modifier.fillMaxWidth()) {
+                BasicTextField(
+                    value = value,
+                    onValueChange = { renaming = it },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text),
+                    cursorBrush = SolidColor(colors.accent),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text =
-                        pushResult
-                            ?: if (entry?.remoteId != null) {
+                Spacer(Modifier.height(10.dp))
+                Row {
+                    PixelButton(
+                        text = stringResource(R.string.playlist_rename_save),
+                        onClick = {
+                            if (value.isNotBlank()) viewModel.renamePlaylist(playlistId, value)
+                            renaming = null
+                        },
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    PixelButton(text = stringResource(R.string.library_cancel), onClick = { renaming = null }, fill = colors.surfaceHigh)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+        if (!editable) {
+            Text(
+                stringResource(R.string.playlist_readonly),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
+        if (editable) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (signedIn) {
+                    PixelSprite(
+                        rows = Sprites.sync,
+                        color = if (entry?.remoteId != null) colors.accent else colors.textMuted,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text =
+                            if (entry?.remoteId != null) {
                                 stringResource(R.string.playlist_mirrored)
                             } else {
                                 stringResource(R.string.playlist_not_mirrored)
                             },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.textMuted,
-                    modifier = Modifier.weight(1f),
-                )
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
                 Spacer(Modifier.width(10.dp))
                 PixelButton(
-                    text = stringResource(R.string.playlist_push),
-                    onClick = { viewModel.pushPlaylist(playlistId) },
+                    text = stringResource(R.string.playlist_rename),
+                    onClick = { renaming = name },
                     fill = colors.surfaceHigh,
                 )
             }
@@ -492,10 +543,12 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
                     onClick = { viewModel.play(songs, songs.indexOf(song)) },
                     modifier = Modifier.animateItem(),
                     actions = {
-                        SpriteButton(
-                            Sprites.trash,
-                            onClick = { viewModel.removeFromPlaylist(playlistId, song.id) },
-                        )
+                        if (editable) {
+                            SpriteButton(
+                                Sprites.trash,
+                                onClick = { viewModel.removeFromPlaylist(playlistId, song.id) },
+                            )
+                        }
                     },
                 )
             }

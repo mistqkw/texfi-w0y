@@ -22,7 +22,7 @@ class SongMenuViewModel @Inject constructor(
     private val downloads: DownloadsRepository,
 ) : ViewModel() {
     val playlists: StateFlow<List<PlaylistEntity>> =
-        library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        library.editablePlaylists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun addToPlaylist(playlistId: Long, song: SongItem) =
         viewModelScope.launch { library.addToPlaylist(playlistId, song) }

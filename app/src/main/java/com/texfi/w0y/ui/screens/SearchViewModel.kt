@@ -108,7 +108,7 @@ class SearchViewModel @Inject constructor(
             emptyList(),
         )
     val playlists: StateFlow<List<PlaylistEntity>> =
-        library.playlists.stateIn(
+        library.editablePlaylists.stateIn(
             viewModelScope,
             kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000),
             emptyList(),

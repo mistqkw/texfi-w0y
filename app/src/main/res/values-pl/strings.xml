@@ -327,8 +327,8 @@
     <string name="settings_account_unnamed">bez nazwy</string>
     <string name="settings_account_sign_in">ZALOGUJ</string>
     <string name="settings_account_sign_out">WYLOGUJ</string>
-    <string name="settings_sync_playlists_title">Playlisty w YouTube</string>
-    <string name="settings_sync_playlists_desc">Utworzysz playlistę tutaj — pojawi się na koncie; dodasz utwór — doda się i tam. Z konta nic nie usuwamy za twoimi plecami.</string>
+    <string name="settings_sync_playlists_title">Playlisty i polubienia w YouTube</string>
+    <string name="settings_sync_playlists_desc">Co zmienisz tutaj, trafia na konto, a co zmienisz w YouTube Music, przychodzi tutaj: playlisty, utwory, polubienia. Bez sieci zmiany czekają i idą przy kolejnej synchronizacji.</string>
     <string name="settings_sync_playlists_desc_out">Zadziała po zalogowaniu: bez konta nie ma gdzie zapisywać.</string>
     <string name="settings_haptics_title">Wibracje</string>
     <string name="settings_haptics_desc">Krótka odpowiedź na naciśnięcie przycisków i przełączników.</string>
@@ -431,4 +431,9 @@
     <string name="dial_hide">UKRYJ NA CZAS</string>
     <string name="dial_hidden_toast">Usunięto z szybkiego wybierania</string>
     <string name="dial_undo">COFNIJ</string>
+    <string name="library_albums">ZAPISANE ALBUMY</string>
+    <string name="library_playlist_saved">Zapisana playlista · tylko odczyt</string>
+    <string name="playlist_readonly">Cudza playlista z twojej biblioteki: możesz jej słuchać i ją pobierać, ale edytować może tylko autor.</string>
+    <string name="playlist_rename">zmień nazwę</string>
+    <string name="playlist_rename_save">zapisz</string>
 </resources>

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.texfi.w0y.R
 import com.texfi.w0y.data.AccountRepository
+import com.texfi.w0y.data.AccountSync
 import com.texfi.w0y.data.DialHiddenRepository
 import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -52,6 +54,7 @@ class LibraryViewModel @Inject constructor(
     private val account: AccountRepository,
     private val youtube: YouTubeRepository,
     private val sync: YtPlaylistSync,
+    private val accountSync: AccountSync,
     val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
@@ -69,6 +72,12 @@ class LibraryViewModel @Inject constructor(
         account.isSignedIn.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
     val accountName: StateFlow<String?> =
         account.accountName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val accountAvatar: StateFlow<String?> =
+        account.accountAvatar.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Обложки плейлистов: своя из аккаунта или картинка первого трека. */
+    val playlistCovers: StateFlow<Map<Long, String>> =
+        library.playlistCovers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /**
      * Быстрый набор: сначала закреплённое вручную, следом — то, что
@@ -191,14 +200,15 @@ class LibraryViewModel @Inject constructor(
     private val _remoteSongs = MutableStateFlow<List<SongItem>>(emptyList())
     val remoteSongs: StateFlow<List<SongItem>> = _remoteSongs.asStateFlow()
 
-    private val _accountPlaylists = MutableStateFlow<List<PlaylistCard>>(emptyList())
-    val accountPlaylists: StateFlow<List<PlaylistCard>> = _accountPlaylists.asStateFlow()
+    /** Сохранённые альбомы аккаунта: плейлисты аккаунта живут среди обычных. */
+    val accountAlbums: StateFlow<List<PlaylistCard>> = accountSync.albums
 
-    private val _syncing = MutableStateFlow(false)
-    val syncing: StateFlow<Boolean> = _syncing.asStateFlow()
+    val syncing: StateFlow<Boolean> = accountSync.running
 
-    private val _syncError = MutableStateFlow<String?>(null)
-    val syncError: StateFlow<String?> = _syncError.asStateFlow()
+    val syncError: StateFlow<String?> =
+        accountSync.error
+            .map { it?.let { message -> context.getString(R.string.library_sync_failed, message) } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Последняя неудачная запись плейлиста в аккаунт — её видно в библиотеке. */
     val mirrorFailure: StateFlow<String?> = sync.failure
@@ -216,10 +226,13 @@ class LibraryViewModel @Inject constructor(
     fun open(route: LibraryRoute) {
         _route.value = route
         when (route) {
-            is LibraryRoute.Local ->
+            is LibraryRoute.Local -> {
                 viewModelScope.launch {
                     library.playlistSongs(route.playlistId).collect { _currentPlaylistSongs.value = it }
                 }
+                // Состав сверяется с аккаунтом при открытии: правили его там — увидим сразу.
+                viewModelScope.launch { accountSync.refreshPlaylist(route.playlistId) }
+            }
 
             is LibraryRoute.Remote ->
                 viewModelScope.launch {
@@ -286,30 +299,16 @@ class LibraryViewModel @Inject constructor(
 
     fun clearHistory() = viewModelScope.launch { library.clearHistory() }
 
-    /** Подтягивает лайки и плейлисты аккаунта в локальную библиотеку. */
-    fun sync() {
-        if (_syncing.value) return
-        viewModelScope.launch {
-            _syncing.value = true
-            _syncError.value = null
-            runCatching {
-                _accountPlaylists.value = account.playlists()
-                val liked = account.likedSongs()
-                // Раньше треки просто сохранялись — без отметки лайка, и
-                // раздел «лайки» после синхронизации оставался пустым.
-                library.importLikes(liked)
-                liked
-            }.onFailure {
-                Timber.w(it, "Синхронизация не удалась")
-                _syncError.value = context.getString(R.string.library_sync_failed, it.message.orEmpty())
-            }
-            _syncing.value = false
-        }
+    /**
+     * Сверка с аккаунтом. Вход в «Моё» запускает её сам, без [force] и не
+     * чаще раза в минуту; кнопка «обновить» — принудительная.
+     */
+    fun sync(force: Boolean = true) {
+        viewModelScope.launch { accountSync.run(force) }
     }
 
     fun signOut() = viewModelScope.launch {
         account.signOut()
-        _accountPlaylists.value = emptyList()
     }
 
     /**

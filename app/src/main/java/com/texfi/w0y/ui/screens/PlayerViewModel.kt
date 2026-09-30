@@ -135,7 +135,7 @@ class PlayerViewModel @Inject constructor(
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), W0ySettings())
 
     val playlists: StateFlow<List<PlaylistEntity>> =
-        library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        library.editablePlaylists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val isLiked: StateFlow<Boolean> =
