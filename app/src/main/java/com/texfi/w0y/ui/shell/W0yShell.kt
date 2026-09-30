@@ -61,7 +61,7 @@ import com.texfi.w0y.ui.components.LocalSongActions
 import com.texfi.w0y.ui.components.MiniPlayer
 import com.texfi.w0y.ui.components.SongActions
 import com.texfi.w0y.data.SongItem
-import com.texfi.w0y.ui.components.PixelCurtain
+import com.texfi.w0y.ui.components.softEnter
 import com.texfi.w0y.ui.components.W0yMotion
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.components.popWhenActivated
@@ -204,10 +204,9 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 .statusBarsPadding(),
         ) {
             Box(Modifier.weight(1f)) {
-                // Смена вкладки — без растворения: новый экран стоит на месте
-                // с первого кадра, а поверх рассыпается пиксельная шторка.
-                // Материал-slide и fade читаются как дефолт фреймворка, а
-                // ожидания у шторки нет — она только убирается.
+                // Смена вкладки — спокойное ступенчатое проявление: экран стоит
+                // на месте с первого кадра, без ожидания и без цветных блоков.
+                Box(Modifier.fillMaxSize().softEnter(tab)) {
                 when (tab) {
                     Tab.HOME ->
                         HomeScreen(
@@ -220,7 +219,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     Tab.SEARCH -> SearchScreen()
                     Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
                 }
-                PixelCurtain(trigger = tab, first = colors.accent, second = colors.secondary)
+                }
 
                 // Артист и альбом ложатся поверх вкладки, но не поверх
                 // мини-плеера: на этих страницах чаще всего и переключают

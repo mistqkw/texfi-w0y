@@ -3,7 +3,6 @@ package com.texfi.w0y.ui.components
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -14,9 +13,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -118,56 +114,34 @@ fun Stagger(
 }
 
 /**
- * Пиксельная «шторка» при смене вкладки: мозаика квадратов цвета акцента
- * и второго цвета, которая рассыпается за [W0yMotion.FAST_MS].
+ * Спокойное появление экрана при смене вкладки: он проявляется и чуть
+ * поднимается в четыре ступени за 140 мс.
  *
- * Новый экран стоит на месте с первого кадра — шторка лежит поверх и
- * только убирается, поэтому переход не добавляет ожидания. Рисуется
- * в фазе отрисовки одной канвой, без пересборки.
+ * Без цветных блоков и вспышек: переход не должен отвлекать — он только
+ * показывает, что экран сменился. Новый экран стоит на месте с первого
+ * кадра и уже виден (не меньше трети яркости), поэтому ожидания нет.
+ * Значение читается в слое отрисовки, содержимое не пересобирается.
  */
 @Composable
-fun PixelCurtain(
-    trigger: Any,
-    first: Color,
-    second: Color,
-    modifier: Modifier = Modifier,
-) {
-    val cover = remember { Animatable(0f) }
+fun Modifier.softEnter(trigger: Any): Modifier {
+    val progress = remember { Animatable(1f) }
     var seen by remember { mutableStateOf(false) }
     LaunchedEffect(trigger) {
-        // На первом показе шторка не нужна: переход — это смена, а не запуск.
+        // На первом показе переход не нужен: это запуск, а не смена.
         if (!seen) {
             seen = true
             return@LaunchedEffect
         }
-        cover.snapTo(CURTAIN_START)
-        cover.animateTo(0f, tween(W0yMotion.FAST_MS, easing = SteppedEasing(8)))
+        progress.snapTo(0f)
+        progress.animateTo(1f, tween(ENTER_MS, easing = SteppedEasing(ENTER_STEPS)))
     }
-    Canvas(modifier.fillMaxSize()) {
-        val level = cover.value
-        if (level <= 0f) return@Canvas
-        val cell = size.width / CURTAIN_COLUMNS
-        val rows = (size.height / cell).toInt() + 1
-        for (iy in 0 until rows) {
-            for (ix in 0 until CURTAIN_COLUMNS) {
-                val h = hash(ix, iy)
-                if (h < level) {
-                    drawRect(
-                        color = if (h * 7f % 1f < 0.5f) first else second,
-                        topLeft = Offset(ix * cell, iy * cell),
-                        size = Size(cell + 1f, cell + 1f),
-                    )
-                }
-            }
-        }
+    return graphicsLayer {
+        alpha = ENTER_MIN_ALPHA + (1f - ENTER_MIN_ALPHA) * progress.value
+        translationY = (1f - progress.value) * ENTER_RISE.toPx()
     }
 }
 
-private const val CURTAIN_COLUMNS = 8
-private const val CURTAIN_START = 0.8f
-
-private fun hash(x: Int, y: Int): Float {
-    var n = x * 374_761_393 + y * 668_265_263
-    n = (n xor (n ushr 13)) * 1_274_126_177
-    return ((n xor (n ushr 16)) and 0xFFFF) / 65_536f
-}
+private const val ENTER_MS = 140
+private const val ENTER_STEPS = 4
+private const val ENTER_MIN_ALPHA = 0.35f
+private val ENTER_RISE = 10.dp

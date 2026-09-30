@@ -5,7 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -111,7 +111,7 @@ fun SwipeRow(
 }
 
 @Composable
-private fun Reveal(
+private fun BoxScope.Reveal(
     label: String,
     alignment: Alignment,
     fill: Color,
@@ -119,8 +119,10 @@ private fun Reveal(
     visible: () -> Boolean,
 ) {
     Box(
+        // matchParentSize, а не fillMaxSize: подложка повторяет размер строки
+        // и сама его не задаёт, иначе строка растягивалась бы на весь экран.
         Modifier
-            .fillMaxSize()
+            .matchParentSize()
             .graphicsLayer { alpha = if (visible()) 1f else 0f }
             .background(fill)
             .padding(horizontal = 16.dp),

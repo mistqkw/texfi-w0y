@@ -16,10 +16,12 @@ $ADB shell wm dismiss-keyguard
 
 echo "== холодный старт (am start -W, мс: TotalTime = до первого кадра)"
 totals=()
-for i in $(seq 1 10); do
+while [ "${#totals[@]}" -lt 10 ]; do
   $ADB shell am force-stop $PKG
   sleep 1
-  t=$($ADB shell am start -W -n $ACT | awk '/TotalTime/{print $2}')
+  t=$($ADB shell am start -W -n $ACT | awk "/TotalTime/{print \$2}")
+  # TotalTime=0 — система вернула активность из уже запущенного процесса, не холодный старт.
+  [ "${t:-0}" -gt 0 ] || continue
   totals+=("$t")
   sleep 2
 done

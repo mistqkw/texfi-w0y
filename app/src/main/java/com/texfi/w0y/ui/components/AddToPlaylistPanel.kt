@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -111,8 +113,10 @@ fun AddToPlaylistPanel(
                 )
                 Spacer(Modifier.height(10.dp))
             }
-            LazyColumn(Modifier.heightIn(max = 280.dp)) {
-                items(playlists, key = { it.first }) { (id, name) ->
+            // Обычная колонка, а не LazyColumn: ленивый список занимает всю
+            // разрешённую высоту даже пустым, и панель растягивалась бы.
+            Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())) {
+                playlists.forEach { (id, name) ->
                     Text(
                         text = name,
                         style = MaterialTheme.typography.bodyLarge,
