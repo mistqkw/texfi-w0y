@@ -16,6 +16,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 
+private const val PRESS_MS = 70
+
 /**
  * Отклик на нажатие: элемент вдавливается и возвращается пружиной.
  *
@@ -31,7 +33,7 @@ fun Modifier.pressScale(
     val isPressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) pressed else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessHigh),
+        animationSpec = tween(PRESS_MS, easing = W0yMotion.Press),
         label = "press",
     )
     return graphicsLayer {
@@ -52,8 +54,8 @@ fun Modifier.popWhenActivated(active: Boolean, peak: Float = 1.35f): Modifier {
     var seen by remember { mutableStateOf(active) }
     LaunchedEffect(active) {
         if (active && !seen) {
-            scale.animateTo(peak, tween(90))
-            scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+            scale.animateTo(peak, tween(90, easing = W0yMotion.Press))
+            scale.animateTo(1f, tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack))
         }
         seen = active
     }

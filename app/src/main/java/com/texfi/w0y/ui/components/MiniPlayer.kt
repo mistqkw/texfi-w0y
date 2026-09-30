@@ -55,15 +55,8 @@ fun MiniPlayer(
     val colors = LocalW0yColors.current
     AnimatedVisibility(
         visible = state.song != null,
-        enter =
-            fadeIn(androidx.compose.animation.core.tween(100)) +
-                expandVertically(
-                    androidx.compose.animation.core.spring(
-                        dampingRatio = 0.7f,
-                        stiffness = 1000f,
-                    ),
-                ),
-        exit = fadeOut(androidx.compose.animation.core.tween(80)) + shrinkVertically(androidx.compose.animation.core.tween(100)),
+        enter = expandVertically(androidx.compose.animation.core.tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)),
+        exit = shrinkVertically(androidx.compose.animation.core.tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)),
         modifier = modifier,
     ) {
         val song = state.song ?: return@AnimatedVisibility
@@ -82,7 +75,7 @@ fun MiniPlayer(
             bump.snapTo(0.78f)
             bump.animateTo(
                 1f,
-                androidx.compose.animation.core.spring(dampingRatio = 0.45f, stiffness = 1000f),
+                androidx.compose.animation.core.tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack),
             )
         }
         Column(
@@ -91,26 +84,16 @@ fun MiniPlayer(
                 .background(colors.surfaceHigh),
         ) {
             val duration = state.durationMs
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(3.dp)
-                    .background(colors.border),
-            ) {
-                // Позиция читается только при рисовании: полоса двигается,
-                // а строка мини-плеера не пересобирается.
-                val barColor = colors.secondary
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .drawBehind {
-                            val progress =
-                                if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-                            drawRect(barColor, size = androidx.compose.ui.geometry.Size(size.width * progress, size.height))
-                        },
-                )
-            }
+            // Позиция читается только при рисовании: полоса двигается,
+            // а строка мини-плеера не пересобирается.
+            SegmentedBar(
+                progress = { if (duration > 0) position.toFloat() / duration else 0f },
+                lit = colors.secondary,
+                dim = colors.border,
+                modifier = Modifier.fillMaxWidth(),
+                height = 4.dp,
+                cell = 10.dp,
+            )
             Row(
                 Modifier
                     .fillMaxWidth()

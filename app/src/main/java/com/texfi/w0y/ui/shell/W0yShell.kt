@@ -4,7 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -57,6 +57,8 @@ import com.texfi.w0y.ui.components.LocalHaptics
 import com.texfi.w0y.ui.components.rememberHaptics
 import com.texfi.w0y.ui.components.LocalPlayingSongId
 import com.texfi.w0y.ui.components.MiniPlayer
+import com.texfi.w0y.ui.components.PixelCurtain
+import com.texfi.w0y.ui.components.W0yMotion
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.components.popWhenActivated
 import com.texfi.w0y.ui.components.PixelSprite
@@ -171,29 +173,23 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 .statusBarsPadding(),
         ) {
             Box(Modifier.weight(1f)) {
-                // Переход экранов — fade+scale на 180 мс. Material-slide поверх
-                // резкой пиксельной графики читается как дефолт фреймворка.
-                AnimatedContent(
-                    targetState = tab,
-                    transitionSpec = {
-                        (fadeIn(tween(110)) + scaleIn(tween(180), initialScale = 0.98f)) togetherWith
-                            fadeOut(tween(80))
-                    },
-                    label = "tab",
-                ) { current ->
-                    when (current) {
-                        Tab.HOME ->
-                            HomeScreen(
-                                onOpenSettings = { settingsOpen = true },
-                                onOpenLocalPlaylist = { id ->
-                                    libraryViewModel.open(LibraryRoute.Local(id))
-                                    tab = Tab.LIBRARY
-                                },
-                            )
-                        Tab.SEARCH -> SearchScreen()
-                        Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
-                    }
+                // Смена вкладки — без растворения: новый экран стоит на месте
+                // с первого кадра, а поверх рассыпается пиксельная шторка.
+                // Материал-slide и fade читаются как дефолт фреймворка, а
+                // ожидания у шторки нет — она только убирается.
+                when (tab) {
+                    Tab.HOME ->
+                        HomeScreen(
+                            onOpenSettings = { settingsOpen = true },
+                            onOpenLocalPlaylist = { id ->
+                                libraryViewModel.open(LibraryRoute.Local(id))
+                                tab = Tab.LIBRARY
+                            },
+                        )
+                    Tab.SEARCH -> SearchScreen()
+                    Tab.LIBRARY -> LibraryScreen(onOpenLogin = { loginOpen = true })
                 }
+                PixelCurtain(trigger = tab, first = colors.accent, second = colors.secondary)
 
                 // Артист и альбом ложатся поверх вкладки, но не поверх
                 // мини-плеера: на этих страницах чаще всего и переключают
@@ -233,11 +229,8 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
 
         AnimatedVisibility(
             visible = settingsOpen,
-            enter =
-                slideInVertically(spring(dampingRatio = 0.85f, stiffness = 1000f)) { it / 3 } +
-                    scaleIn(spring(dampingRatio = 0.85f, stiffness = 1000f), initialScale = 0.94f) +
-                    fadeIn(tween(90)),
-            exit = scaleOut(tween(90), targetScale = 0.96f) + fadeOut(tween(90)),
+            enter = slideInVertically(tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack)) { it / 3 },
+            exit = slideOutVertically(tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)) { it / 3 },
         ) {
             SettingsScreen(
                 onClose = { settingsOpen = false },
@@ -266,11 +259,8 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
 
         AnimatedVisibility(
             visible = loginOpen,
-            enter =
-                slideInVertically(spring(dampingRatio = 0.8f, stiffness = 900f)) { it / 2 } +
-                    scaleIn(spring(dampingRatio = 0.8f, stiffness = 900f), initialScale = 0.92f) +
-                    fadeIn(tween(90)),
-            exit = slideOutVertically(tween(110)) { it / 3 } + fadeOut(tween(90)),
+            enter = slideInVertically(tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack)) { it / 2 },
+            exit = slideOutVertically(tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)) { it / 2 },
         ) {
             LoginScreen(
                 busy = loginBusy,
@@ -308,8 +298,8 @@ private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> U
     val colors = LocalW0yColors.current
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally(tween(140)) { it / 3 } + fadeIn(tween(100)),
-        exit = slideOutHorizontally(tween(110)) { it / 3 } + fadeOut(tween(90)),
+        enter = slideInHorizontally(tween(W0yMotion.FAST_MS, easing = W0yMotion.StepWide)) { it / 3 },
+        exit = slideOutHorizontally(tween(W0yMotion.FAST_MS, easing = W0yMotion.StepWide)) { it / 3 },
     ) {
         Box(
             Modifier
@@ -352,17 +342,17 @@ private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
                 // что сменился весь экран, а не сработала кнопка в списке.
                 val iconColor by animateColorAsState(
                     targetValue = if (active) colors.accent else colors.textMuted,
-                    animationSpec = tween(180),
+                    animationSpec = snap(),
                     label = "tabIcon",
                 )
                 val labelColor by animateColorAsState(
                     targetValue = if (active) colors.text else colors.textMuted,
-                    animationSpec = tween(180),
+                    animationSpec = snap(),
                     label = "tabLabel",
                 )
                 val underline by animateDpAsState(
                     targetValue = if (active) 20.dp else 0.dp,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+                    animationSpec = tween(W0yMotion.FAST_MS, easing = W0yMotion.StepBack),
                     label = "tabUnderline",
                 )
                 Column(

@@ -54,19 +54,15 @@ fun DownloadButton(
                 Box(Modifier.height(16.dp), contentAlignment = Alignment.Center) {
                     Text(text = "$percent", style = PixelSectionLabel.copy(fontSize = 8.sp), color = colors.accent)
                 }
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(colors.border),
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(percent / 100f)
-                            .height(3.dp)
-                            .background(colors.accent),
-                    )
-                }
+                SegmentedBar(
+                    progress = { percent / 100f },
+                    lit = colors.accent,
+                    dim = colors.border,
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 3.dp,
+                    cell = 4.dp,
+                    gap = 1.dp,
+                )
             }
         }
 

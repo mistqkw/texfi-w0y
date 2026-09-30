@@ -27,6 +27,8 @@ import com.texfi.w0y.R
 import com.texfi.w0y.data.StatsPeriod
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.components.CoverImage
+import com.texfi.w0y.ui.components.FillText
+import com.texfi.w0y.ui.components.SegmentedBar
 import com.texfi.w0y.ui.components.EmptyState
 import com.texfi.w0y.ui.components.Gutter
 import com.texfi.w0y.ui.components.PixelSegmented
@@ -118,20 +120,14 @@ fun StatsScreen(
                             )
                         }
                         Spacer(Modifier.height(6.dp))
-                        Box(
-                            Modifier
-                                .padding(start = 24.dp)
-                                .fillMaxWidth()
-                                .height(4.dp)
-                                .background(colors.surfaceHigh),
-                        ) {
-                            Box(
-                                Modifier
-                                    .fillMaxWidth(share)
-                                    .height(4.dp)
-                                    .background(colors.accent),
-                            )
-                        }
+                        SegmentedBar(
+                            progress = { share },
+                            lit = colors.accent,
+                            dim = colors.surfaceHigh,
+                            modifier = Modifier.padding(start = 24.dp).fillMaxWidth(),
+                            height = 5.dp,
+                            cell = 8.dp,
+                        )
                     }
                 }
             }
@@ -196,6 +192,8 @@ private fun Metric(label: String, value: String, modifier: Modifier = Modifier) 
     ) {
         Text(label, style = PixelSectionLabel, color = colors.accent)
         Spacer(Modifier.height(10.dp))
-        Text(value, style = PixelBigNumber, color = colors.text)
+        // Число заливается снизу вверх поверх бледной копии — момент, когда
+        // цифра «набралась», виден, а не подменяется мгновенным скачком.
+        FillText(value, style = PixelBigNumber, ghost = colors.border, fill = colors.text)
     }
 }

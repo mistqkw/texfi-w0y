@@ -141,19 +141,14 @@ fun SongRow(
             actions()
         }
         if (progressPercent != null && progressPercent < 100f) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(colors.surfaceHigh),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth(progressPercent / 100f)
-                        .height(2.dp)
-                        .background(colors.secondary),
-                )
-            }
+            SegmentedBar(
+                progress = { progressPercent / 100f },
+                lit = colors.secondary,
+                dim = colors.surfaceHigh,
+                modifier = Modifier.fillMaxWidth(),
+                height = 3.dp,
+                cell = 8.dp,
+            )
         }
     }
 }

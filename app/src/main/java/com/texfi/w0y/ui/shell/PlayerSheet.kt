@@ -1,8 +1,7 @@
 package com.texfi.w0y.ui.shell
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,12 +24,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.components.Buzz
+import com.texfi.w0y.ui.components.W0yMotion
 import com.texfi.w0y.ui.components.rememberHaptics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-private val OpenSpring = spring<Float>(dampingRatio = 0.78f, stiffness = 900f)
-private val CloseSpring = spring<Float>(dampingRatio = 0.9f, stiffness = Spring.StiffnessHigh)
+private val OpenSpring = tween<Float>(W0yMotion.SLOW_MS, easing = W0yMotion.StepWideBack)
+private val CloseSpring = tween<Float>(W0yMotion.FAST_MS, easing = W0yMotion.StepWide)
 
 /**
  * Полноэкранный плеер как шторка над мини-плеером.
