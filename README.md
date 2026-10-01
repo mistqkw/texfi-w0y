@@ -1,140 +1,151 @@
-![TexFi w0y — a YouTube Music client for Android](docs/banners/github.png)
+![w0y: an open client for YouTube Music](docs/banners/github.png)
 
-# TexFi w0y
+<p align="center">
+  <img alt="version" src="https://img.shields.io/badge/version-v0.0.1%20beta--1-4a7cfb?style=flat-square">
+  <img alt="license" src="https://img.shields.io/badge/license-AGPL--3.0-e0a860?style=flat-square">
+  <img alt="platform" src="https://img.shields.io/badge/platform-Android%208%2B%20%C2%B7%20Linux-4a7cfb?style=flat-square">
+</p>
 
-A YouTube Music client for Android. No ads, no Premium restrictions, and
-you can sign in to your own account — your library, playlists, history.
+# w0y
 
-Part of the [TexFi](https://texfi-hub.vercel.app) ecosystem: pixel visual
-language, dark theme by default, the same blue `#4a7dfb`.
+**Fast, adjustable, and yours.** An open client for YouTube Music: it starts
+tracks quickly, has a lot of settings, shows no ads of its own and sends no
+telemetry anywhere. You can sign in to your own account to get your library,
+playlists and likes.
 
-## Why another client
+Part of the [TexFi](https://texfi-hub.vercel.app) family: pixel visual
+language, dark theme by default, the same blue `#4a7cfb` and sand `#e0a860`.
 
-Existing ones fell short on three counts, and w0y is built around exactly
-those:
+## Screenshots
 
-1. **The track starts right away.** The next track in the queue is
-   prefetched, stream URLs are cached with their lifetime in mind,
-   playback starts on a minimal buffer, network requests run in parallel.
-   The debug build measures the time from tap to first sound and logs it —
-   so optimisations are a number, not a feeling.
-2. **The interface does not stutter.** Stable keys in lists, no needless
-   recompositions, Baseline Profile, R8. Performance is checked on the
-   release build, not on debug.
-3. **There are plenty of settings.** Quality separately for Wi-Fi and
-   mobile, cache and auto-download, normalisation, equaliser, queue
-   behaviour, seek step, theme, colour scheme, language, settings export.
-   Eleven sections with a search across all of them, and every item says
-   plainly what it does.
+<!-- screenshots:start -->
+> Screenshots are coming with the next update of this page.
+<!-- screenshots:end -->
 
-## What already works
+## Features
 
-- **Search and playback** — tracks, albums, artists; background playback
-  with a media notification, queue, repeat, shuffle.
-- **Your account** — pick one of the Google accounts already on the phone
-  and confirm on Google's page, or paste a cookie by hand when Google
-  refuses the app's window. Playlists, likes and
-  subscriptions are pulled from the account.
-- **Downloads** — tracks, albums and playlists into the app's storage; each
-  button shows waiting, percent and done, and a line says where to find
-  them. A "Wi-Fi only" limit.
-- **Your own sound, per track** — speed, pitch and reverb belong to the
-  track, not to the app: SLOWED and SPED UP straight from the original
-  file, remembered for that track and nothing else. The row shows the
-  badge; one button puts the track back to how the rest sound.
-- **Ready-made edits** — a button finds someone else's slowed or sped up
-  upload of the playing track and plays it.
-- **Videos in search** — clips and edits that exist only as videos, with
-  wide frames, played as audio.
-- **A card of the track** — the player draws a picture with the cover, the
-  title and your version of it, to send wherever you like. Drawn on the
-  phone; nothing is uploaded.
-- **Speed dial** — what you play most, right on the home screen; a long
-  press pins a track, album, playlist or artist.
-- **Stats** — minutes, favourite tracks and artists for a week, a month or
-  all time. Computed on the phone, and it goes nowhere.
-- **Clean mode** — swaps in the official clean version when one exists;
-  tracks marked "E" can be hidden or skipped. The app cannot cut words out
-  of a finished recording, and will not pretend otherwise.
-- **Widget** for the home screen: cover, title and transport.
-- **Lyrics** from LRCLIB, synchronised line by line.
-- **Four languages** — Russian, English, Ukrainian, Polish; the choice in
-  settings overrides the system one.
-- **Start-time measurement** — the average time from tap to first sound is
-  shown on the home screen and in settings. The promise of "fast" can be
-  checked.
+- **Search and playback** — tracks, albums, artists and videos; artist and
+  album pages; background playback with a media notification, queue you can
+  edit (reorder, remove, play next), repeat, shuffle, sleep timer.
+- **Quick start** — the next track is prefetched, stream URLs are cached, and
+  the time from tap to first sound is measured and shown, so "fast" is a
+  number you can check.
+- **Your account** — pick one of the Google accounts on the phone and confirm
+  on Google's page, or paste a cookie by hand. Playlists, likes and
+  subscriptions are synchronised both ways.
+- **Lyrics** from [LRCLIB](https://lrclib.net), synchronised line by line,
+  with translation.
+- **Your own sound per track** — speed, pitch and reverb (SLOWED, SPED UP)
+  applied to the original file and remembered for that track only.
+- **Downloads** — tracks, albums, playlists; a "Wi-Fi only" limit; a button
+  that copies them into `Music/w0y music`.
+- **Search** with YouTube's suggestions and a history you can clear.
+- **Speed dial, stats and a widget** — what you play most on the home screen,
+  listening stats computed on the device, a home screen widget.
+- **Clean mode** — swaps in the official clean version when one exists; tracks
+  marked "E" can be hidden or skipped.
+- **Settings** — eleven sections with a search across all of them: quality,
+  normalisation, queue behaviour, seek step, themes and colour schemes, your
+  own accent colour, settings export and import.
+- **Languages** — Russian, English, Ukrainian, Polish.
+- **Linux desktop version** — the same ideas on Compose Desktop; sound is
+  played through `mpv`.
 
-- **Playlists on YouTube** — create a playlist here and it appears in the
-  account; add or remove a track and the account follows. Nothing is
-  removed from the account behind your back, and a failed write never
-  undoes what you did on the phone: it is reported, with a button to
-  upload the playlist again.
-- **All tracks of an artist** — the same list that sits behind "Show all"
-  on the artist page, fetched in full rather than the first twelve.
-- **Search that answers sooner** — YouTube's own suggestions while you
-  type, an "all" tab that returns tracks, albums and artists in one
-  request, and matches from your own library before the network replies.
-- **Audio outputs** — the outputs the system actually reports, and which
-  one the music is going through.
-- **A queue you can edit** — move a track up, throw it out, send one from
-  search to play next or to the end. Plus a sleep timer that can wait for
-  the end of the track instead of cutting it mid-word.
+## Privacy
 
-What's missing: a web version (and none is planned) and scrobbling.
+- Library, history, settings, downloads and stats are stored **on the device**
+  (the Linux version: in `~/.local/share/w0y`). Nothing is uploaded to any
+  server of this project; there is none, and there is no analytics or crash
+  reporting.
+- Requests the app makes, and why:
+  - `music.youtube.com` — search, your library, stream links. If you sign in,
+    the session cookie is sent there like a web browser would.
+  - `accounts.google.com` — only the sign-in page.
+  - `lrclib.net` — lyrics (artist, title and duration of the track).
+  - `translate.googleapis.com` — only if you turn lyrics translation on; the
+    lyric lines are sent for translation.
+  - Public Piped servers — a fallback source of audio when YouTube does not
+    give a stream link; the video id is sent.
+- The sign-in cookie stays on the device. Treat it like a password.
 
-## Building
+## Install
 
-Release APKs are built in GitHub Actions on a `v*` tag push. Locally:
+**Android 8.0 (API 26) or newer.**
 
-```bash
-./gradlew assembleDebug
-```
+1. Download [`TexFi-w0y-android.apk`](https://github.com/mistqkw/texfi-w0y/releases/download/v0.0.1-beta-1/TexFi-w0y-android.apk)
+   from the [release page](https://github.com/mistqkw/texfi-w0y/releases/tag/v0.0.1-beta-1)
+   and open it. Checksums are in `SHA256SUMS.txt` next to it.
+2. Or add `https://github.com/mistqkw/texfi-w0y` to
+   [Obtainium](https://github.com/ImranR98/Obtainium) (allow pre-releases).
 
-You need JDK 21 and the Android SDK (compileSdk 37, build-tools 37). The
-SDK path goes into `local.properties` (the file is in `.gitignore`).
+Updates install over the top as long as they come signed with the project key.
 
-Some tests hit the real YouTube: parsing its responses breaks when things
-change on their side, and only a live request catches that. They run
-locally by default; in CI they are skipped, because from a data-centre IP
-YouTube answers with a refusal, and such a failure says nothing about the
-code. To run them in CI on purpose — `W0Y_LIVE_TESTS=1`.
+**Linux (x86_64):** download
+[`w0y-linux-x86_64.tar.gz`](https://github.com/mistqkw/texfi-w0y/releases/download/v0.0.1-beta-1/w0y-linux-x86_64.tar.gz),
+unpack it and run `./install.sh`. You need `mpv` installed. The interface of
+the Linux version is in Russian only.
 
-The signing key is not in the repository and never will be. Actions
-secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE_PASSWORD`,
-`ANDROID_KEY_PASSWORD`. See [docs/RELEASING.md](docs/RELEASING.md).
+## Build from source
 
-## Icon
-
-The icon is generated from a pixel grid by code rather than stored as
-images:
+You need JDK 21 and the Android SDK (compileSdk 37). Put the SDK path into
+`local.properties` (`sdk.dir=...`, the file is git-ignored).
 
 ```bash
-python3 tools/make_icons.py preview            # concept sheets into docs/
-python3 tools/make_icons.py apply quill_wide   # every format into res/
-python3 tools/make_banners.py                  # banners into docs/banners
+./gradlew testDebugUnitTest assembleDebug   # Android debug APK
 ```
 
-`quill_wide` is the shape currently shipped. The banners are drawn from
-the same grid, so the icon and the header cannot drift apart.
+Linux version (needs `mpv` to run):
 
-## Licences
+```bash
+cd desktop && ./install.sh                  # builds and installs for your user
+```
 
-w0y's code is [AGPL-3.0](LICENSE).
+Some Android tests hit the real YouTube because only a live request catches a
+change in its responses. They are skipped in CI; set `W0Y_LIVE_TESTS=1` to run
+them there. Release APKs are built by GitHub Actions on a `v*` tag; the
+signing key is not in the repository (see [docs/RELEASING.md](docs/RELEASING.md)).
 
-Access to YouTube Music goes through
-[InnerTubeX](https://github.com/MetrolistGroup/innertubex) (GPL-3.0) —
-section 13 of GPLv3 expressly permits combining a GPLv3 work with AGPLv3
-into one whole. A copy of the library's licence:
-[licenses/GPL-3.0-innertubex.txt](licenses/GPL-3.0-innertubex.txt).
+## Report a problem
 
-[Metrolist](https://github.com/MetrolistGroup/Metrolist) (GPL-3.0) served
-as the reference for the feature set; its code was not copied.
+Open an [issue](https://github.com/mistqkw/texfi-w0y/issues/new/choose) and say
+what you did, what you expected and what happened. Add the app version
+(Settings → About) and your Android version. The release build writes no log of its own, but the system log still shows
+crashes and errors. With the phone connected and w0y running:
 
-The Press Start 2P font — [OFL](licenses/OFL-PressStart2P.txt).
+```bash
+adb logcat -d --pid=$(adb shell pidof com.texfi.w0y) > w0y-log.txt
+```
 
-## A note on the language
+Before posting a log, remove anything personal from it.
+
+## Licence and third-party parts
+
+w0y is licensed under [AGPL-3.0](LICENSE).
+
+| Component | Licence |
+| --- | --- |
+| [InnerTubeX](https://github.com/MetrolistGroup/innertubex), access to YouTube Music | GPL-3.0 (copy in [licenses/](licenses/GPL-3.0-innertubex.txt)); GPLv3 §13 allows combining with AGPLv3 |
+| Jetpack Compose, Material 3, AndroidX (Room, DataStore, Navigation, Media3, Core) | Apache-2.0 |
+| Hilt / Dagger | Apache-2.0 |
+| Ktor, kotlinx.serialization, Kotlin | Apache-2.0 |
+| OkHttp | Apache-2.0 |
+| Coil | Apache-2.0 |
+| Timber | Apache-2.0 |
+| Press Start 2P font | OFL ([licenses/](licenses/OFL-PressStart2P.txt)) |
+| Linux version: Compose Multiplatform, dbus-java (LGPL/MIT), mpv (GPL/LGPL, run as a separate program) | see each project |
+
+[Metrolist](https://github.com/MetrolistGroup/Metrolist) (GPL-3.0) was a
+reference for the feature set; its code was not copied.
+
+## Disclaimer
+
+w0y is an independent project. It is not affiliated with, endorsed by or
+connected to YouTube or Google. "YouTube Music" is used only to describe what
+the app is compatible with. You are responsible for following the terms of
+the services you use it with.
+
+---
 
 The code comments are in Russian: this is a personal project and they are
-written in the author's own voice. The documentation, the release notes
-and the interface are in English (and in three more languages inside the
-app).
+written in the author's own voice. The documentation and the release notes
+are in English, the interface is in four languages.
