@@ -384,10 +384,3 @@ class YouTubeRepository @Inject constructor(
         private const val STREAM_CACHE_SIZE = 80
     }
 }
-
-/** Смешанная выдача одного запроса: всё, что нашлось, по типам. */
-data class MixedResults(
-    val songs: List<SongItem> = emptyList(),
-    val albums: List<PlaylistCard> = emptyList(),
-    val artists: List<ArtistCard> = emptyList(),
-)

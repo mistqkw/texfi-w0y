@@ -672,3 +672,10 @@ data class AlbumPage(
     val thumbnailUrl: String? = null,
     val songs: List<SongItem> = emptyList(),
 )
+
+/** Смешанная выдача одного запроса: всё, что нашлось, по типам. */
+data class MixedResults(
+    val songs: List<SongItem> = emptyList(),
+    val albums: List<PlaylistCard> = emptyList(),
+    val artists: List<ArtistCard> = emptyList(),
+)
