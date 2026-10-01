@@ -24,6 +24,8 @@ sealed interface Screen {
     data class Local(val index: Int) : Screen
     data object Liked : Screen
     data object History : Screen
+    data object Downloaded : Screen
+    data object Player : Screen
 }
 
 /** Всё состояние приложения в одном месте: экран, библиотека, аккаунт, плеер. */
@@ -31,6 +33,8 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     var lib by mutableStateOf(store.load())
         private set
     val player = PlayerCtl(scope, yt, this)
+    val downloads = Downloads(scope, yt, this)
+    val lyrics = LyricsRepo()
 
     val stack = mutableStateListOf<Screen>(Screen.Home)
     val screen: Screen get() = stack.last()
@@ -136,6 +140,29 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
                 update { it.copy(queue = queue.map { s -> s.stored() }, queueIndex = index) }
             }
     }
+
+    fun soundOf(id: String): com.texfi.w0y.data.SoundProfile =
+        lib.sound[id]?.let {
+            com.texfi.w0y.data.SoundProfile(
+                it.speed,
+                it.pitch,
+                runCatching { com.texfi.w0y.data.Reverb.valueOf(it.reverb) }.getOrDefault(com.texfi.w0y.data.Reverb.OFF),
+            )
+        } ?: com.texfi.w0y.data.SoundProfile.Plain
+
+    fun saveSound(id: String, profile: com.texfi.w0y.data.SoundProfile) = update {
+        it.copy(
+            sound = if (profile.isPlain) it.sound - id else it.sound + (id to StoredSound(profile.speed, profile.pitch, profile.reverb.name)),
+        )
+    }
+
+    fun markDownloaded(song: SongItem, path: String) =
+        update { it.copy(downloads = it.downloads + (song.id to StoredDownload(path, song.stored()))) }
+
+    fun unmarkDownloaded(id: String) = update { it.copy(downloads = it.downloads - id) }
+
+    fun downloadedPath(id: String): String? =
+        lib.downloads[id]?.path?.takeIf { java.io.File(it).isFile }
 
     fun saveVolume(volume: Int) = update { it.copy(volume = volume) }
 

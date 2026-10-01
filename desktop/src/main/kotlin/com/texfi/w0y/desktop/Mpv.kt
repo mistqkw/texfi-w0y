@@ -81,6 +81,8 @@ class Mpv(
     }
 
     private fun handle(obj: JsonObject) {
+        // Ответ на команду: ошибку mpv видно в консоли, а не теряется молча.
+        (obj["error"] as? JsonPrimitive)?.contentOrNull?.takeIf { it != "success" }?.let { System.err.println("mpv: $it") }
         when ((obj["event"] as? JsonPrimitive)?.contentOrNull) {
             "property-change" -> {
                 val value = obj["data"] as? JsonPrimitive
@@ -125,6 +127,18 @@ class Mpv(
         send("set_property", "http-header-fields", rest.joinToString(","))
         send("loadfile", url, "replace")
         send("set_property", "pause", false)
+    }
+
+    /**
+     * Звучание трека. Скорость — свойство mpv (темп без смены тона делает
+     * сам mpv), высота тона — rubberband, эхо — aecho из ffmpeg.
+     */
+    fun applySound(profile: com.texfi.w0y.data.SoundProfile) {
+        send("set_property", "speed", profile.speed.toDouble())
+        val filters = mutableListOf<String>()
+        if (profile.pitch != 1f) filters += "rubberband=pitch-scale=${profile.pitch}"
+        profile.reverb.filter?.let { filters += "lavfi=[$it]" }
+        send("set_property", "af", filters.joinToString(","))
     }
 
     fun setPause(paused: Boolean) = send("set_property", "pause", paused)

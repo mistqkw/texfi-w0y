@@ -128,9 +128,9 @@ class Yt {
     }
 
     /** Треки плейлиста со всеми страницами (до [maxPages]). */
-    suspend fun playlistSongs(browseId: String, maxPages: Int = 10): List<SongItem> = withContext(Dispatchers.IO) {
+    suspend fun playlistSongs(browseId: String, maxPages: Int = 10, params: String? = null): List<SongItem> = withContext(Dispatchers.IO) {
         val first =
-            innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, setLogin = true).body<JsonObject>()
+            innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, params = params, setLogin = true).body<JsonObject>()
         val all = YtJson.songs(first).toMutableList()
         var token = YtJson.continuation(first)
         var page = 1

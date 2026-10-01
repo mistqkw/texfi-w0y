@@ -40,6 +40,15 @@ class PlayerCtl(
 
     val current: SongItem? get() = queue.getOrNull(index)
 
+    /** Сколько секунд осталось до остановки таймером сна; null — таймер не заведён. */
+    var sleepRemaining by mutableStateOf<Int?>(null)
+        private set
+
+    /** Таймер «до конца трека»: музыка встанет, когда доиграет текущий. */
+    var sleepAfterTrack by mutableStateOf(false)
+        private set
+    private var sleepJob: Job? = null
+
     /** Есть ли у mpv загруженный трек: после рестарта очередь восстановлена, а звука ещё нет. */
     private var loaded = false
     private var startJob: Job? = null
@@ -52,7 +61,19 @@ class PlayerCtl(
             onPause = { playing = !it && loaded },
             onEnd = { reason ->
                 when (reason) {
-                    "eof" -> scope.launch { next(auto = true) }
+                    "eof" ->
+                        scope.launch {
+                            if (sleepAfterTrack) {
+                                sleepAfterTrack = false
+                                playing = false
+                                // Позиция остаётся в конце, следующий трек готов к запуску.
+                                if (index + 1 < queue.size) index += 1
+                                loaded = false
+                                app.saveQueue(queue, index)
+                            } else {
+                                next(auto = true)
+                            }
+                        }
                     "error" -> {
                         loading = false
                         playing = false
@@ -97,6 +118,16 @@ class PlayerCtl(
         loaded = false
         position = 0.0
         duration = 0.0
+        mpv.applySound(app.soundOf(song.id).also { current -> soundNow = current })
+        val local = app.downloadedPath(song.id)
+        if (local != null) {
+            // Скачанный трек играет с диска: ни сети, ни ссылки, которая истекает.
+            startJob = scope.launch {
+                mpv.load(local, emptyMap())
+                app.remember(song)
+            }
+            return
+        }
         startJob =
             scope.launch {
                 runCatching { yt.stream(song.id) }
@@ -112,6 +143,44 @@ class PlayerCtl(
                         next(auto = true)
                     }
             }
+    }
+
+    /** Звучание текущего трека: для панели «Звук». */
+    var soundNow by mutableStateOf(com.texfi.w0y.data.SoundProfile.Plain)
+        private set
+
+    fun setSound(profile: com.texfi.w0y.data.SoundProfile) {
+        val song = current ?: return
+        soundNow = profile
+        app.saveSound(song.id, profile)
+        mpv.applySound(profile)
+    }
+
+    /** Таймер сна: через [minutes] минут пауза. */
+    fun startSleep(minutes: Int) {
+        cancelSleep()
+        sleepRemaining = minutes * 60
+        sleepJob =
+            scope.launch {
+                while ((sleepRemaining ?: 0) > 0) {
+                    delay(1000)
+                    sleepRemaining = (sleepRemaining ?: 1) - 1
+                }
+                sleepRemaining = null
+                if (playing) mpv.setPause(true)
+            }
+    }
+
+    fun sleepUntilTrackEnds() {
+        cancelSleep()
+        sleepAfterTrack = true
+    }
+
+    fun cancelSleep() {
+        sleepJob?.cancel()
+        sleepJob = null
+        sleepRemaining = null
+        sleepAfterTrack = false
     }
 
     fun toggle() {
@@ -163,6 +232,30 @@ class PlayerCtl(
             position = duration * fraction
             mpv.seek(duration * fraction)
         }
+    }
+
+    fun seekSeconds(seconds: Double) {
+        if (loaded) {
+            position = seconds
+            mpv.seek(seconds)
+        }
+    }
+
+    fun moveInQueue(from: Int, to: Int) {
+        if (from !in queue.indices || to !in queue.indices) return
+        val list = queue.toMutableList()
+        val item = list.removeAt(from)
+        list.add(to, item)
+        // Индекс играющего трека едет вместе с ним.
+        index =
+            when {
+                from == index -> to
+                from < index && to >= index -> index - 1
+                from > index && to <= index -> index + 1
+                else -> index
+            }
+        queue = list
+        app.saveQueue(queue, index)
     }
 
     fun changeVolume(percent: Int) {

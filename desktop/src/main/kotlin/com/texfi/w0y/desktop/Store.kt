@@ -23,7 +23,24 @@ data class StoredSong(
 fun SongItem.stored() = StoredSong(id, title, artist, album, durationText, thumbnailUrl, artistId, albumId)
 
 @Serializable
-data class StoredPlaylist(val name: String, val songs: List<StoredSong> = emptyList())
+data class StoredPlaylist(
+    val name: String,
+    val songs: List<StoredSong> = emptyList(),
+    /** Идентификатор плейлиста в аккаунте YouTube (без VL), если он там есть. */
+    val remoteId: String? = null,
+    /** false — чужой плейлист из библиотеки: править его YouTube не даёт. */
+    val editable: Boolean = true,
+    /** Какие треки были в плейлисте при прошлой сверке — основа трёхстороннего слияния. */
+    val base: List<String>? = null,
+    val cover: String? = null,
+    val syncedAt: Long = 0L,
+)
+
+@Serializable
+data class StoredSound(val speed: Float = 1f, val pitch: Float = 1f, val reverb: String = "OFF")
+
+@Serializable
+data class StoredDownload(val path: String, val song: StoredSong)
 
 @Serializable
 data class Library(
@@ -36,6 +53,10 @@ data class Library(
     val accountName: String? = null,
     val accountAvatar: String? = null,
     val volume: Int = 100,
+    val sound: Map<String, StoredSound> = emptyMap(),
+    val downloads: Map<String, StoredDownload> = emptyMap(),
+    /** Лайки, которые были в аккаунте при прошлой сверке; null — сверки не было. */
+    val likesBase: List<String>? = null,
 )
 
 /** Всё, что приложение помнит, — одним JSON-файлом в ~/.local/share/w0y. */

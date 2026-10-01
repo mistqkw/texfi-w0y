@@ -49,6 +49,8 @@ compose.desktop {
         mainClass = "com.texfi.w0y.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.AppImage)
+            // java.net.http нужен загрузкам и текстам; jlink сам его не находит.
+            modules("java.net.http", "java.naming", "jdk.crypto.ec", "jdk.unsupported")
             packageName = "w0y"
             packageVersion = "0.0.3"
             description = "TexFi w0y — клиент YouTube Music"

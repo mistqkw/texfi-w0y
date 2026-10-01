@@ -1,0 +1,313 @@
+package com.texfi.w0y.desktop
+
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.texfi.w0y.data.Reverb
+import com.texfi.w0y.data.SoundProfile
+import java.util.Locale
+
+private enum class PlayerTab(val label: String) { Queue("Очередь"), Lyrics("Текст"), Sound("Звук") }
+
+/** Полноэкранный плеер: большая обложка слева, справа очередь, текст и звук. */
+@Composable
+fun PlayerScreen(app: AppState) {
+    val p = app.player
+    var tab by remember { mutableStateOf(PlayerTab.Queue) }
+    val song = p.current
+    Row(Modifier.fillMaxSize().padding(28.dp)) {
+        Column(Modifier.width(340.dp).fillMaxHeight(), horizontalAlignment = Alignment.Start) {
+            PixelCover(song?.thumbnailUrl)
+            Gap(h = 20)
+            Txt(song?.title ?: "Ничего не играет", size = 22, weight = FontWeight.Medium, maxLines = 2)
+            Gap(h = 4)
+            if (song != null) {
+                Txt(
+                    song.artist,
+                    color = C.Blue,
+                    size = 15,
+                    modifier = Modifier.clickable(enabled = song.artistId != null) {
+                        song.artistId?.let { app.open(Screen.Artist(it, song.artist, null)) }
+                    },
+                )
+                song.album?.let { a ->
+                    Txt(
+                        a, color = C.Muted, size = 13,
+                        modifier = Modifier.clickable(enabled = song.albumId != null) {
+                            song.albumId?.let { app.open(Screen.Album(it, a, song.thumbnailUrl)) }
+                        },
+                    )
+                }
+                if (!p.soundNow.isPlain) Txt("твоя версия · ${p.soundNow.label}", color = C.Sand, size = 12, modifier = Modifier.padding(top = 6.dp))
+            }
+            Gap(h = 18)
+            SeekRow(p)
+            Gap(h = 14)
+            RowCenter {
+                IconButton(Glyph.Prev, onClick = p::previous, size = 24.dp, box = 44.dp)
+                Gap(w = 8)
+                Box(
+                    Modifier.width(54.dp).height(54.dp).clip(RoundedCornerShape(4.dp)).background(C.Blue)
+                        .border(2.dp, C.BlueDeep, RoundedCornerShape(4.dp)).clickable(onClick = p::toggle),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(if (p.playing) Glyph.Pause else Glyph.Play, C.Text, 28.dp) }
+                Gap(w = 8)
+                IconButton(Glyph.Next, onClick = { p.nextClick() }, size = 24.dp, box = 44.dp)
+                Box(Modifier.weight(1f))
+                if (song != null) {
+                    val liked = song.id in app.likedIds
+                    IconButton(if (liked) Glyph.Heart else Glyph.HeartOff, onClick = { app.toggleLike(song) }, color = if (liked) C.Danger else C.Muted, size = 20.dp)
+                    DownloadButton(app, song)
+                }
+                SleepMenu(app)
+            }
+        }
+        Gap(w = 32)
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            RowCenter {
+                PlayerTab.entries.forEach { t ->
+                    val active = t == tab
+                    Box(
+                        Modifier.clip(RoundedCornerShape(4.dp)).background(if (active) C.SurfaceHigh else androidx.compose.ui.graphics.Color.Transparent)
+                            .clickable { tab = t }.padding(horizontal = 16.dp, vertical = 10.dp),
+                    ) { Txt(t.label.uppercase(), pixel = true, size = 10, color = if (active) C.Blue else C.Muted) }
+                    Gap(w = 6)
+                }
+            }
+            Gap(h = 12)
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (tab) {
+                    PlayerTab.Queue -> QueueList(app)
+                    PlayerTab.Lyrics -> LyricsPane(app)
+                    PlayerTab.Sound -> SoundPane(app)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PixelCover(url: String?) {
+    Box(Modifier.drawBehind { drawRect(C.Shadow, androidx.compose.ui.geometry.Offset(6.dp.toPx(), 6.dp.toPx()), size) }.border(2.dp, C.Border, RoundedCornerShape(4.dp))) {
+        Cover(url, 340.dp)
+    }
+}
+
+@Composable
+private fun SeekRow(p: PlayerCtl) {
+    Column {
+        Box(Modifier.fillMaxWidth()) { SegmentedSeek(p.position, p.duration, onSeek = p::seekFraction) }
+        RowCenter(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            Txt(fmtTime(p.position), color = C.Muted, size = 12)
+            Box(Modifier.weight(1f))
+            Txt(fmtTime(p.duration), color = C.Muted, size = 12)
+        }
+    }
+}
+
+fun fmtTime(seconds: Double): String {
+    val s = seconds.toInt().coerceAtLeast(0)
+    return "%d:%02d".format(s / 60, s % 60)
+}
+
+@Composable
+fun QueueList(app: AppState) {
+    val p = app.player
+    if (p.queue.isEmpty()) {
+        Empty("Очередь пуста. Включи любой трек.")
+        return
+    }
+    val state = rememberLazyListState()
+    LaunchedEffect(p.index) { if (p.index >= 0) state.animateScrollToItem((p.index - 2).coerceAtLeast(0)) }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp), state = state) {
+            itemsIndexed(p.queue, key = { i, s -> "${s.id}#$i" }) { i, song ->
+                val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                RowCenter(
+                    Modifier.fillMaxWidth().hoverable(source).clip(RoundedCornerShape(6.dp))
+                        .background(if (i == p.index) C.Surface else hoverBackground(source))
+                        .clickable { p.jump(i) }.padding(horizontal = 8.dp, vertical = 6.dp),
+                ) {
+                    Txt(if (i == p.index) "▶" else "${i + 1}", color = if (i == p.index) C.Blue else C.Muted, size = 12, modifier = Modifier.width(30.dp))
+                    Cover(song.thumbnailUrl, 40.dp)
+                    Gap(w = 12)
+                    Column(Modifier.weight(1f)) {
+                        Txt(song.title, color = if (i == p.index) C.Blue else C.Text, size = 14)
+                        Txt(song.artist, color = C.Muted, size = 12)
+                    }
+                    if (i > 0 && i != p.index) Txt("▲", color = C.Muted, size = 12, modifier = Modifier.clickable { p.moveInQueue(i, i - 1) }.padding(8.dp))
+                    if (i < p.queue.lastIndex && i != p.index) Txt("▼", color = C.Muted, size = 12, modifier = Modifier.clickable { p.moveInQueue(i, i + 1) }.padding(8.dp))
+                    IconButton(Glyph.Close, onClick = { p.removeFromQueue(i) }, color = C.Muted, size = 14.dp)
+                }
+            }
+            item { Gap(h = 24) }
+        }
+        VerticalScrollbar(rememberScrollbarAdapter(state), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+    }
+}
+
+@Composable
+private fun LyricsPane(app: AppState) {
+    val song = app.player.current
+    if (song == null) {
+        Empty("Включи трек, и здесь появится его текст.")
+        return
+    }
+    val lyrics by produceState<Lyrics?>(null, song.id) {
+        value = null
+        value = app.lyrics.lyrics(song) ?: Lyrics(null, emptyList())
+    }
+    var translateTo by remember(song.id) { mutableStateOf<String?>(null) }
+    val data = lyrics
+    if (data == null) {
+        Empty("Ищу текст…")
+        return
+    }
+    if (data.isEmpty) {
+        Empty("Текст этой песни не нашёлся в LRCLIB.")
+        return
+    }
+    val lines = if (data.synced.isNotEmpty()) data.synced.map { it.text } else data.plain.orEmpty().lines()
+    val translated by produceState<List<String>?>(null, song.id, translateTo) {
+        value = null
+        value = translateTo?.let { app.lyrics.translate(song.id, data, it) }
+    }
+    val active by remember(data) {
+        derivedStateOf {
+            if (data.synced.isEmpty()) -1 else data.synced.indexOfLast { it.timeMs <= (app.player.position * 1000).toLong() }
+        }
+    }
+    val state = rememberLazyListState()
+    LaunchedEffect(active) { if (active >= 0) state.animateScrollToItem((active - 3).coerceAtLeast(0)) }
+    Column(Modifier.fillMaxSize()) {
+        RowCenter {
+            val lang = Locale.getDefault().language.ifBlank { "en" }
+            PixelButton(if (translateTo == null) "Перевести ($lang)" else "Без перевода", onClick = { translateTo = if (translateTo == null) lang else null }, primary = false)
+            if (translateTo != null && translated == null) Txt("  перевожу…", color = C.Muted, size = 12)
+            if (data.synced.isEmpty()) Txt("  текст без таймкодов", color = C.Muted, size = 12)
+        }
+        Gap(h = 10)
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp), state = state) {
+                itemsIndexed(lines) { i, line ->
+                    val current = i == active
+                    Column(
+                        Modifier.fillMaxWidth().clickable(enabled = data.synced.isNotEmpty()) { app.player.seekSeconds(data.synced[i].timeMs / 1000.0) }.padding(vertical = 5.dp),
+                    ) {
+                        Txt(line, color = if (current) C.Text else C.Muted, size = if (current) 21 else 18, weight = if (current) FontWeight.Medium else FontWeight.Normal, maxLines = 3)
+                        translated?.getOrNull(i)?.takeIf { it.isNotBlank() && it != line }?.let { Txt(it, color = if (current) C.Sand else C.SandDeep, size = 14, maxLines = 3) }
+                    }
+                }
+                item { Gap(h = 120) }
+            }
+            VerticalScrollbar(rememberScrollbarAdapter(state), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+        }
+    }
+}
+
+@Composable
+private fun SoundPane(app: AppState) {
+    val p = app.player
+    val song = p.current
+    if (song == null) {
+        Empty("Включи трек: звук настраивается для каждого трека отдельно.")
+        return
+    }
+    val s = p.soundNow
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Txt("Версия принадлежит этому треку: остальные звучат как обычно.", color = C.Muted, size = 13, maxLines = 2)
+        RowCenter {
+            PixelButton("Обычное", onClick = { p.setSound(SoundProfile.Plain) }, primary = s.isPlain, modifier = Modifier)
+            Gap(w = 8)
+            PixelButton("Замедленное", onClick = { p.setSound(SoundProfile.Slowed) }, primary = s == SoundProfile.Slowed)
+            Gap(w = 8)
+            PixelButton("Ускоренное", onClick = { p.setSound(SoundProfile.Sped) }, primary = s == SoundProfile.Sped)
+        }
+        LabeledSlider("Скорость", "%.2f×".format(s.speed), s.speed, 0.5f..2f) { p.setSound(s.copy(speed = it)) }
+        LabeledSlider("Тон", "%.2f".format(s.pitch), s.pitch, 0.7f..1.4f) { p.setSound(s.copy(pitch = it)) }
+        Column {
+            SectionLabel("Эхо")
+            Gap(h = 8)
+            RowCenter {
+                Reverb.entries.forEach { r ->
+                    PixelButton(r.label, onClick = { p.setSound(s.copy(reverb = r)) }, primary = s.reverb == r)
+                    Gap(w = 8)
+                }
+            }
+        }
+        Txt("Тон меняет rubberband, эхо — фильтр ffmpeg внутри mpv.", color = C.Muted, size = 11)
+    }
+}
+
+@Composable
+private fun LabeledSlider(label: String, valueText: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
+    Column {
+        RowCenter { SectionLabel(label, Modifier.weight(1f)); Txt(valueText, size = 14) }
+        Gap(h = 8)
+        PixelSlider(value, range, onChange, Modifier.fillMaxWidth())
+    }
+}
+
+/** Таймер сна: через N минут или до конца трека. */
+@Composable
+fun SleepMenu(app: AppState) {
+    val p = app.player
+    var open by remember { mutableStateOf(false) }
+    val active = p.sleepRemaining != null || p.sleepAfterTrack
+    Box {
+        RowCenter {
+            if (p.sleepRemaining != null) Txt(fmtTime(p.sleepRemaining!!.toDouble()), color = C.Sand, size = 12)
+            if (p.sleepAfterTrack) Txt("до конца", color = C.Sand, size = 12)
+            IconButton(Glyph.Timer, onClick = { open = !open }, color = if (active) C.Sand else C.Muted, size = 18.dp)
+        }
+        if (open) {
+            androidx.compose.ui.window.Popup(
+                alignment = Alignment.TopEnd,
+                offset = androidx.compose.ui.unit.IntOffset(0, -260),
+                onDismissRequest = { open = false },
+                properties = androidx.compose.ui.window.PopupProperties(focusable = true),
+            ) {
+                Column(Modifier.width(220.dp).background(C.SurfaceHigh, RoundedCornerShape(6.dp)).border(2.dp, C.Border, RoundedCornerShape(6.dp)).padding(6.dp)) {
+                    Txt("ТАЙМЕР СНА", pixel = true, size = 9, color = C.Blue, modifier = Modifier.padding(8.dp))
+                    listOf(15, 30, 45, 60).forEach { m ->
+                        Txt("Через $m мин", size = 14, modifier = Modifier.fillMaxWidth().clickable { p.startSleep(m); open = false }.padding(8.dp))
+                    }
+                    Txt("До конца трека", size = 14, modifier = Modifier.fillMaxWidth().clickable { p.sleepUntilTrackEnds(); open = false }.padding(8.dp))
+                    if (active) Txt("Выключить", color = C.Sand, size = 14, modifier = Modifier.fillMaxWidth().clickable { p.cancelSleep(); open = false }.padding(8.dp))
+                }
+            }
+        }
+    }
+}

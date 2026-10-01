@@ -3,6 +3,8 @@ package com.texfi.w0y.desktop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -23,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -120,7 +123,7 @@ fun PixelButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
     ) { Txt(text.uppercase(), color = if (enabled) C.Text else C.Muted, size = 10, pixel = true) }
 }
 
-enum class Glyph { Play, Pause, Next, Prev, Heart, HeartOff, Search, Plus, Close, Queue, Home, Library, Volume, Trash }
+enum class Glyph { Play, Pause, Next, Prev, Heart, HeartOff, Search, Plus, Close, Queue, Home, Library, Volume, Trash, Download, Check, Timer, Mic, Wave }
 
 /** Иконки рисуются кодом: ни растровых ассетов, ни шрифта с символами. */
 @Composable
@@ -191,6 +194,31 @@ fun Icon(glyph: Glyph, color: Color = C.Text, size: Dp = 20.dp, modifier: Modifi
                     tri(Offset(w * .32f, h * .38f), Offset(w * .32f, h * .62f), Offset(w * .6f, h * .82f))
                     tri(Offset(w * .32f, h * .38f), Offset(w * .6f, h * .18f), Offset(w * .6f, h * .82f))
                     drawRect(color, Offset(w * .72f, h * .36f), Size(w * .1f, h * .28f))
+                }
+                Glyph.Download -> {
+                    drawRect(color, Offset(w * .43f, h * .1f), Size(w * .14f, h * .46f))
+                    tri(Offset(w * .22f, h * .46f), Offset(w * .78f, h * .46f), Offset(w * .5f, h * .76f))
+                    drawRect(color, Offset(w * .15f, h * .84f), Size(w * .7f, h * .1f))
+                }
+                Glyph.Check -> {
+                    drawLine(color, Offset(w * .15f, h * .52f), Offset(w * .4f, h * .76f), strokeWidth = w * .14f)
+                    drawLine(color, Offset(w * .4f, h * .76f), Offset(w * .86f, h * .22f), strokeWidth = w * .14f)
+                }
+                Glyph.Timer -> {
+                    drawCircle(color, radius = w * .38f, center = Offset(w * .5f, h * .54f), style = androidx.compose.ui.graphics.drawscope.Stroke(w * .1f))
+                    drawLine(color, Offset(w * .5f, h * .54f), Offset(w * .5f, h * .3f), strokeWidth = w * .1f)
+                    drawLine(color, Offset(w * .5f, h * .54f), Offset(w * .66f, h * .62f), strokeWidth = w * .1f)
+                    drawRect(color, Offset(w * .4f, h * .04f), Size(w * .2f, h * .09f))
+                }
+                Glyph.Mic -> {
+                    drawRect(color, Offset(w * .12f, h * .15f), Size(w * .76f, h * .1f))
+                    drawRect(color, Offset(w * .12f, h * .4f), Size(w * .76f, h * .1f))
+                    drawRect(color, Offset(w * .12f, h * .65f), Size(w * .46f, h * .1f))
+                }
+                Glyph.Wave -> {
+                    listOf(.35f, .6f, .9f, .6f, .35f).forEachIndexed { i, hh ->
+                        drawRect(color, Offset(w * (.1f + i * .17f), h * (.5f - hh / 2)), Size(w * .1f, h * hh))
+                    }
                 }
                 Glyph.Trash -> {
                     drawRect(color, Offset(w * .2f, h * .3f), Size(w * .6f, h * .56f))
@@ -267,3 +295,25 @@ fun RowCenter(modifier: Modifier = Modifier, content: @Composable androidx.compo
 
 fun Modifier.pad(h: Int = 0, v: Int = 0) = padding(horizontal = h.dp, vertical = v.dp)
 fun Modifier.shift(x: Int = 0, y: Int = 0) = offset(x.dp, y.dp)
+
+/** Ползунок из сегментов, как громкость на телефоне: значение в [range], шаг [step]. */
+@Composable
+fun PixelSlider(value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit, modifier: Modifier = Modifier, color: Color = C.Blue, step: Float = 0.05f, segments: Int = 24) {
+    fun at(x: Float, width: Int): Float {
+        val raw = range.start + (x / width).coerceIn(0f, 1f) * (range.endInclusive - range.start)
+        return (Math.round(raw / step) * step).coerceIn(range.start, range.endInclusive)
+    }
+    Box(
+        modifier.height(18.dp)
+            .pointerInput(Unit) { detectTapGestures { onChange(at(it.x, size.width)) } }
+            .pointerInput(Unit) { detectDragGestures { c, _ -> onChange(at(c.position.x, size.width)) } }
+            .drawBehind {
+                val gap = 2.dp.toPx()
+                val w = (size.width - gap * (segments - 1)) / segments
+                val filled = (((value - range.start) / (range.endInclusive - range.start)) * segments).toInt()
+                repeat(segments) { i ->
+                    drawRect(if (i < filled) color else C.SurfaceHigh, Offset(i * (w + gap), size.height / 2 - 4.dp.toPx()), Size(w, 8.dp.toPx()))
+                }
+            },
+    )
+}

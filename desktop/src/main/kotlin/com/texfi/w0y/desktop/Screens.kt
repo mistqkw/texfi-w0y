@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
+import kotlinx.coroutines.launch
 
 @Composable
 fun ScreenFrame(title: String, app: AppState, canBack: Boolean, actions: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
@@ -91,6 +92,7 @@ fun SongRow(app: AppState, song: SongItem, onPlay: () -> Unit, extra: @Composabl
         }
         song.durationText?.let { Txt(it, color = C.Muted, size = 12, modifier = Modifier.padding(end = 8.dp)) }
         extra()
+        DownloadButton(app, song)
         IconButton(Glyph.Plus, onClick = { app.player.enqueue(song, next = false) }, color = C.Muted, size = 16.dp)
         IconButton(
             if (liked) Glyph.Heart else Glyph.HeartOff,
@@ -271,15 +273,69 @@ fun ArtistScreen(app: AppState, s: Screen.Artist) {
     val page by produceState<com.texfi.w0y.data.ArtistPage?>(null, s.browseId) {
         value = runCatching { app.yt.artist(s.browseId) }.getOrNull()
     }
+    var allSongs by remember(s.browseId) { mutableStateOf<List<SongItem>?>(null) }
+    var loadingAll by remember(s.browseId) { mutableStateOf(false) }
     ScreenFrame(s.name, app, canBack = true) {
-        val songs = page?.songs.orEmpty()
-        if (page == null) {
+        val pg = page
+        if (pg == null) {
             Empty("Загружаю…")
-        } else {
-            SongList(app, songs, header = {
-                DetailHeader(app, s.name, page?.subtitle, page?.thumbnailUrl ?: s.thumb, songs, circle = true)
-                if (songs.isNotEmpty()) SectionLabel("Популярное", Modifier.padding(bottom = 6.dp))
-            })
+            return@ScreenFrame
+        }
+        val songs = allSongs ?: pg.songs
+        val state = rememberLazyListState()
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp), state = state) {
+                item {
+                    RowCenter(Modifier.padding(bottom = 20.dp)) {
+                        Cover(pg.thumbnailUrl ?: s.thumb, 160.dp, circle = true)
+                        Gap(w = 22)
+                        Column(Modifier.weight(1f)) {
+                            Txt(pg.name.ifBlank { s.name }, size = 28, weight = androidx.compose.ui.text.font.FontWeight.Medium, maxLines = 2)
+                            pg.subtitle?.let { Txt(it, color = C.Muted, size = 13) }
+                            Gap(h = 14)
+                            RowCenter {
+                                PixelButton("Играть", onClick = { if (songs.isNotEmpty()) app.player.play(songs, 0) }, enabled = songs.isNotEmpty())
+                                Gap(w = 10)
+                                PixelButton("Перемешать", onClick = { if (songs.isNotEmpty()) app.player.play(songs.shuffled(), 0) }, primary = false, enabled = songs.isNotEmpty())
+                                if (pg.allSongsBrowseId != null && allSongs == null) {
+                                    Gap(w = 10)
+                                    PixelButton(if (loadingAll) "Грузим…" else "Все треки", onClick = {
+                                        if (!loadingAll) {
+                                            loadingAll = true
+                                            app.scope.launch {
+                                                allSongs = runCatching { app.yt.playlistSongs(pg.allSongsBrowseId!!, maxPages = 3, params = pg.allSongsParams) }.getOrNull()?.takeIf { it.isNotEmpty() }
+                                                loadingAll = false
+                                            }
+                                        }
+                                    }, primary = false, enabled = !loadingAll)
+                                }
+                            }
+                        }
+                    }
+                    if (songs.isNotEmpty()) SectionLabel(if (allSongs != null) "Все треки" else "Популярное", Modifier.padding(bottom = 6.dp))
+                }
+                itemsIndexed(songs, key = { i, sg -> "${sg.id}#$i" }) { i, song ->
+                    SongRow(app, song, onPlay = { app.player.play(songs, i) })
+                }
+                if (pg.releases.isNotEmpty()) {
+                    item {
+                        SectionLabel("Релизы", Modifier.padding(top = 20.dp, bottom = 8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(pg.releases) { c -> CardTile(c.title, c.subtitle, c.thumbnailUrl) { app.openCard(c) } }
+                        }
+                    }
+                }
+                if (pg.similar.isNotEmpty()) {
+                    item {
+                        SectionLabel("Похожие артисты", Modifier.padding(top = 20.dp, bottom = 8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(pg.similar) { a -> CardTile(a.name, a.subtitle, a.thumbnailUrl, circle = true) { app.open(Screen.Artist(a.browseId, a.name, a.thumbnailUrl)) } }
+                        }
+                    }
+                }
+                item { Gap(h = 24) }
+            }
+            VerticalScrollbar(rememberScrollbarAdapter(state), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
         }
     }
 }
@@ -292,42 +348,6 @@ fun RemoteScreen(app: AppState, s: Screen.Remote) {
     ScreenFrame(s.title, app, canBack = true) {
         val list = songs
         if (list == null) Empty("Загружаю…") else if (list.isEmpty()) Empty("Плейлист пуст или не открылся.") else SongList(app, list, header = { DetailHeader(app, s.title, "${list.size} треков", s.thumb, list) })
-    }
-}
-
-@Composable
-fun QueueScreen(app: AppState) {
-    val p = app.player
-    ScreenFrame("Очередь", app, canBack = false) {
-        if (p.queue.isEmpty()) {
-            Empty("Очередь пуста. Включи любой трек.")
-            return@ScreenFrame
-        }
-        val state = rememberLazyListState()
-        LaunchedEffect(p.index) { if (p.index >= 0) state.animateScrollToItem((p.index - 2).coerceAtLeast(0)) }
-        Box(Modifier.fillMaxSize()) {
-            LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp), state = state) {
-                itemsIndexed(p.queue, key = { i, s -> "${s.id}#$i" }) { i, song ->
-                    val source = remember { MutableInteractionSource() }
-                    RowCenter(
-                        Modifier.fillMaxWidth().hoverable(source).clip(RoundedCornerShape(6.dp))
-                            .background(if (i == p.index) C.Surface else hoverBackground(source))
-                            .clickable { p.jump(i) }.padding(horizontal = 8.dp, vertical = 6.dp),
-                    ) {
-                        Txt(if (i == p.index) "▶" else "${i + 1}", color = if (i == p.index) C.Blue else C.Muted, size = 12, modifier = Modifier.width(30.dp))
-                        Cover(song.thumbnailUrl, 40.dp)
-                        Gap(w = 12)
-                        Column(Modifier.weight(1f)) {
-                            Txt(song.title, color = if (i == p.index) C.Blue else C.Text, size = 14)
-                            Txt(song.artist, color = C.Muted, size = 12)
-                        }
-                        IconButton(Glyph.Close, onClick = { p.removeFromQueue(i) }, color = C.Muted, size = 14.dp)
-                    }
-                }
-                item { Gap(h = 24) }
-            }
-            VerticalScrollbar(rememberScrollbarAdapter(state), Modifier.align(Alignment.CenterEnd).fillMaxHeight())
-        }
     }
 }
 
@@ -376,6 +396,12 @@ fun LibraryScreen(app: AppState) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Shortcut("Лайки", "${app.lib.liked.size}", Modifier.weight(1f)) { app.open(Screen.Liked) }
                         Shortcut("История", "${app.lib.history.size}", Modifier.weight(1f)) { app.open(Screen.History) }
+                    }
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Shortcut("Скачано", "${app.lib.downloads.size}", Modifier.weight(1f)) { app.open(Screen.Downloaded) }
+                        Shortcut("Очередь", "${app.player.queue.size}", Modifier.weight(1f)) { app.open(Screen.Player) }
                     }
                 }
                 item {
@@ -473,6 +499,40 @@ fun LocalScreen(app: AppState, s: Screen.Local) {
             SongList(app, songs, extra = { song ->
                 IconButton(Glyph.Trash, onClick = { app.removeFromPlaylist(s.index, song.id) }, color = C.Muted, size = 16.dp)
             })
+        }
+    }
+}
+
+/** Стрелка «скачать»: ждёт, показывает проценты, превращается в галочку. */
+@Composable
+fun DownloadButton(app: AppState, song: SongItem) {
+    val d = app.downloads
+    val done = app.downloadedPath(song.id) != null
+    val p = d.progress[song.id]
+    when {
+        done -> Box(Modifier.width(34.dp).height(34.dp), contentAlignment = Alignment.Center) { Icon(Glyph.Check, C.Sand, 16.dp) }
+        p != null -> Box(Modifier.width(34.dp).height(34.dp), contentAlignment = Alignment.Center) {
+            Txt(if (p < 0) "…" else "${(p * 100).toInt()}%", color = C.Blue, size = 10)
+        }
+        else -> IconButton(Glyph.Download, onClick = { d.download(song) }, color = if (song.id in d.failed) C.Danger else C.Muted, size = 16.dp)
+    }
+}
+
+@Composable
+fun DownloadedScreen(app: AppState) {
+    val songs = app.lib.downloads.values.map { it.song.toItem() }
+    ScreenFrame("Скачано", app, canBack = true) {
+        Column(Modifier.fillMaxSize()) {
+            Txt("Файлы лежат в ${app.downloads.folder.absolutePath}: любой плеер их откроет, на компьютер копируются как есть.", color = C.Muted, size = 12, maxLines = 3)
+            Gap(h = 10)
+            app.downloads.notice?.let { Txt(it, color = C.Sand, size = 12, maxLines = 2); Gap(h = 6) }
+            if (songs.isEmpty()) {
+                Empty("Пока ничего не скачано. Стрелка у трека скачивает его.")
+            } else {
+                SongList(app, songs, extra = { song ->
+                    IconButton(Glyph.Trash, onClick = { app.downloads.remove(song.id) }, color = C.Muted, size = 16.dp)
+                })
+            }
         }
     }
 }

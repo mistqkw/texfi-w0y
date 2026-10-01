@@ -67,7 +67,8 @@ fun App(app: AppState) {
                     Screen.Home -> HomeScreen(app)
                     Screen.Search -> SearchScreen(app)
                     Screen.Library -> LibraryScreen(app)
-                    Screen.Queue -> QueueScreen(app)
+                    Screen.Queue, Screen.Player -> PlayerScreen(app)
+                    Screen.Downloaded -> DownloadedScreen(app)
                     Screen.Liked -> LikedScreen(app)
                     Screen.History -> HistoryScreen(app)
                     is Screen.Album -> AlbumScreen(app, s)
@@ -88,8 +89,8 @@ private fun Sidebar(app: AppState) {
         Txt("texfi", pixel = true, size = 9, color = C.Sand, modifier = Modifier.padding(start = 8.dp, bottom = 24.dp))
         NavItem("Главная", Glyph.Home, app.screen == Screen.Home) { app.tab(Screen.Home) }
         NavItem("Поиск", Glyph.Search, app.screen == Screen.Search) { app.tab(Screen.Search) }
-        NavItem("Моё", Glyph.Library, app.screen in listOf(Screen.Library, Screen.Liked, Screen.History) || app.screen is Screen.Local) { app.tab(Screen.Library) }
-        NavItem("Очередь", Glyph.Queue, app.screen == Screen.Queue) { app.tab(Screen.Queue) }
+        NavItem("Моё", Glyph.Library, app.screen in listOf(Screen.Library, Screen.Liked, Screen.History, Screen.Downloaded) || app.screen is Screen.Local) { app.tab(Screen.Library) }
+        NavItem("Плеер", Glyph.Wave, app.screen == Screen.Player || app.screen == Screen.Queue) { app.tab(Screen.Player) }
         Box(Modifier.weight(1f))
         app.lib.accountName?.let {
             RowCenter(Modifier.padding(8.dp)) {
@@ -132,15 +133,16 @@ private fun PlayerBar(app: AppState) {
         RowCenter(Modifier.fillMaxWidth().height(78.dp).padding(horizontal = 18.dp)) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 if (song != null) {
-                    Cover(song.thumbnailUrl, 52.dp)
+                    Cover(song.thumbnailUrl, 52.dp, Modifier.clickable { app.open(Screen.Player) })
                     Gap(w = 12)
-                    Column(Modifier.weight(1f, fill = false)) {
+                    Column(Modifier.weight(1f, fill = false).clickable { app.open(Screen.Player) }) {
                         Txt(song.title, size = 15)
                         Txt(p.error ?: if (p.loading) "Загружаю…" else song.artist, color = if (p.error != null) C.Sand else C.Muted, size = 12)
                     }
                     Gap(w = 6)
                     val liked = song.id in app.likedIds
                     IconButton(if (liked) Glyph.Heart else Glyph.HeartOff, onClick = { app.toggleLike(song) }, color = if (liked) C.Danger else C.Muted, size = 18.dp)
+                    DownloadButton(app, song)
                     PlaylistMenu(app, song)
                 } else {
                     Txt(p.error ?: "Ничего не играет", color = if (p.error != null) C.Sand else C.Muted, size = 14)
@@ -160,6 +162,8 @@ private fun PlayerBar(app: AppState) {
                 Box(Modifier.weight(1f))
                 Txt("${fmt(p.position)} / ${fmt(p.duration)}", color = C.Muted, size = 12)
                 Gap(w = 16)
+                SleepMenu(app)
+                Gap(w = 10)
                 Icon(Glyph.Volume, C.Muted, 18.dp)
                 Gap(w = 6)
                 VolumeBar(p.volume, onChange = p::changeVolume)
@@ -172,7 +176,7 @@ private fun Modifier.size(s: androidx.compose.ui.unit.Dp) = this.then(Modifier.w
 
 /** Полоса перемотки из сегментов, как на телефоне: клик и перетаскивание. */
 @Composable
-private fun SegmentedSeek(position: Double, duration: Double, onSeek: (Double) -> Unit) {
+fun SegmentedSeek(position: Double, duration: Double, onSeek: (Double) -> Unit) {
     val fraction = if (duration > 0) (position / duration).coerceIn(0.0, 1.0).toFloat() else 0f
     Box(
         Modifier.fillMaxWidth().height(14.dp)
