@@ -74,7 +74,7 @@ language, dark theme by default, the same blue `#4a7cfb` and sand `#e0a860`.
    from the [release page](https://github.com/mistqkw/texfi-w0y/releases/tag/v0.0.1-beta-1)
    and open it. Checksums are in `SHA256SUMS.txt` next to it.
 2. Or add `https://github.com/mistqkw/texfi-w0y` to
-   [Obtainium](https://github.com/ImranR98/Obtainium) (allow pre-releases).
+   [Obtainium](https://github.com/ImranR98/Obtainium).
 
 Updates install over the top as long as they come signed with the project key.
 

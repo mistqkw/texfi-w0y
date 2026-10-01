@@ -2,7 +2,7 @@ name: Build & Release
 
 # Сборка идёт здесь; локально собирается только debug для проверки кода.
 #  • пуш тега:        git tag v0.0.1-beta-1 && git push origin v0.0.1-beta-1
-#      → релизный APK, сборка для Linux, SHA256SUMS + GitHub Release (pre-release)
+#      → релизный APK, сборка для Linux, SHA256SUMS + GitHub Release
 #  • вручную без тега: вкладка Actions → Run workflow, поле пустое
 #      → просто соберёт release APK в артефакты
 #  • вручную с тегом:  release_tag = v0.0.1-beta-1
@@ -140,5 +140,8 @@ jobs:
           body_path: docs/RELEASE_NOTES.md
           # Автосписок коммитов не дописываем: в нём тянется вся история.
           generate_release_notes: false
-          prerelease: true
+          # Обычный релиз, не pre-release: сайт texfi-hub берёт выпуск через
+          # /releases/latest, а этот адрес pre-release пропускает.
+          prerelease: false
+          make_latest: true
           files: out/*

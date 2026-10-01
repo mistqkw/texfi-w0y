@@ -30,7 +30,7 @@ archive (`w0y-linux-x86_64.tar.gz`; if that step fails the APK is still
 released, just without the archive), writes `SHA256SUMS.txt`, and creates the
 GitHub Release named "v0.0.1 beta-1" with the description from
 [RELEASE_NOTES.md](RELEASE_NOTES.md). Release names turn the tag's `-beta`
-into a space; the release is marked pre-release.
+into a space. The release is deliberately **not** marked pre-release.
 
 Android `versionName` is the tag without the leading `v`
 (`0.0.1-beta-1`). `versionCode` only ever goes up: Android refuses to install
@@ -46,7 +46,7 @@ signing have already succeeded by that point. Fixed once in
 *Settings → Actions → General → Workflow permissions* →
 **Read and write permissions**.
 
-**Pre-release and `/releases/latest`.** GitHub does not count a
-pre-release as the "latest release", so `releases/latest/download/...` links
-and the API endpoint `/releases/latest` do not see it. Link to a concrete
-tag (`releases/download/v0.0.1-beta-1/...`) or list releases instead.
+**Why not pre-release.** The texfi-hub site reads the release through
+`/releases/latest`, and GitHub skips pre-releases there: with the flag set the
+w0y card would have no version and no download button. The versions are beta,
+but the release is a regular one.
