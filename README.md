@@ -1,5 +1,3 @@
-![w0y: an open client for YouTube Music](docs/banners/github.png)
-
 <p align="center">
   <img alt="version" src="https://img.shields.io/badge/version-v0.0.1%20beta--1-4a7cfb?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-AGPL--3.0-e0a860?style=flat-square">
