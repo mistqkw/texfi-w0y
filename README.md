@@ -17,7 +17,7 @@ language, dark theme by default, the same blue `#4a7cfb` and sand `#e0a860`.
 ## Screenshots
 
 <!-- screenshots:start -->
-> Screenshots are coming with the next update of this page.
+[![w0y screenshots: home, search, library, player, sound, look, about](docs/screenshots/w0y-screens-small.webp)](docs/screenshots/w0y-screens.png)
 <!-- screenshots:end -->
 
 ## Features

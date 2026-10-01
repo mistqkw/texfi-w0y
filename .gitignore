@@ -20,3 +20,5 @@ keystore.properties
 
 # Прочее
 .DS_Store
+docs/screenshots/raw/*
+!docs/screenshots/raw/.gitkeep
