@@ -51,7 +51,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
 
     var accountAlbums by mutableStateOf<List<PlaylistCard>>(emptyList())
     var accountStatus by mutableStateOf<String?>(null)
-    var syncing by mutableStateOf(false)
+    var loggingIn by mutableStateOf(false)
 
     val signedIn: Boolean get() = !lib.cookie.isNullOrBlank()
     val likedIds: Set<String> get() = lib.liked.mapTo(HashSet()) { it.id }
@@ -247,6 +247,19 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
                     yt.applySession(null)
                     accountStatus = "YouTube не принял cookie: ${it.message}"
                 }
+        }
+    }
+
+    /** Вход через окно Google в браузере (см. GoogleLogin). */
+    fun signInWithGoogle() {
+        if (loggingIn) return
+        loggingIn = true
+        scope.launch {
+            val result = GoogleLogin.signIn { accountStatus = it }
+            loggingIn = false
+            result.onSuccess { cookie ->
+                if (cookie == null) accountStatus = "Окно входа закрыли раньше, чем вход завершился." else signIn(cookie)
+            }.onFailure { accountStatus = it.message ?: "Вход не удался" }
         }
     }
 

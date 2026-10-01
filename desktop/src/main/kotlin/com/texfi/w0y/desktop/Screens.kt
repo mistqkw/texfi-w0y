@@ -375,10 +375,14 @@ fun LibraryScreen(app: AppState) {
                                 }
                             } else {
                                 Txt(
-                                    "Вход по cookie: открой music.youtube.com в браузере, в DevTools → Network возьми заголовок Cookie любого запроса и вставь сюда.",
-                                    color = C.Muted, size = 12, maxLines = 4,
+                                    "Откроется окно браузера с настоящей страницей входа Google. Пароль ты вводишь сам — приложение его не видит, а забирает только cookie YouTube.",
+                                    color = C.Muted, size = 12, maxLines = 3,
                                 )
                                 Gap(h = 10)
+                                PixelButton(if (app.loggingIn) "Жду вход…" else "Войти через Google", onClick = app::signInWithGoogle, enabled = !app.loggingIn)
+                                Gap(h = 14)
+                                Txt("Или вставь cookie вручную: music.youtube.com → DevTools → Network → заголовок Cookie любого запроса.", color = C.Muted, size = 12, maxLines = 3)
+                                Gap(h = 8)
                                 RowCenter {
                                     Box(Modifier.weight(1f).clip(RoundedCornerShape(4.dp)).background(C.SurfaceHigh).padding(10.dp)) {
                                         if (cookie.isEmpty()) Txt("Cookie", color = C.Muted, size = 13)
