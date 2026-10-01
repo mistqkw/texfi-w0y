@@ -255,11 +255,23 @@ def apply(concept, res_dir):
     print(f"ассеты иконки «{concept}» записаны в {res_dir}")
 
 
+def desktop(concept, out_dir):
+    """Иконка для Linux-версии: те же пиксели, что на телефоне. Размеры кратны
+    сетке 24, поэтому ячейка целое число пикселей и края остаются чёткими."""
+    os.makedirs(out_dir, exist_ok=True)
+    for size in (48, 96, 192, 384):
+        render(concept, size, rounded=True, symbol_scale=LEGACY_SCALE).save(
+            os.path.join(out_dir, f"w0y-{size}.png"))
+    print(f"иконки «{concept}» для десктопа записаны в {out_dir}")
+
+
 if __name__ == "__main__":
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cmd = sys.argv[1] if len(sys.argv) > 1 else "preview"
     if cmd == "preview":
         preview(os.path.join(root, "docs", "icon-concepts"))
+    elif cmd == "desktop":
+        desktop(sys.argv[2], os.path.join(root, "desktop", "src", "main", "resources", "icons"))
     elif cmd == "apply":
         apply(sys.argv[2], os.path.join(root, "app", "src", "main", "res"))
     else:
