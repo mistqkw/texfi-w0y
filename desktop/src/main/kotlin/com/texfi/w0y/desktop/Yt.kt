@@ -91,6 +91,26 @@ class Yt {
         MixedResults(songs.await(), albums.await(), artists.await())
     }
 
+    /** Только треки, как на вкладке «Треки» телефона. */
+    suspend fun songsOnly(query: String): List<SongItem> = withContext(Dispatchers.IO) {
+        YtJson.songs(innerTube.search(client = YouTubeClient.WEB_REMIX, query = query, params = SONGS_FILTER).body<JsonObject>())
+    }
+
+    /** Официальная clean-версия трека, если выложена. Название сверяет CleanMatch — чужие каверы не подсунет. */
+    suspend fun cleanVersion(song: SongItem): SongItem? =
+        com.texfi.w0y.data.CleanMatch.pick(song, runCatching { songsOnly("${song.title} ${song.artist} clean") }.getOrDefault(emptyList()))
+
+    suspend fun suggestions(query: String): List<String> = withContext(Dispatchers.IO) {
+        YtJson.searchSuggestions(innerTube.getSearchSuggestions(YouTubeClient.WEB_REMIX, query, false).body<JsonObject>()).take(8)
+    }
+
+    /** Язык запросов: на нём приходят ленты и подсказки YouTube. */
+    fun setLanguage(tag: String?) {
+        val lang = tag ?: java.util.Locale.getDefault().language.ifBlank { "en" }
+        val country = java.util.Locale.getDefault().country.takeIf { it.length == 2 } ?: "US"
+        innerTube.locale = YouTubeLocale(gl = country, hl = lang)
+    }
+
     suspend fun home(): List<Shelf> = withContext(Dispatchers.IO) {
         YtJson.shelves(
             innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = "FEmusic_home", setLogin = true)
@@ -258,7 +278,7 @@ class Yt {
     }
 
     /** Ссылка на звук трека; кэшируется до истечения срока. */
-    suspend fun stream(videoId: String): ExtractedStream {
+    suspend fun stream(videoId: String, quality: Quality = Quality.HIGH): ExtractedStream {
         streams[videoId]?.let { cached ->
             val expires = cached.expiresAt
             if (expires == null || expires.minus(30.seconds) > Clock.System.now()) return cached
@@ -269,7 +289,7 @@ class Yt {
                 extractor.extract(
                     videoId = videoId,
                     hints = ContentHints(wantVideo = false),
-                    audioQuality = AudioQuality.HIGH,
+                    audioQuality = when (quality) { Quality.LOW -> AudioQuality.LOW; Quality.MEDIUM -> AudioQuality.AUTO; Quality.HIGH -> AudioQuality.HIGH },
                 ) ?: error("YouTube не отдал поток для $videoId")
             streams[videoId] = extracted
             extracted

@@ -86,8 +86,56 @@ class PlayerCtl(
                 loading = false
                 loaded = true
                 playing = true
+                if (loadStartedAt > 0) {
+                    val ms = ((System.nanoTime() - loadStartedAt) / 1_000_000).toInt()
+                    loadStartedAt = 0
+                    lastStartupMs = ms
+                    startups = (startups + ms).takeLast(20)
+                }
             },
         )
+
+    /** Замер «нажал → звук»: показывается в настройках, раздел «Скорость». */
+    var lastStartupMs by mutableStateOf<Int?>(null)
+        private set
+    private var startups = listOf<Int>()
+    private var loadStartedAt = 0L
+
+    fun startupSummary(): String =
+        if (startups.isEmpty()) "Появится после первого включения." else "Среднее за последние ${startups.size} запусков: ${startups.average().toInt()} мс."
+
+    /** Окна заглушения строк с матом (мс) для текущего трека. */
+    private var swearWindows = listOf<LongRange>()
+    private var swearFor: String? = null
+    private var swearJob: Job? = null
+
+    private fun watchSwear(song: SongItem) {
+        swearJob?.cancel()
+        swearWindows = emptyList()
+        swearFor = song.id
+        if (!app.st.muteSwearLines) return
+        swearJob =
+            scope.launch {
+                val lines = runCatching { app.lyrics.lyrics(song)?.synced.orEmpty() }.getOrDefault(emptyList())
+                if (swearFor != song.id) return@launch
+                swearWindows =
+                    lines.mapIndexedNotNull { i, l ->
+                        if (!com.texfi.w0y.data.Profanity.inText(l.text)) return@mapIndexedNotNull null
+                        l.timeMs until (lines.getOrNull(i + 1)?.timeMs ?: (l.timeMs + 6000))
+                    }
+                var muted = false
+                while (swearFor == song.id) {
+                    val now = (position * 1000).toLong()
+                    val shouldMute = app.st.muteSwearLines && swearWindows.any { now in it }
+                    if (shouldMute != muted) {
+                        muted = shouldMute
+                        mpv.setMute(muted)
+                    }
+                    delay(150)
+                }
+                if (muted) mpv.setMute(false)
+            }
+    }
 
     fun start(restored: List<SongItem>, restoredIndex: Int, volume: Int) {
         mpvOk = mpv.start()
@@ -96,13 +144,33 @@ class PlayerCtl(
         index = restoredIndex.coerceIn(-1, restored.lastIndex)
         this.volume = volume
         mpv.setVolume(volume)
+        if (app.st.audioDevice != "auto") mpv.setAudioDevice(app.st.audioDevice)
     }
 
     fun shutdown() = mpv.shutdown()
 
     fun play(songs: List<SongItem>, at: Int) {
-        queue = songs
-        index = at.coerceIn(0, songs.lastIndex)
+        val first = songs.getOrNull(at.coerceIn(0, songs.lastIndex)) ?: return
+        // Режим «что играет дальше»: по очереди, вперемешку или рекомендации.
+        when (app.st.queueMode) {
+            QueueMode.ORDER -> {
+                queue = songs
+                index = at.coerceIn(0, songs.lastIndex)
+            }
+            QueueMode.SHUFFLE -> {
+                queue = listOf(first) + songs.filterIndexed { i, _ -> i != at.coerceIn(0, songs.lastIndex) }.shuffled()
+                index = 0
+            }
+            QueueMode.RADIO -> {
+                queue = listOf(first)
+                index = 0
+                scope.launch {
+                    val more = runCatching { app.recommender.forSeed(first, exclude = setOf(first.id)) }.getOrDefault(emptyList())
+                    if (current?.id == first.id) queue = queue + more.filter { m -> m.id != first.id }
+                    app.saveQueue(queue, index)
+                }
+            }
+        }
         loadCurrent()
         app.saveQueue(queue, index)
     }
@@ -110,7 +178,7 @@ class PlayerCtl(
     fun playOne(song: SongItem) = play(listOf(song), 0)
 
     private fun loadCurrent() {
-        val song = current ?: return
+        if (current == null) return
         startJob?.cancel()
         error = null
         loading = true
@@ -118,24 +186,40 @@ class PlayerCtl(
         loaded = false
         position = 0.0
         duration = 0.0
-        mpv.applySound(app.soundOf(song.id).also { current -> soundNow = current })
-        val local = app.downloadedPath(song.id)
-        if (local != null) {
-            // Скачанный трек играет с диска: ни сети, ни ссылки, которая истекает.
-            startJob = scope.launch {
-                mpv.load(local, emptyMap())
-                app.remember(song)
-            }
-            return
-        }
+        loadStartedAt = System.nanoTime()
         startJob =
             scope.launch {
-                runCatching { yt.stream(song.id) }
+                var song = current ?: return@launch
+                // «Без мата»: трек с меткой «E» заменяется чистой версией, а нет её — по выбору играет или пропускается.
+                if (app.st.cleanMode && song.explicit) {
+                    val clean = runCatching { yt.cleanVersion(song) }.getOrNull()
+                    if (clean != null) {
+                        queue = queue.toMutableList().also { it[index] = clean }
+                        song = clean
+                    } else if (app.st.explicitFallback == ExplicitFallback.SKIP) {
+                        next(auto = true)
+                        return@launch
+                    }
+                }
+                val profile = app.soundOf(song.id).also { soundNow = it }
+                val local = app.downloadedPath(song.id)
+                if (local != null) {
+                    // Скачанный трек играет с диска: ни сети, ни ссылки, которая истекает.
+                    mpv.applyAudio(profile, null, app.st.skipSilence)
+                    mpv.load(local, emptyMap())
+                    app.remember(song)
+                    watchSwear(song)
+                    return@launch
+                }
+                runCatching { yt.stream(song.id, app.st.quality) }
                     .onSuccess {
+                        val gain = if (app.st.normalizeVolume) it.loudnessDb?.let { db -> (-db).coerceIn(-10.0, 3.0) } else null
+                        mpv.applyAudio(profile, gain, app.st.skipSilence)
                         mpv.load(it.audioUrl, it.headers)
                         app.remember(song)
+                        watchSwear(song)
                         // Следующий трек греем заранее: старт без паузы.
-                        queue.getOrNull(index + 1)?.let { n -> launch { runCatching { yt.stream(n.id) } } }
+                        if (app.st.preloadNext) queue.getOrNull(index + 1)?.let { n -> launch { runCatching { yt.stream(n.id, app.st.quality) } } }
                     }.onFailure {
                         loading = false
                         error = "YouTube не отдал звук этого трека"
@@ -145,6 +229,8 @@ class PlayerCtl(
             }
     }
 
+    fun setAudioDevice(id: String) = mpv.setAudioDevice(id)
+
     /** Звучание текущего трека: для панели «Звук». */
     var soundNow by mutableStateOf(com.texfi.w0y.data.SoundProfile.Plain)
         private set
@@ -153,7 +239,7 @@ class PlayerCtl(
         val song = current ?: return
         soundNow = profile
         app.saveSound(song.id, profile)
-        mpv.applySound(profile)
+        mpv.applyAudio(profile, null, app.st.skipSilence)
     }
 
     /** Таймер сна: через [minutes] минут пауза. */
@@ -201,9 +287,13 @@ class PlayerCtl(
             app.saveQueue(queue, index)
             return
         }
-        // Очередь кончилась: радио по последнему треку.
+        // Очередь кончилась: радио по последнему треку — только в режиме рекомендаций.
+        if (app.st.queueMode != QueueMode.RADIO) {
+            playing = false
+            return
+        }
         val last = current ?: return
-        val more = runCatching { yt.radio(last.id) }.getOrDefault(emptyList()).filter { s -> queue.none { it.id == s.id } }
+        val more = runCatching { app.recommender.forSeed(last, exclude = queue.map { it.id }.toSet()) }.getOrDefault(emptyList())
         if (more.isNotEmpty()) {
             queue = queue + more
             index += 1

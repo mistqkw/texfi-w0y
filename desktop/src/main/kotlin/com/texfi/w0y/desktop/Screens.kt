@@ -82,9 +82,9 @@ fun SongRow(app: AppState, song: SongItem, onPlay: () -> Unit, extra: @Composabl
     val current = app.player.current?.id == song.id
     RowCenter(
         Modifier.fillMaxWidth().hoverable(source).clip(RoundedCornerShape(6.dp)).background(bg)
-            .clickable(onClick = onPlay).padding(horizontal = 8.dp, vertical = 6.dp),
+            .clickable(onClick = onPlay).padding(horizontal = 8.dp, vertical = if (app.st.compactRows) 2.dp else 6.dp),
     ) {
-        Cover(song.thumbnailUrl, 44.dp)
+        Cover(song.thumbnailUrl, if (app.st.compactRows) 32.dp else 44.dp)
         Gap(w = 12)
         Column(Modifier.weight(1f)) {
             Txt(song.title, color = if (current) C.Blue else C.Text, size = 15, weight = if (current) androidx.compose.ui.text.font.FontWeight.Medium else androidx.compose.ui.text.font.FontWeight.Normal)
@@ -137,6 +137,10 @@ fun HomeScreen(app: AppState) {
         PixelButton(if (app.homeLoading) "Грузим…" else "Обновить", onClick = app::loadHome, primary = false, enabled = !app.homeLoading)
     }) {
         val state = rememberLazyListState()
+        if (!app.st.showRecommendations) {
+            Empty("Ленты рекомендаций выключены в настройках, раздел «Вид».")
+            return@ScreenFrame
+        }
         if (app.shelves.isEmpty()) {
             Empty(app.homeError ?: if (app.homeLoading) "Загружаю ленты…" else "Лент пока нет.")
             return@ScreenFrame
@@ -203,7 +207,33 @@ fun SearchScreen(app: AppState) {
             }
             Gap(h = 12)
             val result = app.searchResult
+            val suggestions by produceState<List<String>>(emptyList(), app.searchQuery, app.st.searchSuggestions) {
+                value = emptyList()
+                val q = app.searchQuery.trim()
+                if (app.st.searchSuggestions && q.isNotEmpty() && q != app.lastSearched) {
+                    kotlinx.coroutines.delay(250)
+                    value = runCatching { app.yt.suggestions(q) }.getOrDefault(emptyList())
+                }
+            }
+            val typing = app.searchQuery.isNotBlank() && app.searchQuery.trim() != app.lastSearched
             when {
+                typing && suggestions.isNotEmpty() ->
+                    Column(Modifier.fillMaxWidth()) {
+                        SectionLabel("Подсказки YouTube", Modifier.padding(bottom = 6.dp))
+                        suggestions.forEach { sug ->
+                            Txt(sug, size = 15, modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).clickable { app.searchQuery = sug; app.search(sug) }.padding(10.dp))
+                        }
+                    }
+                app.searchQuery.isEmpty() && result == null && app.lib.searchHistory.isNotEmpty() && app.st.saveSearchHistory ->
+                    Column(Modifier.fillMaxWidth()) {
+                        SectionLabel("Недавние запросы", Modifier.padding(bottom = 6.dp))
+                        app.lib.searchHistory.forEach { h ->
+                            RowCenter(Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).clickable { app.searchQuery = h; app.search(h) }.padding(horizontal = 10.dp, vertical = 4.dp)) {
+                                Txt(h, size = 15, modifier = Modifier.weight(1f))
+                                IconButton(Glyph.Close, onClick = { app.forgetSearch(h) }, color = C.Muted, size = 12.dp, box = 26.dp)
+                            }
+                        }
+                    }
                 app.searching -> Empty("Ищу…")
                 app.searchError != null -> Empty(app.searchError!!)
                 result == null -> Empty("Введи запрос и нажми Enter.")

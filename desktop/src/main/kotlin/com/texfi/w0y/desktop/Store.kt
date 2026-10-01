@@ -59,6 +59,10 @@ data class Library(
     val downloads: Map<String, StoredDownload> = emptyMap(),
     /** Лайки, которые были в аккаунте при прошлой сверке; null — сверки не было. */
     val likesBase: List<String>? = null,
+    val settings: DSettings = DSettings(),
+    val searchHistory: List<String> = emptyList(),
+    /** Сколько раз включали исполнителя (по нижнему регистру) — вкус слушателя для рекомендаций. */
+    val artistPlays: Map<String, Int> = emptyMap(),
 )
 
 /** Всё, что приложение помнит, — одним JSON-файлом в ~/.local/share/w0y. */

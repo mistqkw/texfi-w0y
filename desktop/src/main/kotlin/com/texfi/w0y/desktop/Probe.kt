@@ -13,11 +13,11 @@ fun main() = runBlocking {
     var last = 0.0
     val mpv = Mpv({ last = it }, {}, {}, { println("end: $it") }, { println("file-loaded") })
     println("mpv started: ${mpv.start()}")
-    mpv.applySound(SoundProfile.Slowed)
+    mpv.applyAudio(SoundProfile.Slowed, null, false)
     mpv.load(s.audioUrl, s.headers)
     Thread.sleep(6000)
     println("slowed time-pos=$last")
-    mpv.applySound(SoundProfile(1.1f, 1.1f, com.texfi.w0y.data.Reverb.CAVE))
+    mpv.applyAudio(SoundProfile(1.1f, 1.1f, com.texfi.w0y.data.Reverb.CAVE), null, false)
     Thread.sleep(2000)
     mpv.shutdown()
     val lyrics = LyricsRepo().lyrics(song)

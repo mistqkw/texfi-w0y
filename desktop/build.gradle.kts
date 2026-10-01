@@ -22,7 +22,7 @@ sourceSets.main {
 // Только то, что не знает про Android.
 val sharedSources = tasks.register<Sync>("sharedSources") {
     from(shared) {
-        include("YtJson.kt", "SongItem.kt", "SyncMerge.kt")
+        include("YtJson.kt", "SongItem.kt", "SyncMerge.kt", "CleanMatch.kt", "Profanity.kt")
     }
     into(layout.buildDirectory.dir("generated/shared/com/texfi/w0y/data"))
 }

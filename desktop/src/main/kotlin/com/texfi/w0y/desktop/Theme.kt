@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,21 +42,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 
-/** Токены TexFi: графитовый фон, синий и песочный. Те же значения, что в Android-теме. */
+/** Состояние темы: меняется в настройках, всё нарисованное перерисовывается само. */
+object ThemeState {
+    var mode by androidx.compose.runtime.mutableStateOf(ThemeMode.DARK)
+    var accent by androidx.compose.runtime.mutableStateOf(Accent.BLUE)
+    var custom by androidx.compose.runtime.mutableStateOf(0xFFA06CFF.toInt())
+}
+
+/**
+ * Токены TexFi: графитовый фон, синий и песочный — те же значения, что в Android-теме.
+ * Свойства читаются при отрисовке, поэтому смена темы подхватывается сразу.
+ */
 object C {
-    val Blue = Color(0xFF4A7CFB)
-    val BlueDeep = Color(0xFF1E3F8F)
+    private val light get() = ThemeState.mode == ThemeMode.LIGHT
+    private val oled get() = ThemeState.mode == ThemeMode.OLED
+    private val accent get() = ThemeState.accent
+
+    val Blue: Color get() = if (accent == Accent.CUSTOM) Color(ThemeState.custom) else Color(accent.accent)
+    val BlueDeep: Color get() = if (accent == Accent.CUSTOM) androidx.compose.ui.graphics.lerp(Color(ThemeState.custom), Color.Black, 0.45f) else Color(accent.deep)
     val BlueLight = Color(0xFF7FB5FF)
-    val Sand = Color(0xFFE0A860)
+    val Sand: Color get() = if (light && accent == Accent.BLUE) Color(0xFFB98232) else Color(accent.secondary)
     val SandDeep = Color(0xFF8A5F26)
-    val Background = Color(0xFF15151B)
-    val Surface = Color(0xFF1F1F27)
-    val SurfaceHigh = Color(0xFF2A2A34)
-    val Border = Color(0xFF383845)
-    val Shadow = Color(0xFF0A0A0E)
-    val Text = Color(0xFFF6F1E5)
-    val Muted = Color(0xFF8A8A96)
+    val Background: Color get() = if (light) Color(0xFFF7F1E4) else if (oled) Color(0xFF000000) else Color(0xFF15151B)
+    val Surface: Color get() = if (light) Color(0xFFFFFDF7) else if (oled) Color(0xFF000000) else Color(0xFF1F1F27)
+    val SurfaceHigh: Color get() = if (light) Color(0xFFEDE4D2) else if (oled) Color(0xFF101014) else Color(0xFF2A2A34)
+    val Border: Color get() = if (light) Color(0xFFD5C7AC) else if (oled) Color(0xFF2C2C36) else Color(0xFF383845)
+    val Shadow: Color get() = if (light) Color(0xFFC9B99B) else if (oled) Color(0xFF17171D) else Color(0xFF0A0A0E)
+    val Text: Color get() = if (light) Color(0xFF191921) else Color(0xFFF6F1E5)
+    val Muted: Color get() = if (light) Color(0xFF6B6455) else Color(0xFF8A8A96)
     val Danger = Color(0xFFFF5A5A)
+
+    /** Текст на синей заливке кнопки — светлый в любой теме. */
+    val OnAccent = Color(0xFFF6F1E5)
 }
 
 val PixelFont = FontFamily(Font(resource = "press_start_2p.ttf"))
@@ -120,10 +138,10 @@ fun PixelButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier
             .border(2.dp, if (primary) C.BlueDeep else C.Border, RoundedCornerShape(4.dp))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
-    ) { Txt(text.uppercase(), color = if (enabled) C.Text else C.Muted, size = 10, pixel = true) }
+    ) { Txt(text.uppercase(), color = if (enabled) (if (primary) C.OnAccent else C.Text) else C.Muted, size = 10, pixel = true) }
 }
 
-enum class Glyph { Play, Pause, Next, Prev, Heart, HeartOff, Search, Plus, Close, Queue, Home, Library, Volume, Trash, Download, Check, Timer, Mic, Wave }
+enum class Glyph { Play, Pause, Next, Prev, Heart, HeartOff, Search, Plus, Close, Queue, Home, Library, Volume, Trash, Download, Check, Timer, Mic, Wave, Gear }
 
 /** Иконки рисуются кодом: ни растровых ассетов, ни шрифта с символами. */
 @Composable
@@ -169,6 +187,13 @@ fun Icon(glyph: Glyph, color: Color = C.Text, size: Dp = 20.dp, modifier: Modifi
                 Glyph.Search -> {
                     drawCircle(color, radius = w * .3f, center = Offset(w * .42f, h * .42f), style = androidx.compose.ui.graphics.drawscope.Stroke(w * .12f))
                     drawLine(color, Offset(w * .64f, h * .64f), Offset(w * .9f, h * .9f), strokeWidth = w * .14f)
+                }
+                Glyph.Gear -> {
+                    val cell = w / 7f
+                    val rows = listOf("0010100", "0111110", "1110111", "1100011", "1110111", "0111110", "0010100")
+                    rows.forEachIndexed { y, row ->
+                        row.forEachIndexed { x, ch -> if (ch == '1') drawRect(color, Offset(x * cell, y * cell), Size(cell + .6f, cell + .6f)) }
+                    }
                 }
                 Glyph.Plus -> {
                     drawRect(color, Offset(w * .43f, h * .12f), Size(w * .14f, h * .76f))
@@ -316,4 +341,29 @@ fun PixelSlider(value: Float, range: ClosedFloatingPointRange<Float>, onChange: 
                 }
             },
     )
+}
+
+/** Главный цвет обложки: средний по уменьшенной картинке, без почти чёрных и серых пикселей. */
+@Composable
+fun rememberCoverColor(url: String?): Color? {
+    val color by androidx.compose.runtime.produceState<Color?>(null, url) {
+        value = null
+        val model = sizedThumb(url, 120) ?: return@produceState
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val img = javax.imageio.ImageIO.read(java.net.URI(model).toURL()) ?: return@runCatching null
+                var r = 0L; var g = 0L; var b = 0L; var n = 0L
+                val step = (img.width / 16).coerceAtLeast(1)
+                for (x in 0 until img.width step step) for (y in 0 until img.height step step) {
+                    val p = img.getRGB(x, y)
+                    val pr = (p shr 16) and 0xFF; val pg = (p shr 8) and 0xFF; val pb = p and 0xFF
+                    val mx = maxOf(pr, pg, pb); val mn = minOf(pr, pg, pb)
+                    if (mx < 40 || mx - mn < 25) continue
+                    r += pr; g += pg; b += pb; n++
+                }
+                if (n == 0L) null else Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+            }.getOrNull()
+        }
+    }
+    return color
 }

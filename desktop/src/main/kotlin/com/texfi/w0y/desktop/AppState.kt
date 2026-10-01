@@ -26,6 +26,7 @@ sealed interface Screen {
     data object History : Screen
     data object Downloaded : Screen
     data object Player : Screen
+    data object Settings : Screen
 }
 
 /** Всё состояние приложения в одном месте: экран, библиотека, аккаунт, плеер. */
@@ -35,6 +36,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     val player = PlayerCtl(scope, yt, this)
     val downloads = Downloads(scope, yt, this)
     val lyrics = LyricsRepo()
+    val recommender = Recommender(this, yt)
     val sync = AccountSync(this, yt)
 
     val stack = mutableStateListOf<Screen>(Screen.Home)
@@ -45,6 +47,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     var homeError by mutableStateOf<String?>(null)
 
     var searchQuery by mutableStateOf("")
+    var lastSearched by mutableStateOf("")
     var searchResult by mutableStateOf<MixedResults?>(null)
     var searching by mutableStateOf(false)
     var searchError by mutableStateOf<String?>(null)
@@ -53,10 +56,36 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     var accountStatus by mutableStateOf<String?>(null)
     var loggingIn by mutableStateOf(false)
 
+    val st: DSettings get() = lib.settings
+
+    fun setSt(block: (DSettings) -> DSettings) {
+        val before = st.language
+        update { it.copy(settings = block(it.settings)) }
+        applyTheme()
+        if (st.language != before) {
+            yt.setLanguage(st.language.tag)
+            loadHome()
+        }
+    }
+
+    private fun applyTheme() {
+        ThemeState.mode = st.theme
+        ThemeState.accent = st.accent
+        ThemeState.custom = st.customAccent
+    }
+
     val signedIn: Boolean get() = !lib.cookie.isNullOrBlank()
     val likedIds: Set<String> get() = lib.liked.mapTo(HashSet()) { it.id }
 
     fun start() {
+        applyTheme()
+        yt.setLanguage(st.language.tag)
+        // Куда попасть при запуске: выбранная вкладка или та, где закрыли в прошлый раз.
+        when (if (st.startTab == StartTab.LAST) st.lastTab else st.startTab) {
+            StartTab.SEARCH -> { stack.clear(); stack.add(Screen.Search) }
+            StartTab.LIBRARY -> { stack.clear(); stack.add(Screen.Library) }
+            else -> Unit
+        }
         lib.cookie?.let { yt.applySession(it) }
         player.start(lib.queue.map { it.toItem() }, if (lib.queue.isEmpty()) -1 else lib.queueIndex, lib.volume)
         mpris = Mpris(this, scope).takeIf { it.start() }
@@ -85,6 +114,12 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     fun tab(screen: Screen) {
         stack.clear()
         stack.add(screen)
+        when (screen) {
+            Screen.Home -> StartTab.HOME
+            Screen.Search -> StartTab.SEARCH
+            Screen.Library -> StartTab.LIBRARY
+            else -> null
+        }?.let { t -> if (st.lastTab != t) update { it.copy(settings = it.settings.copy(lastTab = t)) } }
         if (screen == Screen.Library && signedIn) syncAccount(force = false)
     }
 
@@ -99,7 +134,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
             homeLoading = true
             homeError = null
             runCatching { yt.home() }
-                .onSuccess { shelves = it }
+                .onSuccess { list -> shelves = list.map { it.copy(songs = visible(it.songs)) } }
                 .onFailure { homeError = "Не удалось загрузить: ${it.message}" }
             homeLoading = false
         }
@@ -110,13 +145,15 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     fun search(query: String) {
         val q = query.trim()
         if (q.isEmpty()) return
+        lastSearched = q
+        if (st.saveSearchHistory) update { it.copy(searchHistory = (listOf(q) + it.searchHistory.filterNot { h -> h.equals(q, true) }).take(15)) }
         searchJob?.cancel()
         searchJob =
             scope.launch {
                 searching = true
                 searchError = null
                 runCatching { yt.search(q) }
-                    .onSuccess { searchResult = it }
+                    .onSuccess { searchResult = it.copy(songs = visible(it.songs)) }
                     .onFailure { searchError = "Поиск не удался: ${it.message}" }
                 searching = false
             }
@@ -124,7 +161,14 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
 
     // ---- библиотека
     fun remember(song: SongItem) {
-        update { it.copy(history = (listOf(song.stored()) + it.history.filterNot { h -> h.id == song.id }).take(300)) }
+        if (!st.keepHistory) return
+        val artist = song.artist.substringBefore(',').trim().lowercase()
+        update {
+            it.copy(
+                history = (listOf(song.stored()) + it.history.filterNot { h -> h.id == song.id }).take(300),
+                artistPlays = if (artist.isBlank()) it.artistPlays else it.artistPlays + (artist to ((it.artistPlays[artist] ?: 0) + 1)),
+            )
+        }
     }
 
     fun toggleLike(song: SongItem) {
@@ -132,7 +176,8 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         update {
             it.copy(liked = if (liked) listOf(song.stored()) + it.liked else it.liked.filterNot { s -> s.id == song.id })
         }
-        if (signedIn) scope.launch { runCatching { yt.like(song.id, liked) } }
+        if (mirror) scope.launch { runCatching { yt.like(song.id, liked) } }
+        if (liked && st.autoDownloadLiked) downloads.download(song)
     }
 
     private var queueSave: Job? = null
@@ -153,7 +198,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
                 it.pitch,
                 runCatching { com.texfi.w0y.data.Reverb.valueOf(it.reverb) }.getOrDefault(com.texfi.w0y.data.Reverb.OFF),
             )
-        } ?: com.texfi.w0y.data.SoundProfile.Plain
+        } ?: com.texfi.w0y.data.SoundProfile(st.speed, st.pitch, st.reverb)
 
     fun saveSound(id: String, profile: com.texfi.w0y.data.SoundProfile) = update {
         it.copy(
@@ -168,6 +213,13 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
 
     fun downloadedPath(id: String): String? =
         lib.downloads[id]?.path?.takeIf { java.io.File(it).isFile }
+
+    /** Прячет помеченные «E» записи, если так выбрано в настройках. */
+    fun visible(songs: List<SongItem>): List<SongItem> = if (st.hideExplicit) songs.filterNot { it.explicit } else songs
+
+    val mirror: Boolean get() = signedIn && st.syncPlaylists
+
+    fun forgetSearch(query: String) = update { it.copy(searchHistory = it.searchHistory - query) }
 
     fun saveVolume(volume: Int) = update { it.copy(volume = volume) }
 
@@ -185,7 +237,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         val pl = StoredPlaylist(name = clean)
         update { it.copy(playlists = it.playlists + pl) }
         // В аккаунт — следом: плейлист на телефоне не ждёт сети.
-        if (signedIn) {
+        if (mirror) {
             scope.launch {
                 runCatching { yt.createPlaylist(clean) }.getOrNull()?.let { rid -> mutatePlaylist(pl.id) { it.copy(remoteId = rid) } }
             }
@@ -197,7 +249,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         val pl = playlist(id) ?: return
         if (clean.isEmpty() || !pl.editable) return
         mutatePlaylist(id) { it.copy(name = clean) }
-        if (signedIn && pl.remoteId != null) scope.launch { runCatching { yt.renameRemote(pl.remoteId, clean) } }
+        if (mirror && pl.remoteId != null) scope.launch { runCatching { yt.renameRemote(pl.remoteId, clean) } }
     }
 
     fun deletePlaylist(id: String) {
@@ -205,7 +257,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         update { it.copy(playlists = it.playlists.filterNot { p -> p.id == id }) }
         back()
         val rid = pl?.remoteId
-        if (rid != null && signedIn) {
+        if (rid != null && mirror) {
             // Чужой плейлист не удаляют, а убирают из библиотеки.
             scope.launch { runCatching { if (pl.editable) yt.deleteRemote(rid) else yt.unsaveRemote(rid) } }
         }
@@ -215,7 +267,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         val pl = playlist(id) ?: return
         if (!pl.editable || pl.songs.any { it.id == song.id }) return
         mutatePlaylist(id) { it.copy(songs = it.songs + song.stored()) }
-        if (signedIn && pl.remoteId != null) scope.launch { runCatching { yt.addToRemote(pl.remoteId, song.id) } }
+        if (mirror && pl.remoteId != null) scope.launch { runCatching { yt.addToRemote(pl.remoteId, song.id) } }
     }
 
     fun removeFromPlaylist(id: String, songId: String) {
@@ -223,7 +275,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         if (!pl.editable) return
         mutatePlaylist(id) { it.copy(songs = it.songs.filterNot { s -> s.id == songId }) }
         val rid = pl.remoteId
-        if (signedIn && rid != null) {
+        if (mirror && rid != null) {
             scope.launch {
                 // Убрать трек из плейлиста YouTube можно только зная его место в нём.
                 val place = yt.fetchPlaylist(rid, 30)?.setVideoIds?.get(songId) ?: return@launch

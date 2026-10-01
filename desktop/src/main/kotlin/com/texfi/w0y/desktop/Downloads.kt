@@ -43,6 +43,14 @@ class Downloads(private val scope: CoroutineScope, private val yt: Yt, private v
         File(xdg ?: "${System.getProperty("user.home")}/Music", "w0y music")
     }
 
+    /** Сколько места занято скачанным, МБ. */
+    fun usedMb(): Long = app.lib.downloads.values.sumOf { runCatching { File(it.path).length() }.getOrDefault(0L) } / 1024 / 1024
+
+    fun openFolder() {
+        folder.mkdirs()
+        runCatching { ProcessBuilder("xdg-open", folder.absolutePath).start() }
+    }
+
     fun isDone(id: String) = app.downloadedPath(id) != null
 
     fun download(song: SongItem) {

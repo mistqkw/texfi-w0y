@@ -130,16 +130,24 @@ class Mpv(
     }
 
     /**
-     * Звучание трека. Скорость — свойство mpv (темп без смены тона делает
-     * сам mpv), высота тона — rubberband, эхо — aecho из ffmpeg.
+     * Звучание трека. Скорость — свойство mpv (темп без смены тона делает сам mpv),
+     * высота тона — rubberband, эхо — aecho из ffmpeg; выравнивание громкости —
+     * volume по данным YouTube, пропуск тишины — silenceremove.
      */
-    fun applySound(profile: com.texfi.w0y.data.SoundProfile) {
+    fun applyAudio(profile: com.texfi.w0y.data.SoundProfile, gainDb: Double?, skipSilence: Boolean) {
         send("set_property", "speed", profile.speed.toDouble())
         val filters = mutableListOf<String>()
+        if (skipSilence) filters += "lavfi=[silenceremove=start_periods=1:start_silence=0.1:start_threshold=-50dB]"
+        if (gainDb != null) filters += "lavfi=[volume=${"%.2f".format(java.util.Locale.ROOT, gainDb)}dB]"
         if (profile.pitch != 1f) filters += "rubberband=pitch-scale=${profile.pitch}"
         profile.reverb.filter?.let { filters += "lavfi=[$it]" }
         send("set_property", "af", filters.joinToString(","))
     }
+
+    /** Заглушение строк с матом: отдельное свойство, громкость пользователя не трогается. */
+    fun setMute(muted: Boolean) = send("set_property", "mute", muted)
+
+    fun setAudioDevice(id: String) = send("set_property", "audio-device", id)
 
     fun setPause(paused: Boolean) = send("set_property", "pause", paused)
 

@@ -1,5 +1,6 @@
 package com.texfi.w0y.desktop
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,12 +64,14 @@ fun App(app: AppState) {
         Box(Modifier.width(2.dp).fillMaxHeight().background(C.Border))
         Column(Modifier.weight(1f).fillMaxHeight()) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
+                if (app.st.theme != ThemeMode.LIGHT) Starfield(app.st.animatedBackground, Modifier.fillMaxSize())
                 when (val s = app.screen) {
                     Screen.Home -> HomeScreen(app)
                     Screen.Search -> SearchScreen(app)
                     Screen.Library -> LibraryScreen(app)
                     Screen.Queue, Screen.Player -> PlayerScreen(app)
                     Screen.Downloaded -> DownloadedScreen(app)
+                    Screen.Settings -> SettingsScreen(app)
                     Screen.Liked -> LikedScreen(app)
                     Screen.History -> HistoryScreen(app)
                     is Screen.Album -> AlbumScreen(app, s)
@@ -82,6 +85,32 @@ fun App(app: AppState) {
     }
 }
 
+/** Звёзды на фоне: медленно мерцают, если включён «Живой фон»; иначе рисуются один раз. */
+@Composable
+fun Starfield(animated: Boolean, modifier: Modifier = Modifier) {
+    val phase =
+        if (animated) {
+            androidx.compose.animation.core.rememberInfiniteTransition().animateFloat(initialValue = 0f, targetValue = 1f, animationSpec = 
+                androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(6000, easing = androidx.compose.animation.core.LinearEasing)),
+            ).value
+        } else {
+            0f
+        }
+    val stars = remember { val r = java.util.Random(7); List(70) { Triple(r.nextFloat(), r.nextFloat(), r.nextFloat()) } }
+    Box(
+        modifier.drawBehind {
+            stars.forEach { (x, y, seed) ->
+                val twinkle = 0.25f + 0.55f * (0.5f + 0.5f * kotlin.math.sin((phase + seed) * 6.2832f))
+                drawRect(
+                    C.Blue.copy(alpha = if (animated) twinkle * 0.5f else 0.25f),
+                    Offset(x * size.width, y * size.height),
+                    Size(2.dp.toPx(), 2.dp.toPx()),
+                )
+            }
+        },
+    )
+}
+
 @Composable
 private fun Sidebar(app: AppState) {
     Column(Modifier.width(190.dp).fillMaxHeight().background(C.Surface).padding(vertical = 22.dp, horizontal = 14.dp)) {
@@ -91,6 +120,7 @@ private fun Sidebar(app: AppState) {
         NavItem("Поиск", Glyph.Search, app.screen == Screen.Search) { app.tab(Screen.Search) }
         NavItem("Моё", Glyph.Library, app.screen in listOf(Screen.Library, Screen.Liked, Screen.History, Screen.Downloaded) || app.screen is Screen.Local) { app.tab(Screen.Library) }
         NavItem("Плеер", Glyph.Wave, app.screen == Screen.Player || app.screen == Screen.Queue) { app.tab(Screen.Player) }
+        NavItem("Настройки", Glyph.Gear, app.screen == Screen.Settings) { app.tab(Screen.Settings) }
         Box(Modifier.weight(1f))
         app.lib.accountName?.let {
             RowCenter(Modifier.padding(8.dp)) {

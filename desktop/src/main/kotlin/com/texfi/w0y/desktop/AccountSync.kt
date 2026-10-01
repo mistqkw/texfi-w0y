@@ -39,7 +39,7 @@ class AccountSync(private val app: AppState, private val yt: Yt) {
             app.accountAlbums = cards.items.filter { it.isAlbum }
             dropDeletedRemotely(playlists.map { it.browseId.removePrefix("VL") }.toSet(), cards.complete && playlists.isNotEmpty())
             importCards(playlists)
-            publishLocalOnly()
+            if (app.st.syncPlaylists) publishLocalOnly()
             app.lib.playlists.filter { it.remoteId != null && (force || it.syncedAt == 0L || now() - it.syncedAt > TTL_MS) }
                 .sortedBy { it.syncedAt }
                 .forEach { mergePlaylist(it.id) }
@@ -102,11 +102,12 @@ class AccountSync(private val app: AppState, private val yt: Yt) {
         val base = pl.base?.toSet() ?: emptySet()
         val localSet = pl.songs.map { it.id }.toSet()
         val remoteSet = pulled.songs.map { it.id }.toSet()
+        val writeBack = app.st.syncPlaylists
         val plan = SyncMerge.plan(base, localSet, remoteSet, pulled.complete)
 
         val failedAdds = mutableSetOf<String>()
         val failedRemoves = mutableSetOf<String>()
-        if (pulled.editable) {
+        if (pulled.editable && writeBack) {
             plan.pushAdd.forEach { v -> if (runCatching { yt.addToRemote(rid, v) }.isFailure) failedAdds += v }
             plan.pushRemove.forEach { v ->
                 val place = pulled.setVideoIds[v]
@@ -122,12 +123,13 @@ class AccountSync(private val app: AppState, private val yt: Yt) {
                             cur
                         } else {
                             val added = pulled.songs.filter { it.id in plan.pullAdd && cur.songs.none { s -> s.id == it.id } }.map { it.stored() }
-                            val kept = cur.songs.filterNot { it.id in plan.pullRemove }
+                            val kept = if (writeBack) cur.songs.filterNot { it.id in plan.pullRemove } else cur.songs
                             val finalIds = (kept + added).map { it.id }.toSet()
                             cur.copy(
                                 songs = kept + added,
                                 editable = pulled.editable,
-                                base = ((finalIds - failedAdds) + failedRemoves).toList(),
+                                // Без записи в аккаунт локальные правки остаются «несверенными»: база не двигается.
+                                base = if (writeBack) ((finalIds - failedAdds) + failedRemoves).toList() else cur.base,
                                 syncedAt = now(),
                                 cover = pulled.cover ?: cur.cover,
                             )
@@ -145,19 +147,20 @@ class AccountSync(private val app: AppState, private val yt: Yt) {
         val remote = pulled.items.map { it.id }.toSet()
         val plan = SyncMerge.plan(base, local, remote, pulled.complete)
 
+        val writeBack = app.st.syncPlaylists
         val failedPush = mutableSetOf<String>()
         val failedRemove = mutableSetOf<String>()
         val toPush = plan.pushAdd.toList()
-        toPush.take(PUSH_LIKES_PER_RUN).forEach { if (runCatching { yt.like(it, true) }.isFailure) failedPush += it }
-        toPush.drop(PUSH_LIKES_PER_RUN).forEach { failedPush += it }
-        plan.pushRemove.forEach { if (runCatching { yt.like(it, false) }.isFailure) failedRemove += it }
+        if (writeBack) toPush.take(PUSH_LIKES_PER_RUN).forEach { if (runCatching { yt.like(it, true) }.isFailure) failedPush += it }
+        if (writeBack) toPush.drop(PUSH_LIKES_PER_RUN).forEach { failedPush += it }
+        if (writeBack) plan.pushRemove.forEach { if (runCatching { yt.like(it, false) }.isFailure) failedRemove += it }
 
         app.update { l ->
             val stamp = now()
             val fresh = pulled.items.filter { it.id in plan.pullAdd && l.liked.none { s -> s.id == it.id } }.map { it.stored() }
-            val kept = l.liked.filterNot { it.id in plan.pullRemove }
+            val kept = if (writeBack) l.liked.filterNot { it.id in plan.pullRemove } else l.liked
             val liked = fresh + kept
-            l.copy(liked = liked, likesBase = ((liked.map { it.id }.toSet() - failedPush) + failedRemove).toList())
+            l.copy(liked = liked, likesBase = if (writeBack) ((liked.map { it.id }.toSet() - failedPush) + failedRemove).toList() else l.likesBase)
         }
     }
 
