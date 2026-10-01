@@ -22,25 +22,31 @@ but it is signed with a debug key, and such an APK is not handed out.
 ## Releasing
 
 ```
-git tag v0.0.1-beta && git push origin v0.0.1-beta
+git tag v0.0.1-beta-1 && git push origin v0.0.1-beta-1
 ```
 
-From there the workflow builds, signs and creates the GitHub Release with
-the description from [RELEASE_NOTES.md](RELEASE_NOTES.md).
+From there the workflow builds and signs the APK, builds the Linux desktop
+archive (`w0y-linux-x86_64.tar.gz`; if that step fails the APK is still
+released, just without the archive), writes `SHA256SUMS.txt`, and creates the
+GitHub Release named "v0.0.1 beta-1" with the description from
+[RELEASE_NOTES.md](RELEASE_NOTES.md). Release names turn the tag's `-beta`
+into a space; the release is marked pre-release.
 
-## Two rakes already stepped on
+Android `versionName` is the tag without the leading `v`
+(`0.0.1-beta-1`). `versionCode` only ever goes up: Android refuses to install
+a build with a lower code over an installed one, and the user would have to
+uninstall the app together with its data.
+
+## Things to know
 
 **Write permission for the Actions token.** By default `GITHUB_TOKEN` is
 read-only in the account, and the "Create release" step fails with
 `403 Resource not accessible by integration` — even though building and
 signing have already succeeded by that point. Fixed once in
 *Settings → Actions → General → Workflow permissions* →
-**Read and write permissions**. Because of this the first v0.0.1-beta
-release had to be created by hand: the APK was taken from a manual run's
-artifact and published with `gh release create`.
+**Read and write permissions**.
 
-**The "pre-release" flag.** We do not set it, even though the versions are
-beta. The texfi-hub site reads the release through `/releases/latest`, and
-that endpoint skips pre-releases: with the flag set, the w0y card would be
-left without a version and without a download button. For the same reason
-f0kus, files and m0ney publish their beta releases without it.
+**Pre-release and `/releases/latest`.** GitHub does not count a
+pre-release as the "latest release", so `releases/latest/download/...` links
+and the API endpoint `/releases/latest` do not see it. Link to a concrete
+tag (`releases/download/v0.0.1-beta-1/...`) or list releases instead.

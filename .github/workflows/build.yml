@@ -1,11 +1,11 @@
 name: Build & Release
 
 # Сборка идёт здесь; локально собирается только debug для проверки кода.
-#  • пуш тега:        git tag v0.0.1-beta && git push origin v0.0.1-beta
-#      → релизный APK + GitHub Release
+#  • пуш тега:        git tag v0.0.1-beta-1 && git push origin v0.0.1-beta-1
+#      → релизный APK, сборка для Linux, SHA256SUMS + GitHub Release (pre-release)
 #  • вручную без тега: вкладка Actions → Run workflow, поле пустое
 #      → просто соберёт release APK в артефакты
-#  • вручную с тегом:  release_tag = v0.0.1-beta
+#  • вручную с тегом:  release_tag = v0.0.1-beta-1
 #      → соберёт, заведёт тег на выбранном коммите и выпустит релиз
 #  • пуш в main: тесты, lint и сборка release APK — без выпуска
 on:
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Тег релиза, например v0.0.1-beta. Пусто — только сборка."
+        description: "Тег релиза, например v0.0.1-beta-1. Пусто — только сборка."
         required: false
         default: ""
 
@@ -80,6 +80,35 @@ jobs:
           mkdir -p out
           cp app/build/outputs/apk/release/app-release*.apk out/TexFi-w0y-android.apk
 
+      # Сборка для Linux — тот же релиз, отдельный файл. Если она упадёт,
+      # APK всё равно выйдет: десктоп здесь вторичен, и тогда в релизе
+      # просто не будет архива для Linux (в журнале шаг помечен как упавший).
+      - name: Build Linux desktop
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        continue-on-error: true
+        run: |
+          set -e
+          (cd desktop && ./gradlew test createDistributable --no-daemon)
+          P=w0y-linux
+          rm -rf "$P"; mkdir -p "$P"
+          cp -r desktop/build/compose/binaries/main/app/w0y "$P/w0y"
+          cp -r desktop/src/main/resources/icons "$P/icons"
+          cp desktop/install-prebuilt.sh "$P/install.sh"
+          tar -czf out/w0y-linux-x86_64.tar.gz "$P"
+
+      - name: Checksums and release name
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+        env:
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          (cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          # v0.0.1-beta-1 → «v0.0.1 beta-1»
+          echo "RELEASE_NAME=${TAG/-beta/ beta}" >> "$GITHUB_ENV"
+
       # Артефакт — только когда сборку запустили руками ради тестового
       # APK. На каждом коммите он копился бы впустую и съедал квоту
       # хранилища аккаунта, а именно в неё сборка уже один раз и упёрлась.
@@ -105,15 +134,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.release_tag || github.ref_name }}
-          name: TexFi w0y ${{ inputs.release_tag || github.ref_name }}
+          name: ${{ env.RELEASE_NAME }}
           target_commitish: ${{ github.sha }}
-          # Человеческое описание выпуска лежит в репозитории и правится
-          # вместе с кодом; автосписок коммитов GitHub дописывает следом.
+          # Описание выпуска лежит в репозитории и правится вместе с кодом.
           body_path: docs/RELEASE_NOTES.md
-          generate_release_notes: true
-          # Отметку «pre-release» не ставим намеренно, хотя версия бета.
-          # Сайт берёт выпуск через /releases/latest, а этот эндпоинт
-          # пре-релизы пропускает: с отметкой карточка w0y на texfi-hub
-          # осталась бы без версии и без кнопки загрузки. У f0kus, files
-          # и m0ney бета-выпуски по той же причине идут без неё.
-          files: out/TexFi-w0y-android.apk
+          # Автосписок коммитов не дописываем: в нём тянется вся история.
+          generate_release_notes: false
+          prerelease: true
+          files: out/*
