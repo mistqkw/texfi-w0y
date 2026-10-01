@@ -369,7 +369,7 @@ fun LibraryScreen(app: AppState) {
                                     Cover(app.lib.accountAvatar, 40.dp, circle = true)
                                     Gap(w = 12)
                                     Txt(app.lib.accountName ?: "Вы вошли", size = 16, modifier = Modifier.weight(1f))
-                                    PixelButton(if (app.syncing) "Сверяю…" else "Обновить", onClick = app::syncAccount, enabled = !app.syncing)
+                                    PixelButton(if (app.sync.running) "Сверяю…" else "Обновить", onClick = { app.syncAccount(force = true) }, enabled = !app.sync.running)
                                     Gap(w = 10)
                                     PixelButton("Выйти", onClick = app::signOut, primary = false)
                                 }
@@ -388,6 +388,7 @@ fun LibraryScreen(app: AppState) {
                                     PixelButton("Войти", onClick = { app.signIn(cookie); cookie = "" })
                                 }
                             }
+                            app.sync.error?.let { Txt(it, color = C.Sand, size = 12, modifier = Modifier.padding(top = 8.dp), maxLines = 3) }
                             app.accountStatus?.let { Txt(it, color = C.Sand, size = 12, modifier = Modifier.padding(top = 8.dp), maxLines = 3) }
                         }
                     }
@@ -427,13 +428,19 @@ fun LibraryScreen(app: AppState) {
                     }
                 }
                 if (app.lib.playlists.isEmpty() && newName == null) item { Empty("Плейлистов пока нет.") }
-                itemsIndexed(app.lib.playlists) { i, pl ->
-                    ListLine(pl.name, "${pl.songs.size} треков", pl.songs.firstOrNull()?.thumb) { app.open(Screen.Local(i)) }
+                items(app.lib.playlists, key = { it.id }) { pl ->
+                    val where =
+                        when {
+                            pl.remoteId != null && !pl.editable -> "сохранённый · только чтение"
+                            pl.remoteId != null -> "${pl.songs.size} треков · в YouTube"
+                            else -> "${pl.songs.size} треков · только здесь"
+                        }
+                    ListLine(pl.name, where, pl.cover ?: pl.songs.firstOrNull()?.thumb) { app.open(Screen.Local(pl.id)) }
                 }
-                if (app.accountPlaylists.isNotEmpty()) {
-                    item { SectionLabel("Из аккаунта", Modifier.padding(top = 8.dp)) }
-                    items(app.accountPlaylists, key = { it.browseId }) { c ->
-                        ListLine(c.title, c.subtitle ?: "плейлист", c.thumbnailUrl) { app.openCard(c) }
+                if (app.accountAlbums.isNotEmpty()) {
+                    item { SectionLabel("Сохранённые альбомы", Modifier.padding(top = 8.dp)) }
+                    items(app.accountAlbums, key = { it.browseId }) { c ->
+                        ListLine(c.title, c.subtitle ?: "альбом", c.thumbnailUrl) { app.openCard(c) }
                     }
                 }
                 item { Gap(h = 24) }
@@ -488,17 +495,50 @@ fun HistoryScreen(app: AppState) {
 
 @Composable
 fun LocalScreen(app: AppState, s: Screen.Local) {
-    val pl = app.lib.playlists.getOrNull(s.index)
+    val pl = app.playlist(s.id)
+    var renaming by remember { mutableStateOf<String?>(null) }
+    // Состав сверяется с аккаунтом при открытии: правили его там — увидим сразу.
+    LaunchedEffect(s.id) { app.sync.refreshPlaylist(s.id) }
     ScreenFrame(pl?.name ?: "Плейлист", app, canBack = true, actions = {
-        if (pl != null) PixelButton("Удалить", onClick = { app.deletePlaylist(s.index) }, primary = false)
+        if (pl != null) {
+            if (pl.editable) {
+                PixelButton("Переименовать", onClick = { renaming = pl.name }, primary = false)
+                Gap(w = 8)
+            }
+            PixelButton(if (pl.editable) "Удалить" else "Убрать из библиотеки", onClick = { app.deletePlaylist(s.id) }, primary = false)
+        }
     }) {
         val songs = pl?.songs?.map { it.toItem() }.orEmpty()
-        if (songs.isEmpty()) {
-            Empty("Плейлист пуст. Добавь треки кнопкой «в плейлист» в плеере.")
-        } else {
-            SongList(app, songs, extra = { song ->
-                IconButton(Glyph.Trash, onClick = { app.removeFromPlaylist(s.index, song.id) }, color = C.Muted, size = 16.dp)
-            })
+        Column(Modifier.fillMaxSize()) {
+            renaming?.let { value ->
+                PixelCard(Modifier.fillMaxWidth()) {
+                    RowCenter {
+                        Box(Modifier.weight(1f)) {
+                            BasicTextField(value, { renaming = it }, singleLine = true, textStyle = TextStyle(color = C.Text, fontSize = 14.sp), cursorBrush = SolidColor(C.Blue), modifier = Modifier.fillMaxWidth())
+                        }
+                        Gap(w = 10)
+                        PixelButton("Сохранить", onClick = { app.renamePlaylist(s.id, value); renaming = null })
+                        Gap(w = 8)
+                        PixelButton("Отмена", onClick = { renaming = null }, primary = false)
+                    }
+                }
+                Gap(h = 10)
+            }
+            if (pl != null && !pl.editable) {
+                Txt("Чужой плейлист из твоей библиотеки: его можно слушать и скачивать, но править может только автор.", color = C.Muted, size = 12, maxLines = 3)
+                Gap(h = 8)
+            }
+            if (pl?.remoteId != null) {
+                Txt(if (pl.editable) "Отражён в аккаунте YouTube: правки уходят туда и приходят оттуда." else "Приходит из аккаунта.", color = C.Muted, size = 12)
+                Gap(h = 8)
+            }
+            if (songs.isEmpty()) {
+                Empty("Плейлист пуст. Добавь треки кнопкой «+» у трека.")
+            } else {
+                SongList(app, songs, extra = { song ->
+                    if (pl?.editable != false) IconButton(Glyph.Trash, onClick = { app.removeFromPlaylist(s.id, song.id) }, color = C.Muted, size = 16.dp)
+                })
+            }
         }
     }
 }

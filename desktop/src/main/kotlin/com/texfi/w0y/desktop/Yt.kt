@@ -160,6 +160,98 @@ class Yt {
         ).filterNot { it.isAlbum || it.browseId == "VLLM" || it.browseId == "VLSE" }
     }
 
+    /** Плейлист аккаунта целиком: треки, места в нём, обложка, права на правку. */
+    data class RemotePlaylist(
+        val songs: List<SongItem>,
+        val setVideoIds: Map<String, String>,
+        val cover: String?,
+        val editable: Boolean,
+        val complete: Boolean,
+        val exists: Boolean,
+    )
+
+    suspend fun fetchPlaylist(remoteId: String, maxPages: Int): RemotePlaylist? = withContext(Dispatchers.IO) {
+        runCatching {
+            val first =
+                innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = "VL" + remoteId.removePrefix("VL"), setLogin = true)
+            if (first.status.value in 400..499) return@runCatching RemotePlaylist(emptyList(), emptyMap(), null, false, true, exists = false)
+            val root = first.body<JsonObject>()
+            val header = YtJson.playlistHeader(root)
+            val songs = YtJson.playlistTracks(root, first = true).toMutableList()
+            val ids = YtJson.setVideoIds(root).toMutableMap()
+            var token = YtJson.continuation(root)
+            var page = 1
+            var complete = true
+            while (token != null) {
+                if (page >= maxPages) { complete = false; break }
+                val next =
+                    runCatching {
+                        innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = null, continuation = token, setLogin = true).body<JsonObject>()
+                    }.getOrNull()
+                if (next == null) { complete = false; break }
+                val more = YtJson.playlistTracks(next, first = false)
+                if (more.isEmpty()) break
+                songs += more
+                ids += YtJson.setVideoIds(next)
+                token = YtJson.continuation(next)
+                page++
+            }
+            RemotePlaylist(songs.distinctBy { it.id }, ids, header.cover, header.editable, complete, header.found || songs.isNotEmpty())
+        }.getOrNull()
+    }
+
+    data class Paged<T>(val items: List<T>, val complete: Boolean)
+
+    private suspend fun <T> paged(browseId: String, maxPages: Int, parse: (JsonObject) -> List<T>): Paged<T> = withContext(Dispatchers.IO) {
+        val first = innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, setLogin = true).body<JsonObject>()
+        val all = parse(first).toMutableList()
+        var token = YtJson.continuation(first)
+        var page = 1
+        var complete = true
+        while (token != null) {
+            if (page >= maxPages) { complete = false; break }
+            val next =
+                runCatching {
+                    innerTube.browse(client = YouTubeClient.WEB_REMIX, browseId = null, continuation = token, setLogin = true).body<JsonObject>()
+                }.getOrNull()
+            if (next == null) { complete = false; break }
+            val more = parse(next)
+            if (more.isEmpty()) break
+            all += more
+            token = YtJson.continuation(next)
+            page++
+        }
+        Paged(all, complete)
+    }
+
+    suspend fun allPlaylists() = paged("FEmusic_liked_playlists", 6) { YtJson.playlistCards(it) }
+
+    suspend fun allLiked() = paged("FEmusic_liked_videos", 20) { YtJson.songs(it) }
+
+    suspend fun createPlaylist(name: String): String? = withContext(Dispatchers.IO) {
+        YtJson.createdPlaylistId(innerTube.createPlaylist(YouTubeClient.WEB_REMIX, name).body<JsonObject>())
+    }
+
+    suspend fun addToRemote(remoteId: String, videoId: String) = withContext(Dispatchers.IO) {
+        innerTube.addToPlaylist(YouTubeClient.WEB_REMIX, remoteId, videoId); Unit
+    }
+
+    suspend fun removeFromRemote(remoteId: String, videoId: String, setVideoId: String) = withContext(Dispatchers.IO) {
+        innerTube.removePlaylistSong(YouTubeClient.WEB_REMIX, remoteId, videoId, setVideoId); Unit
+    }
+
+    suspend fun renameRemote(remoteId: String, name: String) = withContext(Dispatchers.IO) {
+        innerTube.renamePlaylist(YouTubeClient.WEB_REMIX, remoteId, name); Unit
+    }
+
+    suspend fun deleteRemote(remoteId: String) = withContext(Dispatchers.IO) {
+        innerTube.deletePlaylist(YouTubeClient.WEB_REMIX, remoteId); Unit
+    }
+
+    suspend fun unsaveRemote(remoteId: String) = withContext(Dispatchers.IO) {
+        innerTube.unlikePlaylist(YouTubeClient.WEB_REMIX, remoteId); Unit
+    }
+
     suspend fun like(videoId: String, liked: Boolean) = withContext(Dispatchers.IO) {
         if (liked) innerTube.likeVideo(YouTubeClient.WEB_REMIX, videoId) else innerTube.unlikeVideo(YouTubeClient.WEB_REMIX, videoId)
         Unit

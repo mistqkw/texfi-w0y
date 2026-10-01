@@ -21,7 +21,7 @@ sealed interface Screen {
     data class Album(val browseId: String, val title: String, val thumb: String?) : Screen
     data class Artist(val browseId: String, val name: String, val thumb: String?) : Screen
     data class Remote(val browseId: String, val title: String, val thumb: String?) : Screen
-    data class Local(val index: Int) : Screen
+    data class Local(val id: String) : Screen
     data object Liked : Screen
     data object History : Screen
     data object Downloaded : Screen
@@ -35,6 +35,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     val player = PlayerCtl(scope, yt, this)
     val downloads = Downloads(scope, yt, this)
     val lyrics = LyricsRepo()
+    val sync = AccountSync(this, yt)
 
     val stack = mutableStateListOf<Screen>(Screen.Home)
     val screen: Screen get() = stack.last()
@@ -48,7 +49,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     var searching by mutableStateOf(false)
     var searchError by mutableStateOf<String?>(null)
 
-    var accountPlaylists by mutableStateOf<List<PlaylistCard>>(emptyList())
+    var accountAlbums by mutableStateOf<List<PlaylistCard>>(emptyList())
     var accountStatus by mutableStateOf<String?>(null)
     var syncing by mutableStateOf(false)
 
@@ -59,7 +60,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         lib.cookie?.let { yt.applySession(it) }
         player.start(lib.queue.map { it.toItem() }, if (lib.queue.isEmpty()) -1 else lib.queueIndex, lib.volume)
         loadHome()
-        if (signedIn) syncAccount()
+        if (signedIn) syncAccount(force = true)
     }
 
     fun shutdown() {
@@ -67,7 +68,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
         store.save(lib)
     }
 
-    private fun update(block: (Library) -> Library) {
+    fun update(block: (Library) -> Library) {
         lib = block(lib)
         store.save(lib)
     }
@@ -80,7 +81,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     fun tab(screen: Screen) {
         stack.clear()
         stack.add(screen)
-        if (screen == Screen.Library && signedIn) syncAccount()
+        if (screen == Screen.Library && signedIn) syncAccount(force = false)
     }
 
     fun back() {
@@ -166,28 +167,65 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
 
     fun saveVolume(volume: Int) = update { it.copy(volume = volume) }
 
+    fun playlist(id: String): StoredPlaylist? = lib.playlists.firstOrNull { it.id == id }
+
+    private fun mutatePlaylist(id: String, block: (StoredPlaylist) -> StoredPlaylist) =
+        update { l -> l.copy(playlists = l.playlists.map { if (it.id == id) block(it) else it }) }
+
+    /** Куда можно добавлять: чужие плейлисты из библиотеки аккаунта YouTube править не даёт. */
+    val editablePlaylists: List<StoredPlaylist> get() = lib.playlists.filter { it.remoteId == null || it.editable }
+
     fun createPlaylist(name: String) {
         val clean = name.trim()
-        if (clean.isNotEmpty()) update { it.copy(playlists = it.playlists + StoredPlaylist(clean)) }
+        if (clean.isEmpty()) return
+        val pl = StoredPlaylist(name = clean)
+        update { it.copy(playlists = it.playlists + pl) }
+        // В аккаунт — следом: плейлист на телефоне не ждёт сети.
+        if (signedIn) {
+            scope.launch {
+                runCatching { yt.createPlaylist(clean) }.getOrNull()?.let { rid -> mutatePlaylist(pl.id) { it.copy(remoteId = rid) } }
+            }
+        }
     }
 
-    fun deletePlaylist(index: Int) {
-        update { it.copy(playlists = it.playlists.filterIndexed { i, _ -> i != index }) }
+    fun renamePlaylist(id: String, name: String) {
+        val clean = name.trim()
+        val pl = playlist(id) ?: return
+        if (clean.isEmpty() || !pl.editable) return
+        mutatePlaylist(id) { it.copy(name = clean) }
+        if (signedIn && pl.remoteId != null) scope.launch { runCatching { yt.renameRemote(pl.remoteId, clean) } }
+    }
+
+    fun deletePlaylist(id: String) {
+        val pl = playlist(id)
+        update { it.copy(playlists = it.playlists.filterNot { p -> p.id == id }) }
         back()
+        val rid = pl?.remoteId
+        if (rid != null && signedIn) {
+            // Чужой плейлист не удаляют, а убирают из библиотеки.
+            scope.launch { runCatching { if (pl.editable) yt.deleteRemote(rid) else yt.unsaveRemote(rid) } }
+        }
     }
 
-    fun addToPlaylist(index: Int, song: SongItem) = update {
-        val list = it.playlists.toMutableList()
-        val pl = list.getOrNull(index) ?: return@update it
-        if (pl.songs.none { s -> s.id == song.id }) list[index] = pl.copy(songs = pl.songs + song.stored())
-        it.copy(playlists = list)
+    fun addToPlaylist(id: String, song: SongItem) {
+        val pl = playlist(id) ?: return
+        if (!pl.editable || pl.songs.any { it.id == song.id }) return
+        mutatePlaylist(id) { it.copy(songs = it.songs + song.stored()) }
+        if (signedIn && pl.remoteId != null) scope.launch { runCatching { yt.addToRemote(pl.remoteId, song.id) } }
     }
 
-    fun removeFromPlaylist(index: Int, songId: String) = update {
-        val list = it.playlists.toMutableList()
-        val pl = list.getOrNull(index) ?: return@update it
-        list[index] = pl.copy(songs = pl.songs.filterNot { s -> s.id == songId })
-        it.copy(playlists = list)
+    fun removeFromPlaylist(id: String, songId: String) {
+        val pl = playlist(id) ?: return
+        if (!pl.editable) return
+        mutatePlaylist(id) { it.copy(songs = it.songs.filterNot { s -> s.id == songId }) }
+        val rid = pl.remoteId
+        if (signedIn && rid != null) {
+            scope.launch {
+                // Убрать трек из плейлиста YouTube можно только зная его место в нём.
+                val place = yt.fetchPlaylist(rid, 30)?.setVideoIds?.get(songId) ?: return@launch
+                runCatching { yt.removeFromRemote(rid, songId, place) }
+            }
+        }
     }
 
     // ---- аккаунт
@@ -204,7 +242,7 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
                 .onSuccess { (name, avatar) ->
                     update { it.copy(cookie = clean, accountName = name, accountAvatar = avatar) }
                     accountStatus = null
-                    syncAccount()
+                    syncAccount(force = true)
                 }.onFailure {
                     yt.applySession(null)
                     accountStatus = "YouTube не принял cookie: ${it.message}"
@@ -214,23 +252,13 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
 
     fun signOut() {
         yt.applySession(null)
-        accountPlaylists = emptyList()
-        update { it.copy(cookie = null, accountName = null, accountAvatar = null) }
+        accountAlbums = emptyList()
+        update { it.copy(cookie = null, accountName = null, accountAvatar = null, likesBase = null) }
     }
 
-    /** Лайки и плейлисты аккаунта подтягиваются при входе в «Моё». Лайки только добавляются. */
-    fun syncAccount() {
-        if (syncing || !signedIn) return
-        scope.launch {
-            syncing = true
-            runCatching {
-                accountPlaylists = yt.accountPlaylists()
-                val remote = yt.likedSongs()
-                val have = likedIds
-                val fresh = remote.filter { it.id !in have }
-                if (fresh.isNotEmpty()) update { it.copy(liked = it.liked + fresh.map { s -> s.stored() }) }
-            }.onFailure { accountStatus = "Сверка не удалась: ${it.message}" }
-            syncing = false
-        }
+    /** Двусторонняя сверка плейлистов и лайков с аккаунтом (см. AccountSync). */
+    fun syncAccount(force: Boolean = true) {
+        if (!signedIn) return
+        scope.launch { sync.run(force) }
     }
 }

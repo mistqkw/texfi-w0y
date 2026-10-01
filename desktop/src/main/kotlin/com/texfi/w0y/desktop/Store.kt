@@ -24,6 +24,8 @@ fun SongItem.stored() = StoredSong(id, title, artist, album, durationText, thumb
 
 @Serializable
 data class StoredPlaylist(
+    /** Стабильный локальный ключ: индекс в списке менялся бы при сверке с аккаунтом. */
+    val id: String = java.util.UUID.randomUUID().toString(),
     val name: String,
     val songs: List<StoredSong> = emptyList(),
     /** Идентификатор плейлиста в аккаунте YouTube (без VL), если он там есть. */
@@ -68,6 +70,8 @@ class Store {
 
     fun load(): Library =
         runCatching { json.decodeFromString<Library>(Files.readString(file)) }.getOrDefault(Library())
+            // Плейлисты из прошлой версии были без id — заводим, иначе у всех он будет общим.
+            .let { lib -> lib.copy(playlists = lib.playlists.map { if (it.id.isBlank()) it.copy(id = java.util.UUID.randomUUID().toString()) else it }) }
 
     @Synchronized
     fun save(library: Library) {

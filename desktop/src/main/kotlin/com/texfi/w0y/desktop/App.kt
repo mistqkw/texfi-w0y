@@ -228,14 +228,14 @@ private fun PlaylistMenu(app: AppState, song: com.texfi.w0y.data.SongItem) {
             Popup(alignment = Alignment.TopStart, offset = IntOffset(0, -220), onDismissRequest = { open = false }, properties = PopupProperties(focusable = true)) {
                 Column(Modifier.width(230.dp).background(C.SurfaceHigh, RoundedCornerShape(6.dp)).border(2.dp, C.Border, RoundedCornerShape(6.dp)).padding(6.dp)) {
                     Txt("В ПЛЕЙЛИСТ", pixel = true, size = 9, color = C.Blue, modifier = Modifier.padding(8.dp))
-                    if (app.lib.playlists.isEmpty()) Txt("Сначала создай плейлист в «Моё».", color = C.Muted, size = 12, modifier = Modifier.padding(8.dp), maxLines = 3)
-                    app.lib.playlists.forEachIndexed { i, pl ->
+                    if (app.editablePlaylists.isEmpty()) Txt("Сначала создай плейлист в «Моё».", color = C.Muted, size = 12, modifier = Modifier.padding(8.dp), maxLines = 3)
+                    app.editablePlaylists.forEach { pl ->
                         val has = pl.songs.any { it.id == song.id }
                         Txt(
                             if (has) "✓ ${pl.name}" else pl.name,
                             color = if (has) C.Sand else C.Text,
                             size = 14,
-                            modifier = Modifier.fillMaxWidth().clickable { app.addToPlaylist(i, song); open = false }.padding(8.dp),
+                            modifier = Modifier.fillMaxWidth().clickable { app.addToPlaylist(pl.id, song); open = false }.padding(8.dp),
                         )
                     }
                     Txt("Следующим в очереди", size = 14, modifier = Modifier.fillMaxWidth().clickable { app.player.enqueue(song, next = true); open = false }.padding(8.dp))
