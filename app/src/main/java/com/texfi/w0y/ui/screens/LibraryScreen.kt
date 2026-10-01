@@ -395,6 +395,8 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
     val songs by viewModel.downloaded.collectAsStateWithLifecycle()
     val progress by viewModel.downloads.progress.collectAsStateWithLifecycle()
     val pending = progress.values.filter { it.state != DownloadState.DONE }
+    val exporting by viewModel.exporting.collectAsStateWithLifecycle()
+    val exportStatus by viewModel.exportStatus.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
@@ -420,6 +422,21 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             modifier = Modifier.padding(top = 4.dp),
         )
         Spacer(Modifier.height(10.dp))
+        if (songs.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PixelButton(
+                    text =
+                        if (exporting) stringResource(R.string.downloads_exporting) else stringResource(R.string.downloads_export),
+                    onClick = { viewModel.exportDownloads(songs) },
+                    enabled = !exporting,
+                )
+                exportStatus?.let {
+                    Spacer(Modifier.width(10.dp))
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.weight(1f))
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
         if (songs.isEmpty() && pending.isEmpty()) {
             EmptyState(
                 sprite = Sprites.download,

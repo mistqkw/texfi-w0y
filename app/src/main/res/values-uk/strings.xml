@@ -392,7 +392,7 @@
     <string name="download_done_one">Завантажено: «%1$s» — грає без мережі</string>
     <string name="download_done_many">Завантажено треків: %1$d</string>
     <string name="download_failed">Не завантажилось: «%1$s»</string>
-    <string name="downloads_where">Лежать усередині застосунку, а не в теці «Музика»: інші плеєри їх не бачать, і видаляються вони разом із застосунком.</string>
+    <string name="downloads_where">Лежать усередині застосунку: інші плеєри їх не бачать, і вони зникають разом із застосунком. Кнопка «зберегти в музику» кладе копії в Музика/w0y music — звідти їх можна забрати на комп’ютер.</string>
     <string name="search_filter_videos">ВІДЕО</string>
     <string name="player_edit_title">ГОТОВІ ПЕРЕРОБКИ</string>
     <string name="player_edit_desc">Чужий slowed або sped up з YouTube — зі своїм зведенням і ехом. Оригінал лишається в черзі позаду.</string>
@@ -436,4 +436,8 @@
     <string name="playlist_readonly">Чужий плейлист із вашої бібліотеки: його можна слухати й завантажувати, але редагувати може лише автор.</string>
     <string name="playlist_rename">перейменувати</string>
     <string name="playlist_rename_save">зберегти</string>
+    <string name="downloads_export">ЗБЕРЕГТИ В МУЗИКУ</string>
+    <string name="downloads_exporting">ЗБЕРІГАЮ…</string>
+    <string name="downloads_export_done">Збережено в Музика/w0y music: %1$d, уже було: %2$d, не вийшло: %3$d.</string>
+    <string name="downloads_export_failed">Не вийшло: треки не читаються з кешу застосунку.</string>
 </resources>

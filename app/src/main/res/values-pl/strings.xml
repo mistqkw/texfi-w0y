@@ -392,7 +392,7 @@
     <string name="download_done_one">Pobrano: „%1$s” — gra bez sieci</string>
     <string name="download_done_many">Pobrano utworów: %1$d</string>
     <string name="download_failed">Nie pobrało się: „%1$s”</string>
-    <string name="downloads_where">Leżą wewnątrz aplikacji, nie w folderze Muzyka: inne odtwarzacze ich nie widzą i znikają razem z aplikacją.</string>
+    <string name="downloads_where">Leżą wewnątrz aplikacji: inne odtwarzacze ich nie widzą i znikają razem z aplikacją. Przycisk „zapisz w muzyce” kładzie kopie w Muzyka/w0y music — stamtąd możesz je zabrać na komputer.</string>
     <string name="search_filter_videos">WIDEO</string>
     <string name="player_edit_title">GOTOWE PRZERÓBKI</string>
     <string name="player_edit_desc">Cudzy slowed albo sped up z YouTube — z własnym miksem i pogłosem. Oryginał zostaje w kolejce za nim.</string>
@@ -436,4 +436,8 @@
     <string name="playlist_readonly">Cudza playlista z twojej biblioteki: możesz jej słuchać i ją pobierać, ale edytować może tylko autor.</string>
     <string name="playlist_rename">zmień nazwę</string>
     <string name="playlist_rename_save">zapisz</string>
+    <string name="downloads_export">ZAPISZ W MUZYCE</string>
+    <string name="downloads_exporting">ZAPISUJĘ…</string>
+    <string name="downloads_export_done">Zapisano w Muzyka/w0y music: %1$d, już były: %2$d, nie wyszło: %3$d.</string>
+    <string name="downloads_export_failed">Nie wyszło: utwory nie dają się odczytać z pamięci podręcznej aplikacji.</string>
 </resources>

@@ -15,6 +15,7 @@ import com.texfi.w0y.data.YtPlaylistSync
 import com.texfi.w0y.data.db.PinEntity
 import com.texfi.w0y.data.db.PlaylistEntity
 import com.texfi.w0y.playback.DownloadsRepository
+import com.texfi.w0y.playback.MusicExporter
 import com.texfi.w0y.playback.PlaybackStarter
 import com.texfi.w0y.playback.PlayerConnection
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,6 +56,7 @@ class LibraryViewModel @Inject constructor(
     private val youtube: YouTubeRepository,
     private val sync: YtPlaylistSync,
     private val accountSync: AccountSync,
+    private val exporter: MusicExporter,
     val downloads: DownloadsRepository,
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
@@ -290,6 +292,30 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
+
+    private val _exportStatus = MutableStateFlow<String?>(null)
+
+    /** Что сказать после выгрузки скачанного в «Музыка/w0y music»; null — ничего. */
+    val exportStatus: StateFlow<String?> = _exportStatus.asStateFlow()
+
+    private val _exporting = MutableStateFlow(false)
+    val exporting: StateFlow<Boolean> = _exporting.asStateFlow()
+
+    /** Складывает скачанные треки в обычную папку, откуда их видят другие плееры и компьютер. */
+    fun exportDownloads(songs: List<SongItem>) {
+        if (_exporting.value || songs.isEmpty()) return
+        viewModelScope.launch {
+            _exporting.value = true
+            _exportStatus.value = null
+            val r = exporter.export(songs)
+            _exportStatus.value =
+                when {
+                    r.failed > 0 && r.saved == 0 && r.existed == 0 -> context.getString(R.string.downloads_export_failed)
+                    else -> context.getString(R.string.downloads_export_done, r.saved, r.existed, r.failed)
+                }
+            _exporting.value = false
+        }
+    }
 
     fun download(song: SongItem) = downloads.download(song)
 

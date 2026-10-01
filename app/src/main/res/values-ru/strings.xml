@@ -392,7 +392,7 @@
     <string name="download_done_one">Скачано: «%1$s» — играет без сети</string>
     <string name="download_done_many">Скачано треков: %1$d</string>
     <string name="download_failed">Не скачалось: «%1$s»</string>
-    <string name="downloads_where">Лежат внутри приложения, а не в папке «Музыка»: другие плееры их не видят, и удаляются они вместе с приложением.</string>
+    <string name="downloads_where">Лежат внутри приложения: другие плееры их не видят, и удаляются они вместе с приложением. Кнопка «сохранить в музыку» кладёт копии в Музыка/w0y music — оттуда их можно забрать на компьютер.</string>
     <string name="search_filter_videos">ВИДЕО</string>
     <string name="player_edit_title">ГОТОВЫЕ ПЕРЕДЕЛКИ</string>
     <string name="player_edit_desc">Чужой slowed или sped up с YouTube — со своим сведением и эхом. Оригинал остаётся в очереди позади.</string>
@@ -436,4 +436,8 @@
     <string name="playlist_readonly">Чужой плейлист из вашей библиотеки: его можно слушать и скачивать, но править может только автор.</string>
     <string name="playlist_rename">переименовать</string>
     <string name="playlist_rename_save">сохранить</string>
+    <string name="downloads_export">СОХРАНИТЬ В МУЗЫКУ</string>
+    <string name="downloads_exporting">СОХРАНЯЮ…</string>
+    <string name="downloads_export_done">Сохранено в Музыка/w0y music: %1$d, уже было: %2$d, не вышло: %3$d.</string>
+    <string name="downloads_export_failed">Не вышло: треки не читаются из кэша приложения.</string>
 </resources>
