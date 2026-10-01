@@ -1,10 +1,19 @@
-# TexFi w0y v0.0.3-beta-1
+# TexFi w0y v0.0.3-beta-2
 
 A YouTube Music client for Android: no ads, no Premium restrictions,
 with your own account and downloads into phone storage.
 
 ## What is new in 0.0.3
 
+- **Save downloads to your Music folder.** Library → Downloaded has a
+  "save to music" button: it writes each downloaded track as one ordinary
+  file into `Music/w0y music` — named "Artist - Title", in the format YouTube
+  gave (m4a or webm/opus, nothing is re-encoded) — where other players see it
+  and you can copy it to a computer. Tracks already saved are skipped. Title,
+  artist and album go into the phone's media library; the file itself does
+  not carry tags or a cover. Written for Android 10+; on Android 8–9 it needs
+  a storage permission the app does not ask for yet, so it may fail there.
+  Not yet tried on many devices — a failed save is reported, not hidden.
 - **Your real YouTube playlists, editable.** Playlists that already lived
   in YouTube Music now appear in Library as ordinary playlists: add and
   remove tracks, rename them, and it all goes back to the account. Playlists
@@ -105,8 +114,8 @@ in both; the APK grew from 7.15 to 7.19 MB.
   its own: the tokens that make a YouTube session are only issued to
   Google's apps. So the account is picked from the phone, and the password
   or confirmation still happens on Google's page.
-- Downloads live inside the app, not in the Music folder: other players do
-  not see them, and they go away with the app.
+- Downloads live inside the app: other players do not see them and they go
+  away with the app, until you press "save to music" — that makes a copy.
 - There is no web version and none is planned.
 - Part of the delay when a track starts comes from YouTube's side. That is
   why the "tap → sound" time is measured and shown on the home screen:

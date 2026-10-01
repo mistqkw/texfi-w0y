@@ -18,8 +18,8 @@ android {
         applicationId = "com.texfi.w0y"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.0.3-beta-1"
+        versionCode = 7
+        versionName = "0.0.3-beta-2"
     }
 
     // Подпись берётся из переменных окружения — так один и тот же файл
