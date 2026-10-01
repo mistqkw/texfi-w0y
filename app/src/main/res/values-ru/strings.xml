@@ -287,7 +287,7 @@
     <string name="settings_about_desc">Версия %1$s, лицензия, исходники и остальной TexFi.</string>
     <string name="settings_about_button">ОТКРЫТЬ</string>
 
-    <!-- 0.0.2: разделы настроек -->
+    <!-- разделы настроек -->
     <string name="settings_section_sound">Звук</string>
     <string name="settings_section_sound_sum">Качество, громкость, тишина</string>
     <string name="settings_section_tone">Звучание</string>
@@ -361,7 +361,7 @@
     <string name="playlist_push_done">Добавлено в аккаунт: %1$d.</string>
     <string name="playlist_push_same">В аккаунте уже всё есть.</string>
     <string name="playlist_push_failed">YouTube не принял загрузку. Плейлист на телефоне не тронут.</string>
-    <!-- 0.0.2: своя версия трека, очередь, шеринг -->
+    <!-- своя версия трека, очередь, шеринг -->
     <string name="player_version_title">Твоя версия этого трека</string>
     <string name="player_version_desc">Скорость, тон и эхо запоминаются за этим треком. Остальные играют как играли — это не настройка на всё приложение.</string>
     <string name="player_version_own">Запомнено за этим треком.</string>
@@ -376,7 +376,7 @@
     <string name="queue_enqueue">В КОНЕЦ</string>
     <string name="share_card_version">Твоя версия этого трека</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
-    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <!-- Отзыв первого тестера -->
     <string name="login_picking">Выбираю аккаунт с телефона…</string>
     <string name="login_account_hint">Аккаунт %1$s уже подставлен — Google спросит только пароль или подтверждение на телефоне.</string>
     <string name="login_other_account">ДРУГОЙ АККАУНТ</string>

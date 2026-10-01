@@ -18,8 +18,10 @@ android {
         applicationId = "com.texfi.w0y"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.0.3-beta-2"
+        // versionCode растёт, а не следует за именем версии: Android не ставит
+        // сборку с меньшим кодом поверх установленной, и пришлось бы стирать данные.
+        versionCode = 8
+        versionName = "0.0.1-beta-1"
     }
 
     // Подпись берётся из переменных окружения — так один и тот же файл

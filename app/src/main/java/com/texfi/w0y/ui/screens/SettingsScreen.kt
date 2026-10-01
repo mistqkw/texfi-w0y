@@ -50,8 +50,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.R
+import com.texfi.w0y.appVersionLabel
 import com.texfi.w0y.data.Accent
 import com.texfi.w0y.data.ExplicitFallback
 import com.texfi.w0y.data.Language
@@ -239,7 +239,7 @@ fun SettingsScreen(
                     }
                     item {
                         Text(
-                            text = stringResource(R.string.settings_version, BuildConfig.VERSION_NAME),
+                            text = stringResource(R.string.settings_version, appVersionLabel),
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.textMuted,
                             modifier = Modifier.padding(top = 16.dp, bottom = 24.dp),
@@ -1117,7 +1117,7 @@ private fun settingsRows(
             SettingRow(
                 section = SettingsSection.DATA,
                 title = stringResource(R.string.settings_about_title),
-                description = stringResource(R.string.settings_about_desc, BuildConfig.VERSION_NAME),
+                description = stringResource(R.string.settings_about_desc, appVersionLabel),
                 keywords = "license agpl",
                 control = SettingControl.Action(stringResource(R.string.settings_about_button), onOpenAbout),
             ),

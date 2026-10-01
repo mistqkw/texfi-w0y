@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.BuildConfig
 import com.texfi.w0y.R
+import com.texfi.w0y.appVersionLabel
 import com.texfi.w0y.ui.components.PixelCard
 import com.texfi.w0y.ui.components.PixelSprite
 import com.texfi.w0y.ui.components.SpriteButton
@@ -215,10 +216,10 @@ private fun AppFacts(
                 },
         )
         // Крупный пиксельный шрифт широкий, и длинная версия в него не
-        // влезает: у debug-сборки к имени добавляется суффикс, и «v0.0.1-
-        // beta-debug» переносилось посреди слова. Длинное имя набирается
+        // влезает: у debug-сборки к имени добавляется суффикс, и «v0.0.1
+        // beta-1-debug» переносилось посреди слова. Длинное имя набирается
         // на размер меньше — лучше, чем перенос в середине версии.
-        val version = "v${BuildConfig.VERSION_NAME}"
+        val version = "v$appVersionLabel"
         Text(
             text = version,
             style = if (version.length > VERSION_FITS) PixelTitle else PixelBigNumber,

@@ -287,7 +287,7 @@
     <string name="settings_about_desc">Version %1$s, licence, sources and the rest of TexFi.</string>
     <string name="settings_about_button">OPEN</string>
 
-    <!-- 0.0.2: settings sections -->
+    <!-- settings sections -->
     <string name="settings_section_sound">Sound</string>
     <string name="settings_section_sound_sum">Quality, loudness, silence</string>
     <string name="settings_section_tone">Tone</string>
@@ -361,7 +361,7 @@
     <string name="playlist_push_done">Added to the account: %1$d.</string>
     <string name="playlist_push_same">The account already has everything.</string>
     <string name="playlist_push_failed">YouTube did not accept the upload. The playlist on the phone is untouched.</string>
-    <!-- 0.0.2: your own version of a track, queue, sharing -->
+    <!-- your own version of a track, queue, sharing -->
     <string name="player_version_title">Your version of this track</string>
     <string name="player_version_desc">Speed, pitch and reverb are remembered for this track. The rest keep playing as they were — this is not a setting for the whole app.</string>
     <string name="player_version_own">Remembered for this track.</string>
@@ -376,7 +376,7 @@
     <string name="queue_enqueue">TO THE END</string>
     <string name="share_card_version">Your version of this track</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
-    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <!-- Отзыв первого тестера -->
     <string name="login_picking">Pick an account from the phone…</string>
     <string name="login_account_hint">Account %1$s is already filled in — Google will only ask for the password or a confirmation on your phone.</string>
     <string name="login_other_account">OTHER ACCOUNT</string>

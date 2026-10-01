@@ -287,7 +287,7 @@
     <string name="settings_about_desc">Wersja %1$s, licencja, źródła i reszta TexFi.</string>
     <string name="settings_about_button">OTWÓRZ</string>
 
-    <!-- 0.0.2: sekcje ustawień -->
+    <!-- sekcje ustawień -->
     <string name="settings_section_sound">Dźwięk</string>
     <string name="settings_section_sound_sum">Jakość, głośność, cisza</string>
     <string name="settings_section_tone">Brzmienie</string>
@@ -361,7 +361,7 @@
     <string name="playlist_push_done">Dodano na konto: %1$d.</string>
     <string name="playlist_push_same">Na koncie już wszystko jest.</string>
     <string name="playlist_push_failed">YouTube nie przyjął wysyłki. Playlista na telefonie jest nietknięta.</string>
-    <!-- 0.0.2: własna wersja utworu, kolejka, udostępnianie -->
+    <!-- własna wersja utworu, kolejka, udostępnianie -->
     <string name="player_version_title">Twoja wersja tego utworu</string>
     <string name="player_version_desc">Tempo, ton i pogłos są pamiętane dla tego utworu. Pozostałe grają jak grały — to nie ustawienie na całą aplikację.</string>
     <string name="player_version_own">Zapamiętane dla tego utworu.</string>
@@ -376,7 +376,7 @@
     <string name="queue_enqueue">NA KONIEC</string>
     <string name="share_card_version">Twoja wersja tego utworu</string>
     <string name="share_card_source">texfi-hub.vercel.app</string>
-    <!-- 0.0.2-beta-2: отзыв первого тестера -->
+    <!-- Отзыв первого тестера -->
     <string name="login_picking">Wybieram konto z telefonu…</string>
     <string name="login_account_hint">Konto %1$s jest już wpisane — Google zapyta tylko o hasło albo potwierdzenie na telefonie.</string>
     <string name="login_other_account">INNE KONTO</string>
