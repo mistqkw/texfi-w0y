@@ -59,11 +59,15 @@ class AppState(val scope: CoroutineScope, val yt: Yt, private val store: Store) 
     fun start() {
         lib.cookie?.let { yt.applySession(it) }
         player.start(lib.queue.map { it.toItem() }, if (lib.queue.isEmpty()) -1 else lib.queueIndex, lib.volume)
+        mpris = Mpris(this, scope).takeIf { it.start() }
         loadHome()
         if (signedIn) syncAccount(force = true)
     }
 
+    private var mpris: Mpris? = null
+
     fun shutdown() {
+        mpris?.stop()
         player.shutdown()
         store.save(lib)
     }

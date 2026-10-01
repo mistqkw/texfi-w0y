@@ -40,6 +40,10 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.6.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
+    // D-Bus: управление с клавиатуры, из шторки и плагинов окружения (MPRIS).
+    implementation("com.github.hypfvieh:dbus-java-core:5.1.0")
+    implementation("com.github.hypfvieh:dbus-java-transport-native-unixsocket:5.1.0")
+    implementation("org.slf4j:slf4j-nop:2.0.17")
     implementation("io.coil-kt.coil3:coil-compose:3.6.3")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
 }
@@ -50,7 +54,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.AppImage)
             // java.net.http нужен загрузкам и текстам; jlink сам его не находит.
-            modules("java.net.http", "java.naming", "jdk.crypto.ec", "jdk.unsupported")
+            modules("java.net.http", "java.naming", "jdk.crypto.ec", "jdk.unsupported", "jdk.security.auth")
             packageName = "w0y"
             packageVersion = "0.0.3"
             description = "TexFi w0y — клиент YouTube Music"
