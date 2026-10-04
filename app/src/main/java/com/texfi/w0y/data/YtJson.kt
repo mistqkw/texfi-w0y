@@ -319,11 +319,22 @@ object YtJson {
      * поэтому берём только полку самого плейлиста, если она нашлась.
      */
     fun playlistTracks(root: JsonElement, first: Boolean): List<SongItem> {
-        if (first) {
-            val shelves = root.findAll("musicPlaylistShelfRenderer")
-            if (shelves.isNotEmpty()) return songsOf(shelves.flatMap { it.findAll(ROW) })
-        }
-        return songs(root)
+        val shelves = if (first) root.findAll("musicPlaylistShelfRenderer") else emptyList()
+        val rows = if (shelves.isNotEmpty()) shelves.flatMap { it.findAll(ROW) } else root.findAll(ROW)
+        return songsOf(ownRows(rows))
+    }
+
+    /**
+     * Строки самого плейлиста, без рекомендаций под ним — не по разметке
+     * страницы, которую YouTube меняет, а по самим строкам: у трека своего
+     * плейлиста есть место в нём (playlistSetVideoId), у рекомендованной
+     * строки — нет. Если мест нет ни у одной строки (чужой плейлист), берём
+     * всё как есть: рекомендаций там и не бывает.
+     */
+    private fun ownRows(rows: List<JsonObject>): List<JsonObject> {
+        fun placed(row: JsonObject) =
+            row.findAll("playlistItemData").any { it["playlistSetVideoId"].asString() != null }
+        return if (rows.any(::placed)) rows.filter(::placed) else rows
     }
 
     /**

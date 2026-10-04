@@ -34,6 +34,7 @@ class PlaybackStarter @Inject constructor(
     private val settings: SettingsRepository,
     private val recommendations: RecommendationRepository,
     private val youtube: YouTubeRepository,
+    private val queueStore: QueueStore,
 ) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var radioJob: Job? = null
@@ -62,6 +63,8 @@ class PlaybackStarter @Inject constructor(
     private var collection = false
 
     init {
+        // Восстановленная после перезапуска очередь помнит, была ли она плейлистом.
+        scope.launch { collection = queueStore.collection() }
         // Режим держим под рукой готовым значением: решать, что играть
         // дальше, приходится в момент нажатия, и ждать чтение настроек там
         // нельзя — это прямая задержка между нажатием и звуком.
@@ -86,7 +89,7 @@ class PlaybackStarter @Inject constructor(
     }
 
     fun play(songs: List<SongItem>, index: Int) {
-        collection = false
+        setCollection(false)
         launch(songs, index)
     }
 
@@ -97,8 +100,24 @@ class PlaybackStarter @Inject constructor(
      * остаётся вперемешку.
      */
     fun playCollection(songs: List<SongItem>, index: Int) {
-        collection = true
+        setCollection(true)
         launch(songs, index)
+    }
+
+    /**
+     * Кнопка «перемешать» у альбома или артиста: их треки вперемешку и
+     * только они — явная кнопка сильнее выбранного режима очереди.
+     */
+    fun shuffleCollection(songs: List<SongItem>) {
+        if (songs.isEmpty()) return
+        setCollection(true)
+        radioJob?.cancel()
+        player.play(prepare(songs).shuffled(), 0)
+    }
+
+    private fun setCollection(value: Boolean) {
+        collection = value
+        scope.launch { queueStore.setCollection(value) }
     }
 
     private fun launch(songs: List<SongItem>, index: Int) {
@@ -180,7 +199,7 @@ class PlaybackStarter @Inject constructor(
         scope.launch { settings.setQueueMode(mode) }
         _mode.value = mode
         // Режим включили руками — значит, рекомендации хотят и для плейлиста.
-        if (mode == QueueMode.RADIO) collection = false
+        if (mode == QueueMode.RADIO) setCollection(false)
         radioJob?.cancel()
         val current = player.state.value.song ?: return
         when (mode) {

@@ -35,6 +35,31 @@ class PlaylistOnlyOwnTracksTest {
         assertEquals(3, YtJson.songs(root).size)
     }
 
+    /** Своя строка — с местом в плейлисте; у рекомендации места нет. */
+    private fun placedRow(id: String) = row(id).replace("""{"videoId":"$id"}""", """{"videoId":"$id","playlistSetVideoId":"SET$id"}""")
+
+    @Test
+    fun suggestionsDroppedEvenWithoutPlaylistShelf() {
+        // YouTube сменил разметку: полки плейлиста нет, всё в общих полках.
+        val root =
+            Json.parseToJsonElement(
+                """
+                {"contents":{"sectionListRenderer":{"contents":[
+                  {"musicShelfRenderer":{"contents":[${placedRow("own00000001")},${row("sug00000001")},${placedRow("own00000002")}]}}
+                ]}}}
+                """.trimIndent(),
+            )
+        assertEquals(listOf("own00000001", "own00000002"), YtJson.playlistTracks(root, first = true).map { it.id })
+        // Продолжение тоже чистится.
+        assertEquals(listOf("own00000001", "own00000002"), YtJson.playlistTracks(root, first = false).map { it.id })
+    }
+
+    @Test
+    fun foreignPlaylistKeepsAllRows() {
+        val root = Json.parseToJsonElement("""{"contents":[${row("abc00000001")},${row("abc00000002")}]}""")
+        assertEquals(2, YtJson.playlistTracks(root, first = true).size)
+    }
+
     @Test
     fun continuationIsThePlaylistOne() {
         val root = Json.parseToJsonElement(page())

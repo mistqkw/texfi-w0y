@@ -119,10 +119,7 @@ class BrowseViewModel @Inject constructor(
     fun playCollection(songs: List<SongItem>, index: Int) = playback.playCollection(songs, index)
 
     /** Явная кнопка «перемешать» сильнее выбранного режима: её только что нажали. */
-    fun shuffle(songs: List<SongItem>) {
-        if (songs.isEmpty()) return
-        player.play(songs.shuffled(), 0)
-    }
+    fun shuffle(songs: List<SongItem>) = playback.shuffleCollection(songs)
 
     fun download(song: SongItem) = downloads.download(song)
 

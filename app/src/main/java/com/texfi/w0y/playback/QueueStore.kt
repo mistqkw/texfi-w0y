@@ -3,6 +3,7 @@ package com.texfi.w0y.playback
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -31,6 +32,17 @@ data class SavedQueue(val songs: List<SongItem>, val index: Int, val positionMs:
 class QueueStore @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
+    /**
+     * Очередь — плейлист или альбом. Переживает перезапуск вместе с самой
+     * очередью: иначе после перезапуска в конец плейлиста снова полезли бы
+     * рекомендации.
+     */
+    suspend fun setCollection(value: Boolean) {
+        context.queueStore.edit { it[COLLECTION] = value }
+    }
+
+    suspend fun collection(): Boolean = runCatching { context.queueStore.data.first()[COLLECTION] ?: false }.getOrDefault(false)
+
     suspend fun save(songs: List<SongItem>, index: Int, positionMs: Long) {
         if (songs.isEmpty()) {
             context.queueStore.edit { it.remove(KEY) }
@@ -87,6 +99,7 @@ class QueueStore @Inject constructor(
 
     private companion object {
         val KEY = stringPreferencesKey("queue")
+        val COLLECTION = booleanPreferencesKey("collection")
 
         /** Длиннее очередь не нужна: дальше это уже не очередь, а библиотека. */
         const val MAX_SONGS = 300
