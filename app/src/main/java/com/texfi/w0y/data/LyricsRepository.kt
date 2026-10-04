@@ -12,8 +12,11 @@ import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
-/** Строка синхронизированной лирики. */
-data class LyricLine(val timeMs: Long, val text: String)
+/** Слово с моментом начала — из расширенного LRC (`<01:02.30>слово`). */
+data class LyricWord(val timeMs: Long, val text: String)
+
+/** Строка синхронизированной лирики; [words] пусты, если пословных меток нет. */
+data class LyricLine(val timeMs: Long, val text: String, val words: List<LyricWord> = emptyList())
 
 data class Lyrics(
     val plain: String?,
@@ -139,20 +142,60 @@ class LyricsRepository @Inject constructor(
         return lyrics.takeUnless { it.isEmpty }
     }
 
-    private fun parseLrc(raw: String): List<LyricLine> {
-        val stamp = Regex("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?]")
-        return raw
+    private fun parseLrc(raw: String): List<LyricLine> = LrcParser.parse(raw)
+}
+
+/**
+ * Разбор LRC без Android — проверяется тестом.
+ *
+ * Строка `[мм:сс.хх]текст`; в расширенном варианте внутри строки ещё
+ * метки слов `<мм:сс.хх>`. Метки слов вырезаются из текста и становятся
+ * [LyricWord]: по ним подсвечивается слово, которое звучит.
+ */
+object LrcParser {
+    private val lineStamp = Regex("\\[(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?]")
+    private val wordStamp = Regex("<(\\d{1,2}):(\\d{2})(?:[.:](\\d{1,3}))?>")
+
+    fun parse(raw: String): List<LyricLine> =
+        raw
             .lineSequence()
             .mapNotNull { line ->
-                val match = stamp.find(line) ?: return@mapNotNull null
-                val (minutes, seconds, fraction) = match.destructured
-                val millis =
-                    minutes.toLong() * 60_000 +
-                        seconds.toLong() * 1_000 +
-                        (fraction.padEnd(3, '0').take(3).toLongOrNull() ?: 0)
-                val text = line.substring(match.range.last + 1).trim()
-                text.takeIf { it.isNotBlank() }?.let { LyricLine(millis, it) }
+                val match = lineStamp.find(line) ?: return@mapNotNull null
+                val start = millis(match.groupValues)
+                val body = line.substring(match.range.last + 1)
+                val words = words(body)
+                val text = wordStamp.replace(body, "").replace(Regex("\\s+"), " ").trim()
+                text.takeIf { it.isNotBlank() }?.let { LyricLine(start, it, words) }
             }.sortedBy { it.timeMs }
             .toList()
+
+    private fun words(body: String): List<LyricWord> {
+        val stamps = wordStamp.findAll(body).toList()
+        if (stamps.isEmpty()) return emptyList()
+        return stamps.mapIndexedNotNull { i, m ->
+            val end = stamps.getOrNull(i + 1)?.range?.first ?: body.length
+            val word = body.substring(m.range.last + 1, end).trim()
+            word.takeIf { it.isNotEmpty() }?.let { LyricWord(millis(m.groupValues), it) }
+        }
+    }
+
+    private fun millis(g: List<String>): Long =
+        g[1].toLong() * 60_000 + g[2].toLong() * 1_000 + (g[3].padEnd(3, '0').take(3).toLongOrNull() ?: 0)
+
+    /** Индекс строки, которая звучит в [positionMs]; -1 — ещё ни одна. */
+    fun activeIndex(lines: List<LyricLine>, positionMs: Long): Int {
+        var lo = 0
+        var hi = lines.lastIndex
+        var found = -1
+        while (lo <= hi) {
+            val mid = (lo + hi) ushr 1
+            if (lines[mid].timeMs <= positionMs) {
+                found = mid
+                lo = mid + 1
+            } else {
+                hi = mid - 1
+            }
+        }
+        return found
     }
 }
