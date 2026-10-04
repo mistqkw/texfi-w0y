@@ -120,6 +120,7 @@ object YtJson {
                     artistId = links.firstOrNull { it.startsWith("UC") },
                     albumId = links.firstOrNull { it.startsWith("MPRE") },
                     explicit = obj.hasExplicitBadge(),
+                    artists = obj.artistLinks(),
                 )
             }.distinctBy { it.id }
 
@@ -397,6 +398,7 @@ object YtJson {
                     artistId = links.firstOrNull { it.startsWith("UC") },
                     albumId = links.firstOrNull { it.startsWith("MPRE") },
                     explicit = obj.hasExplicitBadge(),
+                    artists = obj.artistLinks(),
                 )
             }.distinctBy { it.id }
 
@@ -455,6 +457,36 @@ object YtJson {
     /** Все browseId в поддереве — в порядке появления. */
     fun JsonElement.browseIds(): List<String> =
         findAll("browseEndpoint").mapNotNull { (it["browseId"] as? JsonPrimitive)?.content }
+
+    /**
+     * Исполнители из подписи: раны с текстом и ссылкой на канал (UC…), по
+     * порядку и без повторов. У фита их несколько — каждый открывается сам.
+     * Пункты меню («перейти к артисту») сюда не попадают: у них текст не
+     * строкой, а ранами.
+     */
+    fun JsonElement.artistLinks(): List<ArtistLink> {
+        val out = LinkedHashMap<String, ArtistLink>()
+        fun walk(element: JsonElement) {
+            when (element) {
+                is JsonObject -> {
+                    val text = (element["text"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+                    val id =
+                        element["navigationEndpoint"]
+                            ?.findAll("browseEndpoint")
+                            ?.firstNotNullOfOrNull { (it["browseId"] as? JsonPrimitive)?.content }
+                    if (text != null && id != null && id.startsWith("UC") && text.isNotBlank()) {
+                        out.getOrPut(id) { ArtistLink(id, text.trim()) }
+                    }
+                    element.forEach { (_, value) -> walk(value) }
+                }
+
+                is JsonArray -> element.forEach(::walk)
+                else -> Unit
+            }
+        }
+        walk(this)
+        return out.values.toList()
+    }
 
     /** Самая крупная картинка в поддереве. */
     fun JsonElement.bestThumbnail(): String? {

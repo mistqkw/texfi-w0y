@@ -48,7 +48,8 @@ fun AddToPlaylistPanel(
     onPlayNext: (() -> Unit)? = null,
     onEnqueue: (() -> Unit)? = null,
     onDownload: (() -> Unit)? = null,
-    onArtist: (() -> Unit)? = null,
+    /** Переход к исполнителю; у фита кнопка на каждого. */
+    onArtist: ((com.texfi.w0y.data.ArtistLink) -> Unit)? = null,
     onAlbum: (() -> Unit)? = null,
 ) {
     val colors = LocalW0yColors.current
@@ -83,15 +84,17 @@ fun AddToPlaylistPanel(
                         )
                     }
                 }
-                if (onDownload != null || onArtist != null || onAlbum != null) {
+                val artists = if (onArtist != null) song.artistLinks() else emptyList()
+                if (onDownload != null || artists.isNotEmpty() || onAlbum != null) {
                     Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         onDownload?.let {
                             PixelButton(text = stringResource(R.string.track_download), onClick = it, fill = colors.surfaceHigh)
                         }
-                        onArtist?.let {
-                            PixelButton(text = stringResource(R.string.player_to_artist), onClick = it, fill = colors.surfaceHigh)
-                        }
+                        ArtistButtons(artists) { onArtist?.invoke(it) }
                         onAlbum?.let {
                             PixelButton(text = stringResource(R.string.player_to_album), onClick = it, fill = colors.surfaceHigh)
                         }
@@ -146,5 +149,24 @@ fun AddToPlaylistPanel(
                 PixelButton(text = stringResource(R.string.add_to_playlist_new), onClick = { onNewNameChange("") })
             }
         }
+    }
+}
+
+/**
+ * Кнопки перехода к исполнителям: один — «к артисту», у фита — по кнопке
+ * с именем каждого, чтобы открыть любого, а не только первого.
+ */
+@Composable
+fun ArtistButtons(
+    artists: List<com.texfi.w0y.data.ArtistLink>,
+    onOpen: (com.texfi.w0y.data.ArtistLink) -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    if (artists.size == 1) {
+        PixelButton(text = stringResource(R.string.player_to_artist), onClick = { onOpen(artists[0]) }, fill = colors.surfaceHigh)
+        return
+    }
+    artists.forEach { artist ->
+        PixelButton(text = artist.name, onClick = { onOpen(artist) }, fill = colors.surfaceHigh)
     }
 }

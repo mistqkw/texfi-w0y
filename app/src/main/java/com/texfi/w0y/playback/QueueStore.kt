@@ -47,6 +47,7 @@ class QueueStore @Inject constructor(
                     .put("thumb", song.thumbnailUrl ?: JSONObject.NULL)
                     .put("artistId", song.artistId ?: JSONObject.NULL)
                     .put("albumId", song.albumId ?: JSONObject.NULL)
+                    .put("artists", com.texfi.w0y.data.ArtistLink.encode(song.artists) ?: JSONObject.NULL)
                     .put("duration", song.durationText ?: JSONObject.NULL),
             )
         }
@@ -75,6 +76,7 @@ class QueueStore @Inject constructor(
                         artistId = item.optStringOrNull("artistId"),
                         albumId = item.optStringOrNull("albumId"),
                         durationText = item.optStringOrNull("duration"),
+                        artists = com.texfi.w0y.data.ArtistLink.decode(item.optStringOrNull("artists")),
                     )
                 }
             if (songs.isEmpty()) null else SavedQueue(songs, obj.optInt("index", 0).coerceIn(0, songs.lastIndex), obj.optLong("position", 0L))

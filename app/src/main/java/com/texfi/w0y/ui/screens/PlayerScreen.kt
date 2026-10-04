@@ -460,18 +460,17 @@ fun PlayerScreen(
                 }
                 // Переход к артисту и альбому прямо из плеера: из него чаще
                 // всего и хочется уйти «послушать, что ещё у них есть».
-                if (song.artistId != null || song.albumId != null) {
+                // У фита — кнопка на каждого исполнителя.
+                val artists = song.artistLinks()
+                if (artists.isNotEmpty() || song.albumId != null) {
                     Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        song.artistId?.let { id ->
-                            PixelButton(
-                                text = stringResource(R.string.player_to_artist),
-                                fill = colors.surfaceHigh,
-                                onClick = {
-                                    onCollapse()
-                                    navigator.open(BrowseRoute.Artist(id, song.artist, song.thumbnailUrl))
-                                },
-                            )
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        com.texfi.w0y.ui.components.ArtistButtons(artists) { artist ->
+                            onCollapse()
+                            navigator.open(BrowseRoute.Artist(artist.id, artist.name, song.thumbnailUrl))
                         }
                         song.albumId?.let { id ->
                             PixelButton(

@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PinEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class W0yDatabase : RoomDatabase() {
@@ -98,8 +98,16 @@ abstract class W0yDatabase : RoomDatabase() {
                 }
             }
 
+        /** 6 → 7: у трека все исполнители со ссылками, а не только первый — для фитов. */
+        val MIGRATION_6_7 =
+            object : Migration(6, 7) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE songs ADD COLUMN artistLinks TEXT")
+                }
+            }
+
         /** Все миграции по порядку — и для приложения, и для тестов. */
-        val ALL by lazy { arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6) }
+        val ALL by lazy { arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7) }
 
         /** Метка «E»: её показывает список, поэтому хранится вместе с треком. */
         val MIGRATION_2_3 =

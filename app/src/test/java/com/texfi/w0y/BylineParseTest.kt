@@ -67,4 +67,36 @@ class BylineParseTest {
         assertEquals("Минин", item.artist)
         assertEquals("1.4M прослушиваний", item.plays)
     }
+
+    @Test
+    fun featHasEveryArtistWithLink() {
+        fun artist(name: String, id: String) =
+            """{"text":"$name","navigationEndpoint":{"browseEndpoint":{"browseId":"$id"}}}"""
+        val payload =
+            """
+            {"contents":[{"musicResponsiveListItemRenderer":{
+              "playlistItemData":{"videoId":"abc12345678"},
+              "flexColumns":[
+                {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Трек"}]}}},
+                {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[
+                  ${artist("Shluzov", "UCaaa")},{"text":", "},${artist("DJ SENSX", "UCbbb")},{"text":" и "},${artist("qwzbtw0", "UCccc")},
+                  {"text":" • "},{"text":"Альбом","navigationEndpoint":{"browseEndpoint":{"browseId":"MPREx"}}}
+                ]}}}
+              ]
+            }}]}
+            """.trimIndent()
+        val song = YtJson.songs(Json.parseToJsonElement(payload)).single()
+        assertEquals(listOf("UCaaa", "UCbbb", "UCccc"), song.artists.map { it.id })
+        assertEquals(listOf("Shluzov", "DJ SENSX", "qwzbtw0"), song.artists.map { it.name })
+        assertEquals("UCaaa", song.artistId)
+        // Через базу и очередь список едет строкой и возвращается тем же.
+        val back = com.texfi.w0y.data.ArtistLink.decode(com.texfi.w0y.data.ArtistLink.encode(song.artists))
+        assertEquals(song.artists, back)
+    }
+
+    @Test
+    fun oldSongStillOpensFirstArtist() {
+        val old = com.texfi.w0y.data.SongItem(id = "x", title = "t", artist = "A, B", artistId = "UCa")
+        assertEquals(listOf(com.texfi.w0y.data.ArtistLink("UCa", "A, B")), old.artistLinks())
+    }
 }

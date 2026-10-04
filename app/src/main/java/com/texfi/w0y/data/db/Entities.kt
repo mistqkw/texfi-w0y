@@ -50,6 +50,8 @@ data class SongEntity(
      * ни половину трека для правила прослушивания.
      */
     val durationMs: Long? = null,
+    /** Все исполнители со ссылками — [com.texfi.w0y.data.ArtistLink.encode]. */
+    val artistLinks: String? = null,
 ) {
     /** Версия трека, если она вообще задана: скорость обязательна. */
     fun sound(): SoundProfile? =
@@ -73,6 +75,7 @@ data class SongEntity(
             albumId = albumId,
             explicit = explicit,
             sound = sound(),
+            artists = com.texfi.w0y.data.ArtistLink.decode(artistLinks),
         )
 
     companion object {
@@ -96,6 +99,7 @@ data class SongEntity(
                 artistId = song.artistId,
                 albumId = song.albumId,
                 explicit = song.explicit,
+                artistLinks = com.texfi.w0y.data.ArtistLink.encode(song.artists),
             )
     }
 }

@@ -321,13 +321,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     menuViewModel.download(song)
                     close()
                 },
-                onArtist =
-                    song.artistId?.let { id ->
-                        {
-                            navigator.open(BrowseRoute.Artist(id, song.artist, song.thumbnailUrl))
-                            close()
-                        }
-                    },
+                onArtist = { artist ->
+                    navigator.open(BrowseRoute.Artist(artist.id, artist.name, song.thumbnailUrl))
+                    close()
+                },
                 onAlbum =
                     song.albumId?.let { id ->
                         {

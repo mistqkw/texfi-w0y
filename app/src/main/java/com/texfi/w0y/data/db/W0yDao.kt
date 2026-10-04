@@ -44,6 +44,7 @@ interface W0yDao {
             thumbnailUrl = COALESCE(:thumbnailUrl, thumbnailUrl),
             artistId = COALESCE(:artistId, artistId),
             albumId = COALESCE(:albumId, albumId),
+            artistLinks = COALESCE(:artistLinks, artistLinks),
             explicit = CASE WHEN :explicit THEN 1 ELSE explicit END
         WHERE id = :id
         """,
@@ -57,6 +58,7 @@ interface W0yDao {
         thumbnailUrl: String?,
         artistId: String?,
         albumId: String?,
+        artistLinks: String?,
         explicit: Boolean,
     )
 
@@ -81,6 +83,7 @@ interface W0yDao {
             thumbnailUrl = song.thumbnailUrl,
             artistId = song.artistId,
             albumId = song.albumId,
+            artistLinks = song.artistLinks,
             explicit = song.explicit,
         )
     }

@@ -401,6 +401,7 @@ class PlayerConnection @Inject constructor(
             // смог бы предложить «к артисту», хотя из списка их знали.
             artistId = mediaMetadata.extras?.getString(EXTRA_ARTIST_ID),
             albumId = mediaMetadata.extras?.getString(EXTRA_ALBUM_ID),
+            artists = com.texfi.w0y.data.ArtistLink.decode(mediaMetadata.extras?.getString(EXTRA_ARTISTS)),
         )
 
     // setCustomCacheKey помечен в media3 как нестабильный: без него кэш
@@ -426,6 +427,7 @@ class PlayerConnection @Inject constructor(
                         Bundle().apply {
                             putString(EXTRA_ARTIST_ID, song.artistId)
                             putString(EXTRA_ALBUM_ID, song.albumId)
+                            putString(EXTRA_ARTISTS, com.texfi.w0y.data.ArtistLink.encode(song.artists))
                         },
                     ).build(),
             ).build()
@@ -434,6 +436,7 @@ class PlayerConnection @Inject constructor(
         const val SAVE_DEBOUNCE_MS = 600L
         const val SAVE_TICK_MS = 15_000L
         const val EXTRA_ARTIST_ID = "w0y.artistId"
+        const val EXTRA_ARTISTS = "w0y.artists"
         const val EXTRA_ALBUM_ID = "w0y.albumId"
     }
 }
