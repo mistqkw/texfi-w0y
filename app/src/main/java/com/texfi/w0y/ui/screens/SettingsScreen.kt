@@ -51,6 +51,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
@@ -76,6 +79,7 @@ import com.texfi.w0y.ui.components.SpriteButton
 import com.texfi.w0y.ui.components.Sprites
 import com.texfi.w0y.ui.components.pressScale
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.liquidGlass
 import com.texfi.w0y.ui.theme.screenBackground
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import kotlinx.coroutines.launch
@@ -236,12 +240,16 @@ fun SettingsScreen(
                 }
             }
 
+        // Под стеклянными панелями список уходит под них, а отступ снизу
+        // докручивает последний пункт над ними; без стекла — над жестами.
+        val barsInset = com.texfi.w0y.ui.components.LocalBarsInset.current
+        val glass = com.texfi.w0y.ui.theme.isSmooth
         LazyColumn(
             Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .then(if (barsInset > 0.dp) Modifier else Modifier.navigationBarsPadding()),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 18.dp, end = 18.dp, bottom = barsInset),
+            verticalArrangement = Arrangement.spacedBy(if (glass) 0.dp else 4.dp),
         ) {
             when {
                 current != null -> {
@@ -253,13 +261,30 @@ fun SettingsScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
-                    if (current == SettingsSection.DEVICES) {
-                        item { DevicesBody(viewModel) }
+                    if (glass) {
+                        // Весь раздел — одна стеклянная группа, строки через тонкую черту.
+                        item {
+                            GlassGroup {
+                                if (current == SettingsSection.DEVICES) {
+                                    Box(Modifier.padding(horizontal = 16.dp)) { DevicesBody(viewModel) }
+                                    GroupDivider(start = 16.dp)
+                                }
+                                val inSection = rows.filter { it.section == current }
+                                inSection.forEachIndexed { index, row ->
+                                    Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { SettingRowView(row) }
+                                    if (index < inSection.lastIndex) GroupDivider(start = 16.dp)
+                                }
+                            }
+                        }
+                    } else {
+                        if (current == SettingsSection.DEVICES) {
+                            item { DevicesBody(viewModel) }
+                        }
+                        items(
+                            items = rows.filter { it.section == current },
+                            key = { "${it.section}-${it.title}" },
+                        ) { row -> SettingRowView(row) }
                     }
-                    items(
-                        items = rows.filter { it.section == current },
-                        key = { "${it.section}-${it.title}" },
-                    ) { row -> SettingRowView(row) }
                     item { Spacer(Modifier.height(24.dp)) }
                 }
 
@@ -273,15 +298,45 @@ fun SettingsScreen(
                             )
                         }
                     } else {
-                        items(matches, key = { "${it.section}-${it.title}" }) { row ->
-                            SettingRowView(row, sectionHint = stringResource(row.section.title))
+                        if (glass) {
+                            item {
+                                GlassGroup {
+                                    matches.forEachIndexed { index, row ->
+                                        Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                                            SettingRowView(row, sectionHint = stringResource(row.section.title))
+                                        }
+                                        if (index < matches.lastIndex) GroupDivider(start = 16.dp)
+                                    }
+                                }
+                            }
+                        } else {
+                            items(matches, key = { "${it.section}-${it.title}" }) { row ->
+                                SettingRowView(row, sectionHint = stringResource(row.section.title))
+                            }
                         }
                         item { Spacer(Modifier.height(24.dp)) }
                     }
 
                 else -> {
-                    items(SettingsSection.entries, key = { it.name }) { entry ->
-                        SectionCard(entry) { section = entry.name }
+                    if (glass) {
+                        // Как в iOS: разделы собраны в стеклянные группы с подписью.
+                        SectionGroup.entries.forEach { group ->
+                            item(key = group.name) {
+                                Column {
+                                    GroupCaption(stringResource(group.title))
+                                    GlassGroup {
+                                        group.sections.forEachIndexed { index, entry ->
+                                            GlassSectionRow(entry) { section = entry.name }
+                                            if (index < group.sections.lastIndex) GroupDivider(start = 54.dp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        items(SettingsSection.entries, key = { it.name }) { entry ->
+                            SectionCard(entry) { section = entry.name }
+                        }
                     }
                     item {
                         Text(
@@ -354,6 +409,84 @@ private class SettingRow(
     /** Слова, по которым пункт тоже должен находиться. */
     val keywords: String = "",
 )
+
+/** Группы разделов на главной странице настроек — для вида со стеклом. */
+private enum class SectionGroup(@StringRes val title: Int, val sections: List<SettingsSection>) {
+    SOUND(R.string.settings_group_sound, listOf(SettingsSection.SOUND, SettingsSection.TONE, SettingsSection.PLAYER)),
+    SPEED(R.string.settings_group_speed, listOf(SettingsSection.SPEED, SettingsSection.STORAGE, SettingsSection.DOWNLOADS)),
+    MUSIC(R.string.settings_group_music, listOf(SettingsSection.SEARCH, SettingsSection.ACCOUNT, SettingsSection.CLEAN)),
+    APP(R.string.settings_group_app, listOf(SettingsSection.LOOK, SettingsSection.DEVICES, SettingsSection.DATA)),
+}
+
+/** Стеклянная группа строк: одна поверхность, строки внутри — без своих подложек. */
+@Composable
+private fun GlassGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            // В тёмной теме группа — серое стекло, светлее фона, как в iOS:
+            // почти чёрная на чёрном она не читалась бы группой.
+            .liquidGlass(
+                androidx.compose.foundation.shape.RoundedCornerShape(26.dp),
+                tint = if (LocalW0yColors.current.background.luminance() > 0.5f) null else Color(0xFF2E2E33),
+            )
+            .padding(vertical = 4.dp),
+        content = content,
+    )
+}
+
+/** Тонкая черта между строками группы, с отступом под иконку — как в iOS. */
+@Composable
+private fun GroupDivider(start: androidx.compose.ui.unit.Dp) {
+    Box(
+        Modifier
+            .padding(start = start)
+            .fillMaxWidth()
+            .height(0.5.dp)
+            .background(LocalW0yColors.current.text.copy(alpha = 0.1f)),
+    )
+}
+
+/** Подпись группы: мелко, заглавными, приглушённо. */
+@Composable
+private fun GroupCaption(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.4.sp),
+        color = LocalW0yColors.current.textMuted,
+        modifier = Modifier.padding(start = 14.dp, top = 22.dp, bottom = 8.dp),
+    )
+}
+
+/** Строка раздела внутри стеклянной группы: иконка, название, подпись, стрелка. */
+@Composable
+private fun GlassSectionRow(section: SettingsSection, onClick: () -> Unit) {
+    val colors = LocalW0yColors.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PixelSprite(rows = section.sprite, color = colors.text, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = stringResource(section.title),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = colors.text,
+            )
+            Text(
+                text = stringResource(section.summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted,
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        PixelSprite(rows = Sprites.chevronRight, color = colors.textMuted, modifier = Modifier.size(14.dp))
+    }
+}
 
 @Composable
 private fun SectionCard(section: SettingsSection, onClick: () -> Unit) {

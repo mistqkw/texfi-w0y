@@ -316,6 +316,10 @@
     <string name="settings_section_data">Данные</string>
     <string name="settings_section_data_sum">Выгрузка настроек, сброс, о приложении</string>
     <string name="settings_search_placeholder">Найти настройку</string>
+    <string name="settings_group_sound">Звук и плеер</string>
+    <string name="settings_group_speed">Скорость и память</string>
+    <string name="settings_group_music">Музыка и аккаунт</string>
+    <string name="settings_group_app">Приложение</string>
     <string name="settings_search_nothing_title">НЕ НАШЛОСЬ</string>
     <string name="settings_search_nothing_text">Такой настройки здесь нет. Попробуйте одно слово вместо двух.</string>
     <string name="settings_version">Версия %1$s</string>

@@ -316,6 +316,10 @@
     <string name="settings_section_data">Data</string>
     <string name="settings_section_data_sum">Export settings, reset, about the app</string>
     <string name="settings_search_placeholder">Find a setting</string>
+    <string name="settings_group_sound">Sound &amp; player</string>
+    <string name="settings_group_speed">Speed &amp; storage</string>
+    <string name="settings_group_music">Music &amp; account</string>
+    <string name="settings_group_app">App</string>
     <string name="settings_search_nothing_title">NOTHING FOUND</string>
     <string name="settings_search_nothing_text">No such setting here. Try one word instead of two.</string>
     <string name="settings_version">Version %1$s</string>

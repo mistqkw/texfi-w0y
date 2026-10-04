@@ -316,6 +316,10 @@
     <string name="settings_section_data">Dane</string>
     <string name="settings_section_data_sum">Eksport ustawień, reset, o aplikacji</string>
     <string name="settings_search_placeholder">Znajdź ustawienie</string>
+    <string name="settings_group_sound">Dźwięk i odtwarzacz</string>
+    <string name="settings_group_speed">Szybkość i pamięć</string>
+    <string name="settings_group_music">Muzyka i konto</string>
+    <string name="settings_group_app">Aplikacja</string>
     <string name="settings_search_nothing_title">NIC NIE ZNALEZIONO</string>
     <string name="settings_search_nothing_text">Takiego ustawienia tu nie ma. Spróbuj jednego słowa zamiast dwóch.</string>
     <string name="settings_version">Wersja %1$s</string>

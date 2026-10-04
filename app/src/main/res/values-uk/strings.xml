@@ -316,6 +316,10 @@
     <string name="settings_section_data">Дані</string>
     <string name="settings_section_data_sum">Вивантаження налаштувань, скидання, про застосунок</string>
     <string name="settings_search_placeholder">Знайти налаштування</string>
+    <string name="settings_group_sound">Звук і плеєр</string>
+    <string name="settings_group_speed">Швидкість і пам\'ять</string>
+    <string name="settings_group_music">Музика й акаунт</string>
+    <string name="settings_group_app">Застосунок</string>
     <string name="settings_search_nothing_title">НЕ ЗНАЙШЛОСЯ</string>
     <string name="settings_search_nothing_text">Такого налаштування тут немає. Спробуйте одне слово замість двох.</string>
     <string name="settings_version">Версія %1$s</string>

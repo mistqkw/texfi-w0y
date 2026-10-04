@@ -264,6 +264,11 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     route = lastBrowse,
                     onBack = { if (browseStack.isNotEmpty()) browseStack.removeAt(browseStack.lastIndex) },
                 )
+                // Со стеклом настройки открываются под нижними панелями: те
+                // остаются на месте и размывают их, вкладка закрывает настройки.
+                if (glassBars) {
+                    SettingsLayer(settingsOpen, onClose = { settingsOpen = false }, onOpenLogin = { loginOpen = true })
+                }
             }
             }
         }
@@ -307,7 +312,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     FloatingNavBar(
                         items = Tab.entries.map { NavItem(stringResource(it.labelRes), it.sprite) },
                         selected = tab.ordinal,
-                        onSelect = { tab = Tab.entries[it] },
+                        onSelect = {
+                            tab = Tab.entries[it]
+                            settingsOpen = false
+                        },
                         standalone = Tab.SEARCH.ordinal,
                     )
                 }
@@ -369,15 +377,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             }
         }
 
-        AnimatedVisibility(
-            visible = settingsOpen,
-            enter = slideInVertically(tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack)) { it / 3 },
-            exit = slideOutVertically(tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)) { it / 3 },
-        ) {
-            SettingsScreen(
-                onClose = { settingsOpen = false },
-                onOpenLogin = { loginOpen = true },
-            )
+        // Без стекла настройки — поверх всего; со стеклом они внутри экрана,
+        // под панелями (см. выше), как в iOS.
+        if (!glassBars) {
+            SettingsLayer(settingsOpen, onClose = { settingsOpen = false }, onOpenLogin = { loginOpen = true })
         }
 
         // Приветствие поверх всего: на первом запуске за ним ещё нечего
@@ -488,3 +491,15 @@ private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> U
 }
 
 private val BAR_MAX_WIDTH = 560.dp
+
+/** Настройки с выездом снизу — одна обёртка для обоих мест, где они живут. */
+@Composable
+private fun SettingsLayer(visible: Boolean, onClose: () -> Unit, onOpenLogin: () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack)) { it / 3 },
+        exit = slideOutVertically(tween(W0yMotion.FAST_MS, easing = W0yMotion.Step)) { it / 3 },
+    ) {
+        SettingsScreen(onClose = onClose, onOpenLogin = onOpenLogin)
+    }
+}
