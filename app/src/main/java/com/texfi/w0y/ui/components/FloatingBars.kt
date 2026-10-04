@@ -121,8 +121,8 @@ fun FloatingNavBar(
     modifier: Modifier = Modifier,
     standalone: Int? = null,
 ) {
-    if (LocalBarBackdrop.current != null && styleTokens.glass) {
-        GlassNavBar(items, selected, onSelect, modifier, standalone)
+    if (standalone != null) {
+        SplitNavBar(items, selected, onSelect, modifier, standalone)
         return
     }
     val colors = LocalW0yColors.current
@@ -217,29 +217,42 @@ fun FloatingNavBar(
 }
 
 /**
- * Навигация на стекле, как в iOS 26: вкладки в одной капсуле, поиск —
- * отдельным кругом справа. Выбранная вкладка — светлая капсула под
- * иконкой, она плавно переезжает; по капсуле можно вести пальцем.
+ * Навигация, разделённая на два блока: вкладки вместе, поиск — отдельно
+ * справа.
+ *
+ * Smooth (как в iOS 26): капсула и круг, выбранная вкладка — светлая
+ * капсула, переезжает плавно. Pixel (TexFi): два квадратных блока с рамкой
+ * и жёсткой тенью, выбранная вкладка — блок акцента, переезжает ступенями.
+ * По блоку вкладок можно вести пальцем.
  */
 @Composable
-private fun GlassNavBar(
+private fun SplitNavBar(
     items: List<NavItem>,
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier,
     standalone: Int?,
 ) {
+    val colors = LocalW0yColors.current
+    val smooth = isSmooth
+    val tokens = styleTokens
     val inCapsule = items.indices.filter { it != standalone }
     val capsuleIndex = inCapsule.indexOf(selected)
     val position = remember { Animatable(capsuleIndex.coerceAtLeast(0).toFloat()) }
-    LaunchedEffect(capsuleIndex) {
-        if (capsuleIndex >= 0) position.animateTo(capsuleIndex.toFloat(), spring(dampingRatio = 0.8f, stiffness = 500f))
+    LaunchedEffect(capsuleIndex, smooth) {
+        if (capsuleIndex >= 0) {
+            position.animateTo(
+                capsuleIndex.toFloat(),
+                if (smooth) spring(dampingRatio = 0.8f, stiffness = 500f) else tween(NAV_MS, easing = SteppedEasing(NAV_STEPS)),
+            )
+        }
     }
-    val pillAlpha by animateFloatAsState(if (capsuleIndex >= 0) 1f else 0f, tween(180), label = "pill")
+    val pillAlpha by animateFloatAsState(if (capsuleIndex >= 0) 1f else 0f, if (smooth) tween(180) else snap(), label = "pill")
     val tick = rememberTapHaptic()
     val select by rememberUpdatedState(onSelect)
     val currentSelected by rememberUpdatedState(selected)
-    val pill = glassSelection
+    val pill = if (smooth) glassSelection else colors.accent
+    val pillShape = if (smooth) GlassCapsule else tokens.chip
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         FloatingSurface(Modifier.weight(1f)) {
             BoxWithConstraints(
@@ -273,7 +286,7 @@ private fun GlassNavBar(
                         .width(slot)
                         .height(NAV_HEIGHT)
                         .graphicsLayer { alpha = pillAlpha }
-                        .clip(GlassCapsule)
+                        .clip(pillShape)
                         .background(pill),
                 )
                 Row(Modifier.fillMaxWidth()) {
@@ -285,13 +298,14 @@ private fun GlassNavBar(
         }
         if (standalone != null) {
             val active = selected == standalone
-            Spacer(Modifier.width(10.dp))
+            // Pixel: зазор шире — в нём жёсткая тень блока вкладок.
+            Spacer(Modifier.width(if (smooth) 10.dp else 12.dp))
             FloatingSurface(Modifier.size(NAV_HEIGHT + NAV_INSET * 2), shape = CircleShape) {
                 Box(
                     Modifier
                         .padding(NAV_INSET)
                         .size(NAV_HEIGHT)
-                        .clip(CircleShape)
+                        .clip(if (smooth) CircleShape else tokens.chip)
                         .background(if (active) pill else Color.Transparent),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -302,12 +316,20 @@ private fun GlassNavBar(
     }
 }
 
-/** Пункт стеклянной навигации: иконка и подпись, выбранный — ярче. */
+/**
+ * Пункт разделённой навигации: иконка и подпись. Выбранный в Smooth —
+ * ярче, в Pixel — цвета поверх акцента, без плавной смены.
+ */
 @Composable
 private fun NavCell(item: NavItem, active: Boolean, label: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = LocalW0yColors.current
+    val smooth = isSmooth
     val interaction = remember { MutableInteractionSource() }
-    val tint by animateColorAsState(if (active) colors.text else colors.textMuted, tween(180), label = "glassNavTint")
+    val tint by animateColorAsState(
+        targetValue = if (!active) colors.textMuted else if (smooth) colors.text else colors.onAccent,
+        animationSpec = if (smooth) tween(180) else snap(),
+        label = "splitNavTint",
+    )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,

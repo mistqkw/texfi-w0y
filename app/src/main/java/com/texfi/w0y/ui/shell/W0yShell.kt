@@ -264,11 +264,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     route = lastBrowse,
                     onBack = { if (browseStack.isNotEmpty()) browseStack.removeAt(browseStack.lastIndex) },
                 )
-                // Со стеклом настройки открываются под нижними панелями: те
-                // остаются на месте и размывают их, вкладка закрывает настройки.
-                if (glassBars) {
-                    SettingsLayer(settingsOpen, onClose = { settingsOpen = false }, onOpenLogin = { loginOpen = true })
-                }
+                // Настройки открываются внутри экрана, под нижними панелями: те
+                // остаются на месте (со стеклом — размывают их), вкладка
+                // закрывает настройки.
+                SettingsLayer(settingsOpen, onClose = { settingsOpen = false }, onOpenLogin = { loginOpen = true })
             }
             }
         }
@@ -377,11 +376,6 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             }
         }
 
-        // Без стекла настройки — поверх всего; со стеклом они внутри экрана,
-        // под панелями (см. выше), как в iOS.
-        if (!glassBars) {
-            SettingsLayer(settingsOpen, onClose = { settingsOpen = false }, onOpenLogin = { loginOpen = true })
-        }
 
         // Приветствие поверх всего: на первом запуске за ним ещё нечего
         // смотреть, а сразу после него — уже настроенное приложение.
