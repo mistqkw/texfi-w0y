@@ -1,5 +1,12 @@
 package com.texfi.w0y.ui.screens
 
+import androidx.compose.foundation.gestures.detectTapGestures
+import com.texfi.w0y.ui.components.forUi
+import com.texfi.w0y.ui.components.Visualizer
+import com.texfi.w0y.ui.components.LyricsView
+import com.texfi.w0y.data.LyricsSize
+import com.texfi.w0y.data.PlayerArt
+import androidx.activity.compose.BackHandler
 import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
@@ -122,6 +129,7 @@ private enum class PlayerTab(@StringRes val label: Int) {
 @Composable
 fun PlayerScreen(
     onCollapse: () -> Unit,
+    onStand: () -> Unit = {},
     viewModel: PlayerViewModel = hiltViewModel(),
 ) {
     val colors = LocalW0yColors.current
@@ -188,6 +196,11 @@ fun PlayerScreen(
     var showPlaylists by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableStateOf(PlayerTab.QUEUE) }
+    var lyricsFull by remember { mutableStateOf(false) }
+    val art = settings.playerArt
+    val toggleArt: () -> Unit = {
+        viewModel.setPlayerArt(if (art == PlayerArt.COVER) PlayerArt.VISUALIZER else PlayerArt.COVER)
+    }
 
     LaunchedEffect(song.id) { viewModel.ensureLyrics(song) }
     LaunchedEffect(song.id, state.isPlaying) {
@@ -199,6 +212,36 @@ fun PlayerScreen(
             delay(POSITION_POLL_MS)
             position = viewModel.player.positionMs()
         }
+    }
+
+    // Текст во весь экран: тот же компонент, крупнее и по центру.
+    val syncedLyrics = lyrics?.synced.orEmpty()
+    if (lyricsFull && syncedLyrics.isNotEmpty()) {
+        BackHandler { lyricsFull = false }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(colors.background)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+        ) {
+            LyricsView(
+                lines = syncedLyrics,
+                translation = translation,
+                positionProvider = viewModel.player::positionMs,
+                playing = state.isPlaying,
+                size = settings.lyricsSize,
+                onSeek = viewModel.player::seekTo,
+                centered = true,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            )
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                SpriteButton(Sprites.collapse, onClick = { lyricsFull = false }, size = 24)
+                Spacer(Modifier.weight(1f))
+                Text(song.title, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, maxLines = 1)
+            }
+        }
+        return
     }
 
     val tint by rememberCoverTint(song.thumbnailUrl, colors.accent)
@@ -260,6 +303,10 @@ fun PlayerScreen(
                             )
                         }
                     }
+                    SpriteButton(rows = Sprites.wave, onClick = toggleArt, active = art == PlayerArt.VISUALIZER)
+                    Spacer(Modifier.width(16.dp))
+                    SpriteButton(rows = Sprites.stand, onClick = onStand)
+                    Spacer(Modifier.width(16.dp))
                     SpriteButton(
                         rows = Sprites.timer,
                         onClick = { if (sleepLeft == null) viewModel.startSleepTimer() else viewModel.cancelSleepTimer() },
@@ -327,16 +374,36 @@ fun PlayerScreen(
                             .clip(RoundedCornerShape(10.dp))
                             .background(colors.shadow),
                     )
-                    CoverImage(
-                        url = song.thumbnailUrl,
-                        px = Thumbnails.HERO,
-                        corner = 10,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .border(2.dp, colors.border, RoundedCornerShape(10.dp)),
-                    )
+                    if (art == PlayerArt.VISUALIZER) {
+                        // Визуализатор на месте обложки; нажатие возвращает обложку.
+                        Visualizer(
+                            bus = viewModel.spectrum,
+                            style = settings.visualizerStyle.forUi(settings.uiStyle),
+                            playing = state.isPlaying,
+                            sensitivity = settings.visualizerSensitivity,
+                            fps = settings.visualizerFps,
+                            backdropUrl = song.thumbnailUrl.takeIf { settings.visualizerCoverBackdrop },
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(colors.surface)
+                                    .pointerInput(Unit) { detectTapGestures { toggleArt() } },
+                        )
+                    } else {
+                        CoverImage(
+                            url = song.thumbnailUrl,
+                            px = Thumbnails.HERO,
+                            corner = 10,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .border(2.dp, colors.border, RoundedCornerShape(10.dp))
+                                    .pointerInput(Unit) { detectTapGestures { toggleArt() } },
+                        )
+                    }
                 }
                 Spacer(Modifier.height(18.dp))
             }
@@ -653,30 +720,27 @@ fun PlayerScreen(
                             }
 
                         text.synced.isNotEmpty() -> {
-                            val current = dragPosition ?: position
-                            val activeIndex = text.synced.indexOfLast { it.timeMs <= current }
-                            itemsIndexed(
-                                items = text.synced,
-                                key = { index, line -> "$index-${line.timeMs}" },
-                            ) { index, line ->
-                                Column(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable { viewModel.player.seekTo(line.timeMs) }
-                                        .padding(vertical = 3.dp),
-                                ) {
-                                    Text(
-                                        text = line.text,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (index == activeIndex) colors.accent else colors.textMuted,
-                                    )
-                                    translation?.getOrNull(index)?.takeIf { it.isNotBlank() && it != line.text }?.let {
-                                        Text(
-                                            text = it,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = if (index == activeIndex) colors.accent else colors.textMuted.copy(alpha = 0.7f),
+                            item(key = "lyrics-view") {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        PixelSegmented(
+                                            options = LyricsSize.entries.map { stringResource(it.label) },
+                                            selectedIndex = settings.lyricsSize.ordinal,
+                                            onSelect = { viewModel.setLyricsSize(LyricsSize.entries[it]) },
+                                            modifier = Modifier.weight(1f),
                                         )
+                                        Spacer(Modifier.width(14.dp))
+                                        SpriteButton(Sprites.fullscreen, onClick = { lyricsFull = true }, size = 22)
                                     }
+                                    LyricsView(
+                                        lines = text.synced,
+                                        translation = translation,
+                                        positionProvider = viewModel.player::positionMs,
+                                        playing = state.isPlaying,
+                                        size = settings.lyricsSize,
+                                        onSeek = viewModel.player::seekTo,
+                                        modifier = Modifier.fillMaxWidth().height(LYRICS_HEIGHT),
+                                    )
                                 }
                             }
                         }
@@ -1042,6 +1106,7 @@ private fun formatTime(ms: Long): String {
 
 /** Пока играет — четыре раза в секунду; на паузе опроса нет вовсе. */
 private const val POSITION_POLL_MS = 250L
+private val LYRICS_HEIGHT = 440.dp
 
 /** Смахивание короче этого — случайное движение, а не переключение трека. */
 private const val SWIPE_THRESHOLD_PX = 120f

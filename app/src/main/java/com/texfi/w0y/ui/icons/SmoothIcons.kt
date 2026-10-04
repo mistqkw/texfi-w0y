@@ -50,6 +50,7 @@ object SmoothIcons {
             s.globe to globe, s.headphones to headphones, s.sync to sync, s.palette to palette,
             s.shield to shield, s.rocket to rocket, s.box to box, s.share to share,
             s.chevronUp to chevronUp, s.note to note, s.grip to grip,
+            s.stand to stand, s.fullscreen to fullscreen,
         )
     }
 
@@ -1316,6 +1317,76 @@ object SmoothIcons {
                 horizontalLineTo(5.0f)
                 curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
                 reflectiveCurveToRelative(0.45f, 1.0f, 1.0f, 1.0f)
+                close()
+            }
+        }
+    }
+
+    /** Rounded.Nightlight */
+    val stand: ImageVector by lazy {
+        icon("Nightlight") {
+            materialPath {
+                moveTo(11.57f, 2.3f)
+                curveToRelative(2.38f, -0.59f, 4.68f, -0.27f, 6.63f, 0.64f)
+                curveToRelative(0.35f, 0.16f, 0.41f, 0.64f, 0.1f, 0.86f)
+                curveTo(15.7f, 5.6f, 14.0f, 8.6f, 14.0f, 12.0f)
+                reflectiveCurveToRelative(1.7f, 6.4f, 4.3f, 8.2f)
+                curveToRelative(0.32f, 0.22f, 0.26f, 0.7f, -0.09f, 0.86f)
+                curveTo(16.93f, 21.66f, 15.5f, 22.0f, 14.0f, 22.0f)
+                curveToRelative(-6.05f, 0.0f, -10.85f, -5.38f, -9.87f, -11.6f)
+                curveTo(4.74f, 6.48f, 7.72f, 3.24f, 11.57f, 2.3f)
+                close()
+            }
+        }
+    }
+
+    /** Rounded.Fullscreen */
+    val fullscreen: ImageVector by lazy {
+        icon("Fullscreen") {
+            materialPath {
+                moveTo(6.0f, 14.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                verticalLineToRelative(3.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                horizontalLineToRelative(3.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                reflectiveCurveToRelative(-0.45f, -1.0f, -1.0f, -1.0f)
+                lineTo(7.0f, 17.0f)
+                verticalLineToRelative(-2.0f)
+                curveToRelative(0.0f, -0.55f, -0.45f, -1.0f, -1.0f, -1.0f)
+                close()
+                moveTo(6.0f, 10.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                lineTo(7.0f, 7.0f)
+                horizontalLineToRelative(2.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                reflectiveCurveToRelative(-0.45f, -1.0f, -1.0f, -1.0f)
+                lineTo(6.0f, 5.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                verticalLineToRelative(3.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                close()
+                moveTo(17.0f, 17.0f)
+                horizontalLineToRelative(-2.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                reflectiveCurveToRelative(0.45f, 1.0f, 1.0f, 1.0f)
+                horizontalLineToRelative(3.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                verticalLineToRelative(-3.0f)
+                curveToRelative(0.0f, -0.55f, -0.45f, -1.0f, -1.0f, -1.0f)
+                reflectiveCurveToRelative(-1.0f, 0.45f, -1.0f, 1.0f)
+                verticalLineToRelative(2.0f)
+                close()
+                moveTo(14.0f, 6.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                horizontalLineToRelative(2.0f)
+                verticalLineToRelative(2.0f)
+                curveToRelative(0.0f, 0.55f, 0.45f, 1.0f, 1.0f, 1.0f)
+                reflectiveCurveToRelative(1.0f, -0.45f, 1.0f, -1.0f)
+                lineTo(19.0f, 6.0f)
+                curveToRelative(0.0f, -0.55f, -0.45f, -1.0f, -1.0f, -1.0f)
+                horizontalLineToRelative(-3.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
                 close()
             }
         }

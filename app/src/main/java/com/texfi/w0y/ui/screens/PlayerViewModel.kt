@@ -47,7 +47,14 @@ class PlayerViewModel @Inject constructor(
     private val shareCards: ShareCardRenderer,
     private val youtube: YouTubeRepository,
     devices: AudioDevicesRepository,
+    /** Отвод звука для визуализатора. */
+    val spectrum: com.texfi.w0y.playback.SpectrumBus,
 ) : ViewModel() {
+    /** Обложка или визуализатор — выбор запоминается. */
+    fun setPlayerArt(art: com.texfi.w0y.data.PlayerArt) = viewModelScope.launch { settingsRepository.setPlayerArt(art) }
+
+    fun setLyricsSize(size: com.texfi.w0y.data.LyricsSize) = viewModelScope.launch { settingsRepository.setLyricsSize(size) }
+
     private val _edit = MutableStateFlow<EditSearch>(EditSearch.Idle)
 
     /** Поиск готовой переделки: идёт, не нашлось или уже играет. */
