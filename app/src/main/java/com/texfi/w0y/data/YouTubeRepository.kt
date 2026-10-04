@@ -208,8 +208,11 @@ class YouTubeRepository @Inject constructor(
             innerTube
                 .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, params = params, setLogin = true)
                 .body<JsonObject>()
-        val collected = YtJson.songs(first).toMutableList()
-        var token = YtJson.continuation(first)
+        // Только треки самого плейлиста: под своим плейлистом YouTube кладёт
+        // «рекомендованные» строки того же вида, и раньше они попадали
+        // в список и в очередь как будто из плейлиста.
+        val collected = YtJson.playlistTracks(first, first = true).toMutableList()
+        var token = YtJson.playlistContinuation(first)
         var page = 1
         while (token != null && page < maxPages) {
             val next =
@@ -222,13 +225,26 @@ class YouTubeRepository @Inject constructor(
                             setLogin = true,
                         ).body<JsonObject>()
                 }.getOrNull() ?: break
-            val more = YtJson.songs(next)
+            val more = YtJson.playlistTracks(next, first = false)
             if (more.isEmpty()) break
             collected += more
             token = YtJson.continuation(next)
             page++
         }
         collected.distinctBy { it.id }
+    }
+
+    /**
+     * Рекомендации под плейлистом — отдельно от его треков. Нужны, только
+     * если человек сам включил «показывать рекомендации в плейлистах».
+     */
+    suspend fun playlistSuggestions(browseId: String): List<SongItem> = withContext(Dispatchers.IO) {
+        val first =
+            innerTube
+                .browse(client = YouTubeClient.WEB_REMIX, browseId = browseId, setLogin = true)
+                .body<JsonObject>()
+        val own = YtJson.playlistTracks(first, first = true).map { it.id }.toSet()
+        YtJson.songs(first).filterNot { it.id in own }
     }
 
     /**
@@ -276,24 +292,79 @@ class YouTubeRepository @Inject constructor(
      * запросы (нажатие пользователя и предзагрузка очереди) не запускали
      * две расшифровки одного и того же трека.
      */
-    suspend fun stream(videoId: String): ExtractedStream {
-        cached(videoId)?.let { return it }
-        val lock = locks.getOrPut(videoId) { Mutex() }
+    suspend fun stream(videoId: String): ExtractedStream = stream(videoId, quality = null)
+
+    /**
+     * Поток с явным качеством — для загрузок: у них свой выбор качества,
+     * отдельный от воспроизведения. Кэшируется под своим ключом, чтобы
+     * загрузка в «лучшем» не подменила плееру ссылку «экономной».
+     */
+    suspend fun stream(videoId: String, quality: Quality?): ExtractedStream {
+        val key = if (quality == null) videoId else "$videoId#${quality.name}"
+        cached(key)?.let { return it }
+        val lock = locks.getOrPut(key) { Mutex() }
         return lock.withLock {
-            cached(videoId) ?: withContext(Dispatchers.IO) {
+            cached(key) ?: withContext(Dispatchers.IO) {
+                val started = System.nanoTime()
                 val extracted =
                     extractor.extract(
                         videoId = videoId,
                         hints = ContentHints(wantVideo = false),
-                        audioQuality = currentQuality(),
+                        audioQuality = quality?.let(::toAudioQuality) ?: currentQuality(),
                     // Библиотека возвращает null, когда YouTube отказал в
                     // воспроизведении (регион, возрастное ограничение,
                     // удалённое видео). Молчаливое null здесь превратилось бы
                     // в бесконечную «загрузку» в интерфейсе.
-                    ) ?: error("YouTube не отдал поток для $videoId")
-                remember(videoId, extracted)
+                    ) ?: throw NoStreamException(videoId)
+                resolveMs[videoId] = (System.nanoTime() - started) / 1_000_000
+                remember(key, extracted)
                 extracted
             }
+        }
+    }
+
+    /** Сколько заняло последнее получение адреса — часть разбора «нажал → звук». */
+    private val resolveMs = ConcurrentHashMap<String, Long>()
+
+    /** Время получения адреса для трека и сброс записи; null — адрес был в кэше. */
+    fun takeResolveMs(videoId: String): Long? = resolveMs.remove(videoId)
+
+    /**
+     * Что известно о потоке, кроме адреса: предел диапазона, если YouTube
+     * его задал, и полный размер. Только из кэша — сеть здесь не трогаем.
+     */
+    fun streamHint(key: String): com.texfi.w0y.playback.StreamHint? {
+        val stream = streams[key] ?: return null
+        val limit = if (stream.useRangeChunks || stream.requireBoundedRange) stream.rangeChunkSizeBytes else null
+        return com.texfi.w0y.playback.StreamHint(limit?.takeIf { it > 0 }, stream.contentLengthBytes)
+    }
+
+    /** Забыть адрес: он истёк или сервер его отверг. */
+    fun invalidate(videoId: String) {
+        streams.keys.filter { it == videoId || it.startsWith("$videoId#") }.forEach(streams::remove)
+    }
+
+    /**
+     * Свежий адрес взамен отвергнутого, синхронно — его ждёт поток
+     * загрузчика, посреди файла. Качество то же, что было.
+     */
+    fun refreshBlocking(videoId: String, quality: Quality?): com.texfi.w0y.playback.ResolvedAudio? {
+        invalidate(videoId)
+        return runCatching {
+            kotlinx.coroutines.runBlocking { stream(videoId, quality) }
+        }.map { com.texfi.w0y.playback.ResolvedAudio(it.audioUrl, it.headers) }.getOrNull()
+    }
+
+    private val warmed = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Прогрев извлечения: конфигурация плеера и токены готовятся заранее,
+     * а не в момент первого нажатия. Один раз за процесс, в фоне.
+     */
+    fun prewarm() {
+        if (!warmed.compareAndSet(false, true)) return
+        prefetchScope.launch {
+            runCatching { extractor.prewarm() }.onFailure { Timber.w(it, "Прогрев извлечения не удался") }
         }
     }
 
@@ -303,6 +374,23 @@ class YouTubeRepository @Inject constructor(
         prefetchScope.launch {
             runCatching { stream(videoId) }
                 .onFailure { Timber.w(it, "Предзагрузка $videoId не удалась") }
+        }
+    }
+
+    /** Есть ли живой адрес в кэше. */
+    fun hasFreshStream(videoId: String): Boolean = cached(videoId) != null
+
+    /**
+     * Адреса для нескольких треков по очереди — для плиток быстрого набора.
+     * Последовательно и с паузой: это фоновая подготовка, она не должна
+     * спорить за сеть с тем, что играет или грузится на экране.
+     */
+    fun prefetchSequential(videoIds: List<String>, gapMs: Long = 400) {
+        prefetchScope.launch {
+            videoIds.filter { cached(it) == null }.forEach { id ->
+                runCatching { stream(id) }
+                kotlinx.coroutines.delay(gapMs)
+            }
         }
     }
 
@@ -338,14 +426,26 @@ class YouTubeRepository @Inject constructor(
                     capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
             }.getOrDefault(true)
         val quality = if (onWifi) prefs.qualityWifi else prefs.qualityMobile
-        return when (quality) {
+        return toAudioQuality(quality)
+    }
+
+    /** На Wi-Fi ли телефон — от этого зависит выбор качества. */
+    fun onWifi(): Boolean =
+        runCatching {
+            val manager = context.getSystemService(ConnectivityManager::class.java)
+            val capabilities = manager?.getNetworkCapabilities(manager.activeNetwork)
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+        }.getOrDefault(true)
+
+    private fun toAudioQuality(quality: Quality): AudioQuality =
+        when (quality) {
             Quality.LOW -> AudioQuality.LOW
             // Библиотека знает только LOW/HIGH/AUTO: «среднее» честнее
             // отдать её автоматике, чем выдумывать несуществующую ступень.
             Quality.MEDIUM -> AudioQuality.AUTO
             Quality.HIGH -> AudioQuality.HIGH
         }
-    }
 
     private fun cached(videoId: String): ExtractedStream? {
         val stream = streams[videoId] ?: return null
@@ -359,6 +459,9 @@ class YouTubeRepository @Inject constructor(
             null
         }
     }
+
+    /** YouTube не отдал поток: регион, возраст, удалённое видео. */
+    class NoStreamException(videoId: String) : IllegalStateException("YouTube не отдал поток для $videoId")
 
     companion object {
         /**

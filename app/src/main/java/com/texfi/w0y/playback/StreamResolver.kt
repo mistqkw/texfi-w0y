@@ -36,6 +36,8 @@ class StreamResolver(
     private val repository: YouTubeRepository,
     private val fallback: FallbackAudio,
     private val settings: SettingsRepository,
+    /** Своё качество для загрузок; null — то же, что у воспроизведения. */
+    private val downloadQuality: (() -> com.texfi.w0y.data.Quality)? = null,
 ) : ResolvingDataSource.Resolver {
     override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
         val videoId = dataSpec.key ?: dataSpec.uri.host ?: return dataSpec
@@ -44,7 +46,7 @@ class StreamResolver(
         fallback.remember(videoId, dataSpec.uri.getQueryParameter("t"), dataSpec.uri.getQueryParameter("a"), dataSpec.uri.getQueryParameter("d"))
         val audio =
             try {
-                val stream = runBlocking { repository.stream(videoId) }
+                val stream = runBlocking { repository.stream(videoId, downloadQuality?.invoke()) }
                 ResolvedAudio(stream.audioUrl, stream.headers)
             } catch (error: Exception) {
                 val prefs = runBlocking { settings.settings.first() }

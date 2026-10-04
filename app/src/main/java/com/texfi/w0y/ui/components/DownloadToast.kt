@@ -77,7 +77,7 @@ fun DownloadToast(
             Text(
                 text = noticeText(notice),
                 style = MaterialTheme.typography.bodySmall,
-                color = if (notice is DownloadNotice.Failed) colors.secondary else colors.text,
+                color = if (notice is DownloadNotice.Failed || notice is DownloadNotice.StorageFull) colors.secondary else colors.text,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -111,7 +111,10 @@ private fun noticeText(notice: DownloadNotice): String =
         is DownloadNotice.Finished ->
             notice.title?.let { stringResource(R.string.download_done_one, it) }
                 ?: stringResource(R.string.download_done_many, notice.count)
-        is DownloadNotice.Failed -> stringResource(R.string.download_failed, notice.title)
+        is DownloadNotice.Failed ->
+            stringResource(R.string.dl_failed_with, notice.title, stringResource(notice.reason.label))
+        is DownloadNotice.StorageFull -> stringResource(R.string.dl_storage_full, notice.limitMb)
+        DownloadNotice.PausedForBattery -> stringResource(R.string.dl_paused_battery)
     }
 
 private const val SHOW_MS = 4_000L

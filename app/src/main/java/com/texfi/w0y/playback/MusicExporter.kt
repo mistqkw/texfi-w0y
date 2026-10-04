@@ -2,16 +2,21 @@ package com.texfi.w0y.playback
 
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.SimpleCache
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
+import com.texfi.w0y.data.Thumbnails
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -19,38 +24,46 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import timber.log.Timber
 
 /** Чем кончилась выгрузка: сколько треков легло в папку, сколько уже лежало, сколько не вышло. */
 data class ExportResult(val saved: Int, val existed: Int, val failed: Int)
 
 /**
- * Выгрузка скачанного в обычную папку «Музыка/w0y music».
+ * «Сохранить на устройство»: скачанное — в обычную папку, откуда его видят
+ * другие плееры и компьютер.
  *
- * Скачанное лежит в кэше плеера кусками без имён, и открыть его нечем. Здесь
- * трек читается из кэша тем же источником данных, что и воспроизведение
- * (только кэш, в сеть не ходим), и пишется одним файлом через MediaStore: на
- * Android 10+ разрешений для этого не нужно, а другие плееры и проводник
- * видят файл сразу. Формат остаётся тем, что отдал YouTube (m4a или
- * webm/opus): перекодирования нет, поэтому нет потерь и нет ожидания.
+ * Папку выбирает сам человек через системный выбор (доступ только к ней,
+ * без разрешения на всю память); не выбрал — «Музыка/w0y music» через
+ * MediaStore. Трек читается из хранилища загрузок тем же источником, что и
+ * воспроизведение (только хранилище, в сеть не ходим), и пишется одним
+ * файлом в исходном формате — без перекодирования, без потерь и без
+ * ожидания.
  *
- * Теги title/artist/album попадают в медиатеку телефона, а сам файл
- * несёт их в имени «Исполнитель - Название»: встроить теги внутрь
- * контейнера без отдельной библиотеки нельзя.
+ * Имя — «Исполнитель - Название». Дубли не плодятся: если файл с таким
+ * именем уже лежит, трек считается сохранённым. Внутрь m4a кладутся
+ * название, исполнитель, альбом и обложка ([Mp4Tagger]); WebM/Opus без
+ * сторонней библиотеки так не разметить — у него теги только в медиатеке.
  */
 @Singleton
 @OptIn(UnstableApi::class)
 class MusicExporter @Inject constructor(
     @param:ApplicationContext private val context: Context,
     @param:Named("download") private val cache: SimpleCache,
+    private val settings: SettingsRepository,
+    private val okHttp: OkHttpClient,
 ) {
     suspend fun export(songs: List<SongItem>): ExportResult = withContext(Dispatchers.IO) {
+        val tree = settings.settings.first().exportTreeUri.takeIf { it.isNotBlank() }?.let(Uri::parse)
         var saved = 0
         var existed = 0
         var failed = 0
         songs.forEach { song ->
-            runCatching { exportOne(song) }
+            runCatching { exportOne(song, tree) }
                 .onSuccess { if (it) saved++ else existed++ }
                 .onFailure {
                     Timber.w(it, "Не выгрузился трек %s", song.id)
@@ -61,7 +74,30 @@ class MusicExporter @Inject constructor(
     }
 
     /** true — файл записан, false — такой уже лежит в папке. */
-    private fun exportOne(song: SongItem): Boolean {
+    private fun exportOne(song: SongItem, tree: Uri?): Boolean {
+        val bytes = readAll(song)
+        val format = detect(bytes)
+        val name = fileName(song, format.extension)
+        val body =
+            if (format.extension == "m4a") {
+                Mp4Tagger.tag(bytes, AudioTags(song.title, song.artist, song.album, cover(song))) ?: bytes
+            } else {
+                bytes
+            }
+        val sink = (if (tree != null) openTree(tree, name, format.mime) else open(song, name, format.mime)) ?: return false
+        var complete = false
+        try {
+            sink.stream.write(body)
+            complete = true
+        } finally {
+            sink.stream.close()
+            sink.finish(complete)
+        }
+        return true
+    }
+
+    /** Трек целиком из хранилища загрузок. Тегирование всё равно требует весь файл. */
+    private fun readAll(song: SongItem): ByteArray {
         val source =
             CacheDataSource
                 .Factory()
@@ -70,53 +106,86 @@ class MusicExporter @Inject constructor(
                 .createDataSource()
         source.open(DataSpec.Builder().setUri(w0yUri(song)).setKey(song.id).build())
         try {
+            val out = ByteArrayOutputStream()
             val buffer = ByteArray(BUFFER)
-            val first = source.read(buffer, 0, buffer.size)
-            require(first > 0) { "в кэше нет данных трека" }
-            val format = detect(buffer, first)
-            val name = fileName(song, format.extension)
-            val sink = open(song, name, format.mime) ?: return false
-            var complete = false
-            try {
-                sink.stream.write(buffer, 0, first)
-                while (true) {
-                    val n = source.read(buffer, 0, buffer.size)
-                    if (n < 0) break
-                    sink.stream.write(buffer, 0, n)
-                }
-                complete = true
-            } finally {
-                sink.stream.close()
-                sink.finish(complete)
+            while (true) {
+                val n = source.read(buffer, 0, buffer.size)
+                if (n < 0) break
+                out.write(buffer, 0, n)
             }
-            return true
+            require(out.size() > 0) { "в хранилище нет данных трека" }
+            return out.toByteArray()
         } finally {
             source.close()
         }
     }
 
-    private class Format(val extension: String, val mime: String)
+    /** Обложка для тегов; не скачалась — файл просто без неё. */
+    private fun cover(song: SongItem): ByteArray? {
+        val url = Thumbnails.sized(song.thumbnailUrl, COVER_PX) ?: return null
+        return runCatching {
+            okHttp.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                response.body?.bytes()?.takeIf { it.size in 1..MAX_COVER }
+            }
+        }.getOrNull()
+    }
 
-    private fun detect(head: ByteArray, size: Int): Format {
-        fun at(i: Int) = if (i < size) head[i].toInt() and 0xFF else -1
-        return when {
-            at(4) == 'f'.code && at(5) == 't'.code && at(6) == 'y'.code && at(7) == 'p'.code ->
-                Format("m4a", "audio/mp4")
+    class Format(val extension: String, val mime: String)
 
-            at(0) == 0x1A && at(1) == 0x45 && at(2) == 0xDF && at(3) == 0xA3 -> Format("webm", "audio/webm")
-            at(0) == 'O'.code && at(1) == 'g'.code && at(2) == 'g'.code && at(3) == 'S'.code ->
-                Format("ogg", "audio/ogg")
+    companion object {
+        const val FOLDER = "w0y music"
+        private const val BUFFER = 64 * 1024
+        private const val COVER_PX = 600
+        private const val MAX_COVER = 2 * 1024 * 1024
 
-            else -> Format("m4a", "audio/mp4")
+        fun detect(head: ByteArray): Format {
+            fun at(i: Int) = if (i < head.size) head[i].toInt() and 0xFF else -1
+            return when {
+                at(4) == 'f'.code && at(5) == 't'.code && at(6) == 'y'.code && at(7) == 'p'.code ->
+                    Format("m4a", "audio/mp4")
+
+                at(0) == 0x1A && at(1) == 0x45 && at(2) == 0xDF && at(3) == 0xA3 -> Format("webm", "audio/webm")
+                at(0) == 'O'.code && at(1) == 'g'.code && at(2) == 'g'.code && at(3) == 'S'.code ->
+                    Format("ogg", "audio/ogg")
+
+                else -> Format("m4a", "audio/mp4")
+            }
+        }
+
+        /** «Исполнитель - Название.ext» без символов, которые запрещены в именах файлов. */
+        fun fileName(song: SongItem, extension: String): String {
+            val raw = listOf(song.artist, song.title).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" - ")
+            val base =
+                raw
+                    .replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_")
+                    .replace(Regex("\\s+"), " ")
+                    .trim()
+                    .trim('.', ' ')
+                    .take(120)
+            val clean = base.ifBlank { song.id }
+            return "$clean.$extension"
         }
     }
 
-    private fun fileName(song: SongItem, extension: String): String {
-        val base = "${song.artist} - ${song.title}".replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").trim().take(120)
-        return "${base.ifBlank { song.id }}.$extension"
-    }
-
     private class Sink(val stream: OutputStream, val finish: (Boolean) -> Unit)
+
+    /** Своя папка через SAF: доступ выдан один раз и сохранён. */
+    private fun openTree(tree: Uri, name: String, mime: String): Sink? {
+        val resolver = context.contentResolver
+        val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        resolver
+            .query(children, arrayOf(DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                while (cursor.moveToNext()) if (cursor.getString(0) == name) return null
+            }
+        val doc =
+            DocumentsContract.createDocument(resolver, parent, mime, name)
+                ?: error("папка не дала создать файл")
+        val stream = resolver.openOutputStream(doc) ?: error("нельзя открыть файл на запись")
+        return Sink(stream) { complete -> if (!complete) runCatching { DocumentsContract.deleteDocument(resolver, doc) } }
+    }
 
     /** Открывает файл для записи или null, если в папке уже лежит файл с таким именем. */
     private fun open(song: SongItem, name: String, mime: String): Sink? =
@@ -163,10 +232,5 @@ class MusicExporter @Inject constructor(
         val file = File(dir, name)
         if (file.exists()) return null
         return Sink(FileOutputStream(file)) { complete -> if (!complete) file.delete() }
-    }
-
-    private companion object {
-        const val FOLDER = "w0y music"
-        const val BUFFER = 64 * 1024
     }
 }

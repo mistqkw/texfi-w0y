@@ -11,7 +11,6 @@ import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.offline.DefaultDownloadIndex
 import androidx.media3.exoplayer.offline.DefaultDownloaderFactory
 import androidx.media3.exoplayer.offline.DownloadManager
@@ -80,7 +79,15 @@ object PlaybackModule {
             databaseProvider,
         )
 
-    /** Сеть плюс подстановка настоящей ссылки вместо схемы w0y://. */
+    /**
+     * Сеть плюс подстановка настоящей ссылки вместо схемы w0y://.
+     *
+     * Сам файл читается ограниченными диапазонами ([RangedHttpDataSource]):
+     * одним открытым запросом сервер отдаёт его со скоростью
+     * воспроизведения, кусками — на скорости канала. Для плеера первый
+     * кусок маленький (раньше приходит первый байт), и вперёд качается
+     * один кусок: больше на воспроизведение не нужно.
+     */
     @Provides
     @Singleton
     @Named("resolving")
@@ -88,14 +95,63 @@ object PlaybackModule {
         okHttpClient: OkHttpClient,
         repository: YouTubeRepository,
         fallback: FallbackAudio,
-        settings: com.texfi.w0y.data.SettingsRepository,
+        settings: SettingsRepository,
     ): DataSource.Factory =
         ResolvingDataSource.Factory(
             DataSource.Factory {
-                FallbackDataSource(OkHttpDataSource.Factory(okHttpClient), fallback, settings)
+                FallbackDataSource(
+                    RangedHttpDataSource.Factory(
+                        calls = okHttpClient,
+                        plan = { PLAYER_PLAN },
+                        hint = repository::streamHint,
+                        refresh = { id -> repository.refreshBlocking(id, null) },
+                    ),
+                    fallback,
+                    settings,
+                )
             },
             StreamResolver(repository, fallback, settings),
         )
+
+    /**
+     * То же для загрузок: своё качество, крупнее параллельность, повторы и
+     * общий лимит скорости из настроек. Настройки читаются из снимка,
+     * который держит [DownloadSettingsHolder], — блокировать поток загрузчика
+     * чтением DataStore на каждый кусок нельзя.
+     */
+    @Provides
+    @Singleton
+    @Named("downloadResolving")
+    fun downloadResolvingFactory(
+        okHttpClient: OkHttpClient,
+        repository: YouTubeRepository,
+        fallback: FallbackAudio,
+        settings: SettingsRepository,
+        holder: DownloadSettingsHolder,
+    ): DataSource.Factory {
+        val limiter = RateLimiter { holder.current.downloadSpeedLimitKb * 1024L }
+        val quality = { holder.downloadQuality(repository.onWifi()) }
+        return ResolvingDataSource.Factory(
+            DataSource.Factory {
+                FallbackDataSource(
+                    RangedHttpDataSource.Factory(
+                        calls = okHttpClient,
+                        plan = { RangePlan(RangedHttpDataSource.CHUNK, RangedHttpDataSource.CHUNK, 3, holder.current.downloadRetries) },
+                        hint = { id -> repository.streamHint("$id#${quality().name}") ?: repository.streamHint(id) },
+                        refresh = { id -> repository.refreshBlocking(id, quality()) },
+                        limiter = limiter,
+                    ),
+                    fallback,
+                    settings,
+                )
+            },
+            StreamResolver(repository, fallback, settings, downloadQuality = quality),
+        )
+    }
+
+    /** Первый кусок 256 КБ: несколько секунд звука, приходит быстро. */
+    private val PLAYER_PLAN =
+        RangePlan(firstChunk = 256L * 1024, chunk = RangedHttpDataSource.CHUNK, parallel = 1, retries = 2)
 
     /**
      * Цепочка для воспроизведения: сначала скачанное, потом кэш, и только
@@ -127,7 +183,7 @@ object PlaybackModule {
         @ApplicationContext context: Context,
         databaseProvider: DatabaseProvider,
         @Named("download") downloadCache: SimpleCache,
-        @Named("resolving") resolving: DataSource.Factory,
+        @Named("downloadResolving") resolving: DataSource.Factory,
     ): DownloadManager =
         DownloadManager(
             context,
@@ -137,11 +193,14 @@ object PlaybackModule {
                     .Factory()
                     .setCache(downloadCache)
                     .setUpstreamDataSourceFactory(resolving),
-                Executors.newFixedThreadPool(2),
+                Executors.newFixedThreadPool(4),
             ),
         ).apply {
-            // Две загрузки разом: больше упирается в отдачу YouTube и мешает
-            // воспроизведению, меньше — заметно медленнее на плейлистах.
+            // Сколько треков разом — из настроек, это значение лишь стартовое.
             maxParallelDownloads = 2
+            // Повторы самого менеджера — поверх повторов кусков: после них
+            // загрузка продолжается с того байта, на котором оборвалась
+            // (уже скачанное лежит в хранилище и не перекачивается).
+            minRetryCount = 3
         }
 }

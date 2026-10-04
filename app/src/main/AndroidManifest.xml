@@ -85,6 +85,13 @@
             </intent-filter>
         </service>
 
+        <!-- Планировщик системы будит загрузки, когда появится сеть, даже если
+             приложение было выгружено. -->
+        <service
+            android:name="androidx.media3.exoplayer.scheduler.PlatformScheduler$PlatformSchedulerService"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <!-- Виджет плеера на домашний экран. updatePeriodMillis=0: система
              его по таймеру не будит, перерисовку заказывает сам плеер при
              смене трека или паузе. -->

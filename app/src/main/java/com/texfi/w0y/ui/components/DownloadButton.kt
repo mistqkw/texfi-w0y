@@ -45,7 +45,7 @@ fun DownloadButton(
         downloaded || progress?.state == DownloadState.DONE ->
             SpriteButton(Sprites.check, onClick = {}, active = true)
 
-        progress?.state == DownloadState.WAITING ->
+        progress?.state == DownloadState.WAITING || progress?.state == DownloadState.PAUSED ->
             SpriteButton(Sprites.timer, onClick = {}, active = true)
 
         progress?.state == DownloadState.RUNNING -> {
