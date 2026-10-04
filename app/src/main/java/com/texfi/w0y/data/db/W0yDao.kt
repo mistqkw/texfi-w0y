@@ -250,6 +250,9 @@ interface W0yDao {
     @Query("UPDATE songs SET downloadError = :error WHERE id = :id")
     suspend fun setDownloadError(id: String, error: String?)
 
+    @Query("SELECT * FROM songs WHERE downloadError IS NOT NULL ORDER BY title")
+    fun songsWithDownloadError(): Flow<List<SongEntity>>
+
     @Query("SELECT id, downloadError FROM songs WHERE downloadError IS NOT NULL")
     fun downloadErrors(): Flow<List<DownloadErrorRow>>
 

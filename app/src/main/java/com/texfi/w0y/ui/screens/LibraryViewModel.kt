@@ -364,6 +364,20 @@ class LibraryViewModel @Inject constructor(
 
     fun cancelDownload(songId: String) = downloads.cancel(songId)
 
+    val failedDownloads: StateFlow<List<SongItem>> =
+        library.failedDownloads.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val downloadFailures: StateFlow<Map<String, String>> =
+        downloads.failures.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Массовые действия над выбранными скачанными треками. */
+    fun deleteDownloads(ids: Collection<String>) = ids.forEach(downloads::cancel)
+
+    fun redownload(ids: Collection<String>) = downloads.redownload(ids.toList())
+
+    /** Убрать трек из списка неудачных, не скачивая. */
+    fun dismissFailure(id: String) = viewModelScope.launch { library.markDownloadError(id, null) }
+
     fun clearHistory() = viewModelScope.launch { library.clearHistory() }
 
     /**

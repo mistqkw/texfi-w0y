@@ -1,5 +1,9 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.playback.DownloadFailure
+import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
+import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -395,10 +399,21 @@ private fun SongList(
 private fun DownloadsList(viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.downloaded.collectAsStateWithLifecycle()
+    val failed by viewModel.failedDownloads.collectAsStateWithLifecycle()
+    val reasons by viewModel.downloadFailures.collectAsStateWithLifecycle()
     val progress by viewModel.downloads.progress.collectAsStateWithLifecycle()
     val pending = progress.values.filter { it.state != DownloadState.DONE }
     val exporting by viewModel.exporting.collectAsStateWithLifecycle()
     val exportStatus by viewModel.exportStatus.collectAsStateWithLifecycle()
+    // Выбор начинается долгим нажатием; пока он идёт, нажатие отмечает трек.
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+    var selecting by remember { mutableStateOf(false) }
+    val selectedSongs = songs.filter { it.id in selected }
+    fun toggle(id: String) {
+        selected = if (id in selected) selected - id else selected + id
+    }
+    if (selecting) BackHandler { selecting = false; selected = emptySet() }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -424,7 +439,32 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             modifier = Modifier.padding(top = 4.dp),
         )
         Spacer(Modifier.height(10.dp))
-        if (songs.isNotEmpty()) {
+        if (selecting) {
+            // Панель выбора: сколько отмечено, «все», и что с ними сделать.
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.downloads_selected, selected.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.text,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    stringResource(if (selected.size == songs.size) R.string.downloads_select_none else R.string.downloads_select_all),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.accentText,
+                    modifier =
+                        Modifier
+                            .clickable { selected = if (selected.size == songs.size) emptySet() else songs.map { it.id }.toSet() }
+                            .padding(12.dp),
+                )
+                SpriteButton(Sprites.close, onClick = { selecting = false; selected = emptySet() })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
+                PixelButton(stringResource(R.string.downloads_export), onClick = { viewModel.exportDownloads(selectedSongs) }, enabled = selected.isNotEmpty() && !exporting)
+                PixelButton(stringResource(R.string.downloads_redownload), onClick = { viewModel.redownload(selected); selecting = false; selected = emptySet() }, enabled = selected.isNotEmpty(), fill = colors.surfaceHigh)
+                PixelButton(stringResource(R.string.dl_clear_button), onClick = { viewModel.deleteDownloads(selected); selecting = false; selected = emptySet() }, enabled = selected.isNotEmpty(), fill = colors.surfaceHigh)
+            }
+        } else if (songs.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PixelButton(
                     text =
@@ -432,14 +472,20 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
                     onClick = { viewModel.exportDownloads(songs) },
                     enabled = !exporting,
                 )
-                exportStatus?.let {
-                    Spacer(Modifier.width(10.dp))
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.weight(1f))
-                }
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(R.string.downloads_select),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.accentText,
+                    modifier = Modifier.clickable { selecting = true }.padding(12.dp),
+                )
             }
-            Spacer(Modifier.height(10.dp))
         }
-        if (songs.isEmpty() && pending.isEmpty()) {
+        exportStatus?.let {
+            Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted, modifier = Modifier.padding(vertical = 4.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        if (songs.isEmpty() && pending.isEmpty() && failed.isEmpty()) {
             EmptyState(
                 sprite = Sprites.download,
                 title = stringResource(R.string.downloads_empty_title),
@@ -448,17 +494,90 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             return
         }
         LazyColumn {
+            if (failed.isNotEmpty()) {
+                item(key = "failed-header") {
+                    SectionHeader(stringResource(R.string.downloads_failed), modifier = Modifier.padding(vertical = 8.dp))
+                }
+                items(failed, key = { "f-" + it.id }) { song ->
+                    Column(Modifier.animateItem()) {
+                        SongRow(
+                            song = song,
+                            onClick = { viewModel.redownload(listOf(song.id)) },
+                            actions = {
+                                SpriteButton(Sprites.sync, onClick = { viewModel.redownload(listOf(song.id)) })
+                                Spacer(Modifier.width(14.dp))
+                                SpriteButton(Sprites.close, onClick = { viewModel.dismissFailure(song.id) })
+                            },
+                        )
+                        val reason = reasons[song.id]?.let { name -> DownloadFailure.entries.firstOrNull { it.name == name } } ?: DownloadFailure.UNKNOWN
+                        Text(
+                            stringResource(reason.label),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.secondary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                        )
+                    }
+                }
+                item(key = "done-header") { Spacer(Modifier.height(10.dp)) }
+            }
             items(songs, key = { it.id }) { song ->
-                SongRow(
-                    song = song,
-                    onClick = { viewModel.playCollection(songs, songs.indexOf(song)) },
-                    progressPercent = progress[song.id]?.percent,
-                    modifier = Modifier.animateItem(),
-                    actions = { SpriteButton(Sprites.trash, onClick = { viewModel.cancelDownload(song.id) }) },
-                )
+                val state = progress[song.id]
+                val checked = song.id in selected
+                Column(Modifier.animateItem()) {
+                    SongRow(
+                        song = song,
+                        onClick = { if (selecting) toggle(song.id) else viewModel.playCollection(songs, songs.indexOf(song)) },
+                        onLongClick = {
+                            selecting = true
+                            toggle(song.id)
+                        },
+                        progressPercent = state?.percent,
+                        actions = {
+                            if (selecting) {
+                                SelectMark(checked)
+                            } else {
+                                SpriteButton(Sprites.trash, onClick = { viewModel.cancelDownload(song.id) })
+                            }
+                        },
+                    )
+                    // Скорость и остаток — только пока качается и есть замер.
+                    if (state != null && state.state == DownloadState.RUNNING && state.bytesPerSecond > 0) {
+                        Text(
+                            stringResource(
+                                R.string.dl_speed,
+                                Formatter.formatShortFileSize(LocalContext.current, state.bytesPerSecond),
+                                state.remainingMs?.let { formatEta(it) } ?: "—",
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textMuted,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 6.dp),
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+/** Отметка выбранного трека: квадрат в Pixel, круг в Smooth — форма из токенов. */
+@Composable
+private fun SelectMark(checked: Boolean) {
+    val colors = LocalW0yColors.current
+    Box(
+        Modifier
+            .size(22.dp)
+            .clip(com.texfi.w0y.ui.theme.styleTokens.switchThumb)
+            .background(if (checked) colors.accent else colors.surfaceHigh)
+            .border(2.dp, if (checked) colors.accent else colors.border, com.texfi.w0y.ui.theme.styleTokens.switchThumb),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) PixelSprite(Sprites.check, colors.onAccent, Modifier.size(14.dp))
+    }
+}
+
+private fun formatEta(ms: Long): String {
+    val s = (ms / 1000).coerceAtLeast(1)
+    return if (s >= 60) "${s / 60}:${(s % 60).toString().padStart(2, '0')}" else "0:${s.toString().padStart(2, '0')}"
 }
 
 @Composable

@@ -53,7 +53,59 @@ class SettingsViewModel @Inject constructor(
     private val dialHidden: com.texfi.w0y.data.DialHiddenRepository,
     devices: AudioDevicesRepository,
     startupMetrics: StartupMetrics,
+    private val downloads: com.texfi.w0y.playback.DownloadsRepository,
+    library: com.texfi.w0y.data.LibraryRepository,
 ) : ViewModel() {
+    /** Свои плейлисты — для выбора автозагрузки. */
+    val playlists: StateFlow<List<com.texfi.w0y.data.db.PlaylistEntity>> =
+        library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _downloadBytes = MutableStateFlow(0L)
+
+    /** Сколько занимают загрузки. */
+    val downloadBytes: StateFlow<Long> = _downloadBytes.asStateFlow()
+
+    fun refreshDownloadSize() {
+        viewModelScope.launch { _downloadBytes.value = withContext(Dispatchers.IO) { downloads.usedBytes() } }
+    }
+
+    /** Проверить хранилище: неполные файлы уходят на перекачку. */
+    fun verifyDownloads() {
+        viewModelScope.launch {
+            val broken = downloads.verifyAll()
+            _message.value =
+                if (broken == 0) {
+                    context.getString(R.string.dl_verify_ok)
+                } else {
+                    context.getString(R.string.dl_verify_fixing, broken)
+                }
+        }
+    }
+
+    fun clearDownloads() {
+        downloads.clearAll()
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(800)
+            refreshDownloadSize()
+            _message.value = context.getString(R.string.dl_cleared)
+        }
+    }
+
+    /** Папка для «сохранить на устройство»: доступ сохраняется, чтобы не спрашивать снова. */
+    fun setExportFolder(uri: android.net.Uri?) {
+        if (uri == null) {
+            setExportTree("")
+            return
+        }
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }
+        setExportTree(uri.toString())
+    }
+
     /** Выходы звука: то, что система видит подключённым прямо сейчас. */
     val outputs: StateFlow<List<AudioOutput>> =
         devices.outputs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -83,6 +135,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         refreshCacheSize()
+        refreshDownloadSize()
     }
 
     fun refreshCacheSize() {

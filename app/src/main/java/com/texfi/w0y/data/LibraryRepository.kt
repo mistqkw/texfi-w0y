@@ -219,6 +219,10 @@ class LibraryRepository @Inject constructor(
 
     suspend fun markDownloadError(songId: String, error: String?) = dao.setDownloadError(songId, error)
 
+    /** Треки, которые не скачались, — с причиной в [downloadErrors]. */
+    val failedDownloads: Flow<List<SongItem>> =
+        dao.songsWithDownloadError().map { list -> list.map(SongEntity::toItem) }
+
     val downloadErrors: Flow<Map<String, String>> =
         dao.downloadErrors().map { rows -> rows.associate { it.id to it.downloadError } }
 

@@ -35,6 +35,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -128,6 +130,7 @@ class DownloadsRepository @Inject constructor(
                     manager.minRetryCount = current.downloadRetries.coerceIn(0, 10)
                 }
             }.launchIn(scope)
+        watchAutoPlaylists()
         settingsRepository.settings
             .map { it.downloadPauseOnLowBattery }
             .distinctUntilChanged()
@@ -266,6 +269,34 @@ class DownloadsRepository @Inject constructor(
         broken.forEach { library.markDownloadError(it, DownloadFailure.INCOMPLETE.name) }
         if (broken.isNotEmpty()) redownload(broken)
         broken.size
+    }
+
+    /**
+     * Автозагрузка выбранных плейлистов: всё, что в них есть и ещё не
+     * скачано, ставится в очередь — и при выборе, и когда в плейлист
+     * добавили трек.
+     */
+    @kotlin.OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+    private fun watchAutoPlaylists() {
+        settingsRepository.settings
+            .map { it.autoDownloadPlaylists }
+            .distinctUntilChanged()
+            .flatMapLatest { ids ->
+                if (ids.isEmpty()) {
+                    kotlinx.coroutines.flow.flowOf(emptyList())
+                } else {
+                    kotlinx.coroutines.flow.combine(ids.map { library.playlistSongs(it) }) { lists -> lists.flatMap { it.toList() } }
+                }
+            }.debounce(AUTO_SETTLE_MS)
+            .onEach { songs ->
+                if (songs.isEmpty()) return@onEach
+                val have = library.downloadedIds().toSet() + _progress.value.keys
+                val missing = songs.distinctBy { it.id }.filterNot { it.id in have }
+                if (missing.isEmpty()) return@onEach
+                withContext(Dispatchers.Main) {
+                    if (!overLimit()) missing.forEach(::enqueue)
+                }
+            }.launchIn(scope)
     }
 
     /** Удалить все загрузки. */
@@ -443,6 +474,7 @@ class DownloadsRepository @Inject constructor(
         private const val MB = 1024L * 1024
         private const val LOW_BATTERY = 15
         private const val REMOVE_SETTLE_MS = 600L
+        private const val AUTO_SETTLE_MS = 2_000L
 
         /** Скорость по окну замеров: байты между крайними точками на время. */
         fun speedOf(window: Collection<Pair<Long, Long>>): Long {

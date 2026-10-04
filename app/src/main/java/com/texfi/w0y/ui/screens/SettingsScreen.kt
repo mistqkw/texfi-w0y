@@ -62,6 +62,7 @@ import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.playback.AudioOutput
 import com.texfi.w0y.ui.components.EmptyState
+import com.texfi.w0y.ui.components.ConfirmPanel
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.PixelSprite
@@ -112,6 +113,17 @@ fun SettingsScreen(
                 context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
             }
         }
+    val folderLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            uri?.let(viewModel::setExportFolder)
+        }
+    val currentSettings by viewModel.settings.collectAsStateWithLifecycle()
+    // Предупреждение об авторских правах — один раз, при первом включении
+    // сохранения на устройство; действие выполняется после согласия.
+    var copyrightPending by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val withCopyrightNotice: (() -> Unit) -> Unit = { action ->
+        if (currentSettings.exportWarningSeen) action() else copyrightPending = action
+    }
     val importLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
             uri ?: return@rememberLauncherForActivityResult
@@ -125,6 +137,23 @@ fun SettingsScreen(
             kotlinx.coroutines.delay(2500)
             viewModel.consumeMessage()
         }
+    }
+
+    copyrightPending?.let { action ->
+        ConfirmPanel(
+            title = stringResource(R.string.export_warning_title),
+            text = stringResource(R.string.export_warning_text),
+            confirm = stringResource(R.string.export_warning_ok),
+            dismiss = stringResource(R.string.common_cancel),
+            onConfirm = {
+                viewModel.setExportWarningSeen(true)
+                copyrightPending = null
+                action()
+            },
+            onDismiss = { copyrightPending = null },
+        )
+        BackHandler { copyrightPending = null }
+        return
     }
 
     if (aboutOpen) {
@@ -145,6 +174,8 @@ fun SettingsScreen(
             onOpenAbout = { aboutOpen = true },
             onExport = { exportLauncher.launch("w0y-settings.json") },
             onImport = { importLauncher.launch(arrayOf("application/json")) },
+            onPickFolder = { withCopyrightNotice { folderLauncher.launch(null) } },
+            onAutoExport = { on -> if (on) withCopyrightNotice { viewModel.setAutoExport(true) } else viewModel.setAutoExport(false) },
         )
     val current = section?.let { name -> SettingsSection.entries.firstOrNull { it.name == name } }
 
@@ -266,6 +297,7 @@ private enum class SettingsSection(
     PLAYER(R.string.settings_section_player, R.string.settings_section_player_sum, Sprites.play),
     SPEED(R.string.settings_section_speed, R.string.settings_section_speed_sum, Sprites.rocket),
     STORAGE(R.string.settings_section_storage, R.string.settings_section_storage_sum, Sprites.box),
+    DOWNLOADS(R.string.settings_section_downloads, R.string.settings_section_downloads_sum, Sprites.download),
     SEARCH(R.string.settings_section_search, R.string.settings_section_search_sum, Sprites.search),
     ACCOUNT(R.string.settings_section_account, R.string.settings_section_account_sum, Sprites.sync),
     CLEAN(R.string.settings_section_clean, R.string.settings_section_clean_sum, Sprites.shield),
@@ -545,6 +577,8 @@ private fun settingsRows(
     onOpenAbout: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
+    onPickFolder: () -> Unit,
+    onAutoExport: (Boolean) -> Unit,
 ): List<SettingRow> {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val startupAverage by viewModel.startupAverage.collectAsStateWithLifecycle()
@@ -552,6 +586,7 @@ private fun settingsRows(
     val startupCount by viewModel.startupCount.collectAsStateWithLifecycle()
     val startupBreakdown by viewModel.startupBreakdown.collectAsStateWithLifecycle()
     val cacheBytes by viewModel.cacheBytes.collectAsStateWithLifecycle()
+    val downloadBytes by viewModel.downloadBytes.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val hiddenDial by viewModel.hiddenDial.collectAsStateWithLifecycle()
@@ -844,7 +879,7 @@ private fun settingsRows(
         // ПАМЯТЬ
         add(
             SettingRow(
-                section = SettingsSection.STORAGE,
+                section = SettingsSection.DOWNLOADS,
                 title = stringResource(R.string.settings_wifi_only_title),
                 description = stringResource(R.string.settings_wifi_only_desc),
                 control = SettingControl.Toggle(settings.downloadOnWifiOnly, viewModel::setDownloadOnWifiOnly),
@@ -880,10 +915,172 @@ private fun settingsRows(
         )
         add(
             SettingRow(
-                section = SettingsSection.STORAGE,
+                section = SettingsSection.DOWNLOADS,
                 title = stringResource(R.string.settings_autodownload_title),
                 description = stringResource(R.string.settings_autodownload_desc),
                 control = SettingControl.Toggle(settings.autoDownloadLiked, viewModel::setAutoDownload),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_auto_playlists_title),
+                description = stringResource(R.string.dl_auto_playlists_desc),
+                control =
+                    SettingControl.Custom {
+                        val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+                        if (playlists.isEmpty()) {
+                            Text(stringResource(R.string.dl_auto_playlists_none), style = MaterialTheme.typography.bodySmall, color = LocalW0yColors.current.textMuted)
+                        }
+                        Column {
+                            playlists.forEach { playlist ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(playlist.name, style = MaterialTheme.typography.bodyMedium, color = LocalW0yColors.current.text, modifier = Modifier.weight(1f))
+                                    PixelSwitch(
+                                        checked = playlist.id in settings.autoDownloadPlaylists,
+                                        onCheckedChange = { viewModel.setAutoDownloadPlaylist(playlist.id, it) },
+                                    )
+                                }
+                            }
+                        }
+                    },
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_quality_wifi_title),
+                description = stringResource(R.string.dl_quality_desc),
+                control = SettingControl.Choice(Quality.entries, settings.downloadQualityWifi, { qualityLabel(it) }, viewModel::setDownloadQualityWifi),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_quality_mobile_title),
+                description = stringResource(R.string.dl_quality_desc),
+                control = SettingControl.Choice(Quality.entries, settings.downloadQualityMobile, { qualityLabel(it) }, viewModel::setDownloadQualityMobile),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_format_title),
+                description = stringResource(R.string.dl_format_desc),
+                control = SettingControl.Info(stringResource(R.string.dl_format_value)),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_parallel_title),
+                description = stringResource(R.string.dl_parallel_desc),
+                control = SettingControl.Choice(listOf(1, 2, 3, 4), settings.downloadParallel, { it.toString() }, viewModel::setDownloadParallel),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_speed_limit_title),
+                description = stringResource(R.string.dl_speed_limit_desc),
+                control =
+                    SettingControl.Choice(
+                        listOf(0, 256, 512, 1024, 2048, 4096),
+                        settings.downloadSpeedLimitKb,
+                        { if (it == 0) stringResource(R.string.dl_no_limit) else stringResource(R.string.dl_kbps, it) },
+                        viewModel::setDownloadSpeedLimit,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_retries_title),
+                description = stringResource(R.string.dl_retries_desc),
+                control = SettingControl.Choice(listOf(0, 1, 3, 5), settings.downloadRetries, { it.toString() }, viewModel::setDownloadRetries),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_low_battery_title),
+                description = stringResource(R.string.dl_low_battery_desc),
+                control = SettingControl.Toggle(settings.downloadPauseOnLowBattery, viewModel::setDownloadPauseOnLowBattery),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_auto_resume_title),
+                description = stringResource(R.string.dl_auto_resume_desc),
+                control = SettingControl.Toggle(settings.downloadAutoResume, viewModel::setDownloadAutoResume),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_notifications_title),
+                description = stringResource(R.string.dl_notifications_desc),
+                control = SettingControl.Toggle(settings.downloadNotifications, viewModel::setDownloadNotifications),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_folder_title),
+                description = stringResource(R.string.dl_folder_desc, folderName(settings.exportTreeUri) ?: stringResource(R.string.dl_folder_default)),
+                keywords = "saf export save device music",
+                control =
+                    SettingControl.Custom {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            PixelButton(stringResource(R.string.dl_folder_pick), onClick = onPickFolder)
+                            if (settings.exportTreeUri.isNotBlank()) {
+                                PixelButton(
+                                    stringResource(R.string.dl_folder_reset),
+                                    onClick = { viewModel.setExportFolder(null) },
+                                    fill = LocalW0yColors.current.surfaceHigh,
+                                )
+                            }
+                        }
+                    },
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_auto_export_title),
+                description = stringResource(R.string.dl_auto_export_desc),
+                control = SettingControl.Toggle(settings.autoExport, onAutoExport),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_storage_limit_title),
+                description = stringResource(R.string.dl_storage_limit_desc, (downloadBytes / 1024 / 1024).toInt()),
+                control =
+                    SettingControl.Choice(
+                        listOf(0, 1024, 2048, 5120, 10240),
+                        settings.downloadStorageLimitMb,
+                        { if (it == 0) stringResource(R.string.dl_no_limit) else stringResource(R.string.settings_cache_gb, it / 1024) },
+                        viewModel::setDownloadStorageLimit,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_verify_title),
+                description = stringResource(R.string.dl_verify_desc),
+                control = SettingControl.Action(stringResource(R.string.dl_verify_button), viewModel::verifyDownloads),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.DOWNLOADS,
+                title = stringResource(R.string.dl_clear_title),
+                description = stringResource(R.string.dl_clear_desc),
+                control = SettingControl.Action(stringResource(R.string.dl_clear_button), viewModel::clearDownloads),
             ),
         )
 
@@ -1093,6 +1290,21 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.LOOK,
+                title = stringResource(R.string.settings_dial_min_title),
+                description = stringResource(R.string.settings_dial_min_desc),
+                keywords = "speed dial plays",
+                control =
+                    SettingControl.Choice(
+                        options = listOf(1, 2, 3, 5, 10),
+                        selected = settings.dialMinPlays,
+                        label = { stringResource(R.string.settings_dial_min_value, it) },
+                        onSelect = viewModel::setDialMinPlays,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.LOOK,
                 title = stringResource(R.string.settings_dial_hide_title),
                 description = stringResource(R.string.settings_dial_hide_desc),
                 keywords = "speed dial hide",
@@ -1233,4 +1445,12 @@ private fun HiddenDialList(
         Spacer(Modifier.height(8.dp))
         PixelButton(text = stringResource(R.string.dial_restore_all), onClick = onRestoreAll)
     }
+}
+
+/** Имя выбранной папки из адреса SAF: «primary:Music/w0y» → «Music/w0y». */
+private fun folderName(tree: String): String? {
+    if (tree.isBlank()) return null
+    return runCatching {
+        android.provider.DocumentsContract.getTreeDocumentId(android.net.Uri.parse(tree)).substringAfter(':').ifBlank { "/" }
+    }.getOrNull()
 }
