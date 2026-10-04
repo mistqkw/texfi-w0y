@@ -537,7 +537,7 @@
     <string name="export_warning_text">Pliki zapisane w telefonie są do własnego słuchania. Udostępnianie lub publikowanie ich może naruszać prawa autorskie i warunki YouTube — odpowiadasz za to ty.</string>
     <string name="export_warning_ok">Rozumiem</string>
     <string name="settings_dial_min_title">Próg szybkiego wybierania</string>
-    <string name="settings_dial_min_desc">Utwór trafia do szybkiego wybierania po tylu zaliczonych odsłuchach. Przypięte kafelki zostają na początku.</string>
+    <string name="settings_dial_min_desc">Utwór trafia do szybkiego wybierania po tylu odtworzeniach. Te, których słuchasz do końca częściej, są wyżej. Przypięte kafelki zostają na początku.</string>
     <string name="settings_dial_min_value">%1$d×</string>
     <string name="downloads_selected">Zaznaczono: %1$d</string>
     <string name="downloads_select_all">Wszystkie</string>

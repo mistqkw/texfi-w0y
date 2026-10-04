@@ -61,7 +61,7 @@ class ShellViewModel @Inject constructor(
     val accent: StateFlow<Accent> =
         settings.settings
             .map { it.accent }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, Accent.BLUE)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, Accent.SAND)
 
     val customAccent: StateFlow<Int> =
         settings.settings

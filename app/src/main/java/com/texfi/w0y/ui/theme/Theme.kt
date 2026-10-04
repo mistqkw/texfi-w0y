@@ -123,7 +123,7 @@ val LocalW0yColors = staticCompositionLocalOf { DarkColors }
 @Composable
 fun W0yTheme(
     mode: ThemeMode = ThemeMode.DARK,
-    accent: Accent = Accent.BLUE,
+    accent: Accent = Accent.SAND,
     customAccent: Int = 0xFFA06CFF.toInt(),
     style: UiStyle = UiStyle.PIXEL,
     content: @Composable () -> Unit,

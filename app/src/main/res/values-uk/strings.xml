@@ -537,7 +537,7 @@
     <string name="export_warning_text">Збережені на телефон файли — для власного прослуховування. Поширення чи публікація можуть порушувати авторські права й умови YouTube — за це відповідаєш ти.</string>
     <string name="export_warning_ok">Зрозуміло</string>
     <string name="settings_dial_min_title">Поріг швидкого набору</string>
-    <string name="settings_dial_min_desc">Трек потрапляє до швидкого набору після стількох зарахованих прослуховувань. Закріплені плитки лишаються першими.</string>
+    <string name="settings_dial_min_desc">Трек потрапляє до швидкого набору після стількох запусків. Що дослуховуєш частіше — стає вище. Закріплені плитки лишаються першими.</string>
     <string name="settings_dial_min_value">%1$d×</string>
     <string name="downloads_selected">Обрано: %1$d</string>
     <string name="downloads_select_all">Усі</string>

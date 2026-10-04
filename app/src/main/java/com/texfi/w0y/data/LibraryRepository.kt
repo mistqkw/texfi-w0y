@@ -48,12 +48,11 @@ class LibraryRepository @Inject constructor(
         dao.mostPlayed().map { list -> list.map { it.song.toItem() } }
 
     /**
-     * Кандидаты быстрого набора: только треки, прослушанные не меньше
-     * [minPlays] раз по правилу прослушивания. Порядок — по числу
-     * прослушиваний, при равенстве выше то, что слушалось позже.
+     * Кандидаты быстрого набора: треки, запущенные не меньше [minPlays]
+     * раз. Выше то, что дослушивают чаще, при равенстве — что свежее.
      */
     fun dialCandidates(minPlays: Int): Flow<List<SongItem>> =
-        dao.mostPlayed(minPlays = minPlays.coerceAtLeast(1)).map { list -> list.map { it.song.toItem() } }
+        dao.dialSongs(minPlays = minPlays.coerceAtLeast(1)).map { list -> list.map { it.song.toItem() } }
 
     val pins: Flow<List<PinEntity>> = dao.pins()
 

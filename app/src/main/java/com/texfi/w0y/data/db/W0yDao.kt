@@ -307,6 +307,24 @@ interface W0yDao {
     fun mostPlayed(minPlays: Int = 1, limit: Int = 60): Flow<List<SongPlays>>
 
     /**
+     * Кандидаты быстрого набора. Считается каждый запуск, а не только
+     * засчитанное прослушивание: трек появляется в наборе с первого раза,
+     * и порядок сразу учится — сначала по засчитанным, потом по всем
+     * запускам, при равенстве свежее выше.
+     */
+    @Query(
+        """
+        SELECT songs.*, COUNT(history.id) AS plays FROM songs
+        JOIN history ON songs.id = history.songId
+        GROUP BY songs.id
+        HAVING plays >= :minPlays
+        ORDER BY SUM(history.counted) DESC, plays DESC, MAX(history.playedAt) DESC
+        LIMIT :limit
+        """,
+    )
+    fun dialSongs(minPlays: Int = 1, limit: Int = 60): Flow<List<SongPlays>>
+
+    /**
      * Кого слушают чаще всего. По этому списку рекомендации понимают вкус:
      * выдачу YouTube мы потом пересортировываем под него.
      */

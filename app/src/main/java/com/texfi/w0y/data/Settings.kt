@@ -236,7 +236,7 @@ data class W0ySettings(
     val welcomeSeen: Boolean = false,
     val language: Language = Language.SYSTEM,
     val animatedBackground: Boolean = true,
-    val accent: Accent = Accent.BLUE,
+    val accent: Accent = Accent.SAND,
     /** Свой цвет схемы CUSTOM, ARGB. */
     val customAccent: Int = 0xFFA06CFF.toInt(),
     /** На сколько дней убранная плитка скрывается из быстрого набора. */
@@ -272,7 +272,7 @@ data class W0ySettings(
     // ── Плейлисты и быстрый набор ────────────────────────────────────────
     val showPlaylistRecommendations: Boolean = false,
     /** Со скольких прослушиваний трек попадает в быстрый набор. */
-    val dialMinPlays: Int = 3,
+    val dialMinPlays: Int = 1,
     // ── Стиль ────────────────────────────────────────────────────────────
     val uiStyle: UiStyle = UiStyle.PIXEL,
     /** Показан ли выбор стиля — на первом запуске и один раз после обновления. */
@@ -336,7 +336,7 @@ class SettingsRepository @Inject constructor(
                     welcomeSeen = prefs[Keys.WELCOME_SEEN] ?: false,
                     language = prefs.enum(Keys.LANGUAGE, Language.SYSTEM),
                     animatedBackground = prefs[Keys.ANIMATED_BACKGROUND] ?: true,
-                    accent = prefs.enum(Keys.ACCENT, Accent.BLUE),
+                    accent = prefs.enum(Keys.ACCENT, Accent.SAND),
                     customAccent = prefs[Keys.CUSTOM_ACCENT] ?: 0xFFA06CFF.toInt(),
                     dialHideDays = prefs[Keys.DIAL_HIDE_DAYS] ?: 28,
                     syncPlaylists = prefs[Keys.SYNC_PLAYLISTS] ?: true,
@@ -363,7 +363,7 @@ class SettingsRepository @Inject constructor(
                     autoDownloadPlaylists =
                         prefs[Keys.AUTO_DL_PLAYLISTS].orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toSet(),
                     showPlaylistRecommendations = prefs[Keys.PLAYLIST_RECS] ?: false,
-                    dialMinPlays = (prefs[Keys.DIAL_MIN_PLAYS] ?: 3).coerceIn(1, 20),
+                    dialMinPlays = (prefs[Keys.DIAL_MIN_PLAYS] ?: 1).coerceIn(1, 20),
                     uiStyle = prefs.enum(Keys.UI_STYLE, UiStyle.PIXEL),
                     stylePicked = prefs[Keys.STYLE_PICKED] ?: false,
                     lyricsSize = prefs.enum(Keys.LYRICS_SIZE, LyricsSize.MEDIUM),

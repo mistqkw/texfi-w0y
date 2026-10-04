@@ -87,7 +87,7 @@ class LibraryViewModel @Inject constructor(
     val playlistCovers: StateFlow<Map<Long, String>> =
         library.playlistCovers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    /** Треки, набравшие порог прослушиваний; порог задаётся в настройках. */
+    /** Треки, набравшие порог запусков; порог задаётся в настройках. */
     @OptIn(ExperimentalCoroutinesApi::class)
     private val dialSongs =
         settings.settings
@@ -130,10 +130,9 @@ class LibraryViewModel @Inject constructor(
                             },
                     )
                 }
-            // Трек попадает в набор, только когда его действительно слушают:
-            // не меньше N засчитанных прослушиваний. Лайки и недавнее сюда
-            // больше не подмешиваются — один случайный запуск не должен
-            // занимать плитку.
+            // Трек попадает в набор с первого запуска (порог в настройках),
+            // а порядок учится по тому, что дослушивают. Лайки сюда не
+            // подмешиваются.
             val songs =
                 played
                     .distinctBy { it.id }

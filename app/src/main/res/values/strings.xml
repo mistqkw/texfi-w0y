@@ -537,7 +537,7 @@
     <string name="export_warning_text">Files saved to the phone are for your own listening. Sharing or publishing them may break copyright and YouTube terms — that responsibility is yours.</string>
     <string name="export_warning_ok">Understood</string>
     <string name="settings_dial_min_title">Speed dial threshold</string>
-    <string name="settings_dial_min_desc">A track appears on the speed dial after this many counted plays. Pinned tiles stay first.</string>
+    <string name="settings_dial_min_desc">A track appears on the speed dial after this many plays. Tracks you finish more often move up. Pinned tiles stay first.</string>
     <string name="settings_dial_min_value">%1$d×</string>
     <string name="downloads_selected">Selected: %1$d</string>
     <string name="downloads_select_all">All</string>
