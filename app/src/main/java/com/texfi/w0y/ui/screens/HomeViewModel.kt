@@ -77,7 +77,11 @@ class HomeViewModel @Inject constructor(
                         }
                     // Лент на главной у YouTube бывает под два десятка —
                     // это ровно та перегруженность, от которой уходили.
-                    _shelves.value = shelves.filter { it.songs.size + it.cards.size + it.artists.size >= 2 }.take(SHELVES)
+                    _shelves.value =
+                        shelves
+                            .filterNot { isSeasonalPromo(it.title) }
+                            .filter { it.songs.size + it.cards.size + it.artists.size >= 2 }
+                            .take(SHELVES)
                 }.onFailure {
                     Timber.w(it, "Рекомендации не пришли")
                     _failed.value = true
@@ -90,5 +94,13 @@ class HomeViewModel @Inject constructor(
 
     private companion object {
         const val SHELVES = 5
+
+        /**
+         * Сезонные промо-ленты YouTube («The sound of autumn» и подобные) —
+         * реклама подборок, а не рекомендации по вкусу; на главной их нет.
+         */
+        val SEASONAL = Regex("^the sounds? of (autumn|fall|winter|spring|summer)\\b", RegexOption.IGNORE_CASE)
+
+        fun isSeasonalPromo(title: String) = SEASONAL.containsMatchIn(title.trim())
     }
 }
