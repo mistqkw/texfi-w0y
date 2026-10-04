@@ -545,4 +545,5 @@
     <string name="downloads_select">Выбрать</string>
     <string name="downloads_redownload">Заново</string>
     <string name="downloads_failed">Не скачались</string>
+    <string name="collection_tracks">Треков: %1$d</string>
 </resources>

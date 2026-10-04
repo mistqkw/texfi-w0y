@@ -1,5 +1,13 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.components.W0yMotion
+import com.texfi.w0y.ui.components.SteppedEasing
+import com.texfi.w0y.ui.components.rememberReorderState
+import com.texfi.w0y.ui.components.ReorderState
+import com.texfi.w0y.ui.components.ReorderHandle
+import com.texfi.w0y.ui.components.CollectionHeader
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.texfi.w0y.playback.DownloadFailure
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
@@ -586,6 +594,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
     val songs by viewModel.currentPlaylistSongs.collectAsStateWithLifecycle()
     val playlist by viewModel.playlists.collectAsStateWithLifecycle()
     val signedIn by viewModel.isSignedIn.collectAsStateWithLifecycle()
+    val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val entry = playlist.firstOrNull { it.id == playlistId }
     val name = entry?.name ?: stringResource(R.string.playlist_title)
     // Чужой плейлист из библиотеки аккаунта YouTube править не даёт — и мы не обещаем.
@@ -597,8 +606,6 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             .padding(horizontal = 18.dp),
     ) {
         ScreenTitle(title = name.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp) {
-            SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
-            Spacer(Modifier.width(12.dp))
             SpriteButton(Sprites.trash, onClick = { viewModel.deletePlaylist(playlistId) })
         }
         renaming?.let { value ->
@@ -666,29 +673,64 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             }
             Spacer(Modifier.height(12.dp))
         }
-        if (songs.isEmpty()) {
-            Text(
-                stringResource(R.string.playlist_empty),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textMuted,
-            )
-            return
-        }
-        LazyColumn {
-            items(songs, key = { it.id }) { song ->
-                SongRow(
-                    song = song,
-                    onClick = { viewModel.playCollection(songs, songs.indexOf(song)) },
-                    modifier = Modifier.animateItem(),
-                    actions = {
-                        if (editable) {
-                            SpriteButton(
-                                Sprites.trash,
-                                onClick = { viewModel.removeFromPlaylist(playlistId, song.id) },
-                            )
-                        }
-                    },
+        // Порядок держим у себя, пока тянут строку; в базу — один раз, когда отпустили.
+        var order by remember(songs) { mutableStateOf(songs) }
+        val listState = rememberLazyListState()
+        val reorder =
+            rememberReorderState(listState) { from, to ->
+                val a = order.indexOfFirst { it.id == from }
+                val b = order.indexOfFirst { it.id == to }
+                if (a >= 0 && b >= 0) order = order.toMutableList().apply { add(b, removeAt(a)) }
+            }
+        LazyColumn(state = listState) {
+            item(key = "header") {
+                CollectionHeader(
+                    title = name,
+                    owner = if (entry?.remoteId != null) accountName ?: stringResource(R.string.library_own_playlist) else stringResource(R.string.library_own_playlist),
+                    coverUrl = entry?.coverUrl,
+                    songs = order,
+                    onPlay = { viewModel.playCollection(order, 0) },
+                    onShuffle = { viewModel.playCollection(order.shuffled(), 0) },
+                    onDownload = { viewModel.downloadAll(order) },
                 )
+            }
+            if (order.isEmpty()) {
+                item(key = "empty") {
+                    Text(
+                        stringResource(R.string.playlist_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted,
+                    )
+                }
+            }
+            items(order, key = { it.id }, contentType = { ReorderState.REORDER_TYPE }) { song ->
+                val dragged = reorder.dragging == song.id
+                with(reorder) {
+                    SongRow(
+                        song = song,
+                        onClick = { viewModel.playCollection(order, order.indexOf(song)) },
+                        modifier =
+                            if (dragged) {
+                                Modifier.reorderable(song.id)
+                            } else {
+                                // Соседи уступают место ступенями, как всё движение TexFi.
+                                Modifier.animateItem(placementSpec = tween(W0yMotion.MID_MS, easing = SteppedEasing(4)))
+                            },
+                        actions = {
+                            if (editable) {
+                                SpriteButton(
+                                    Sprites.trash,
+                                    onClick = { viewModel.removeFromPlaylist(playlistId, song.id) },
+                                )
+                                ReorderHandle(reorder, song.id) {
+                                    if (order.map { it.id } != songs.map { it.id }) {
+                                        viewModel.reorderPlaylist(playlistId, order.map { it.id })
+                                    }
+                                }
+                            }
+                        },
+                    )
+                }
             }
         }
     }
@@ -704,14 +746,23 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
             .fillMaxSize()
             .padding(horizontal = 18.dp),
     ) {
-        ScreenTitle(title = route.card.title.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp) {
-            if (songs.isNotEmpty()) SpriteButton(Sprites.download, onClick = { viewModel.downloadAll(songs) })
-        }
+        ScreenTitle(title = route.card.title.lowercase(), onBack = viewModel::back, horizontalPadding = 0.dp)
         if (songs.isEmpty()) {
             Text(stringResource(R.string.playlist_loading), style = MaterialTheme.typography.bodyMedium, color = colors.textMuted)
             return
         }
         LazyColumn {
+            item(key = "header") {
+                CollectionHeader(
+                    title = route.card.title,
+                    owner = route.card.subtitle,
+                    coverUrl = route.card.thumbnailUrl,
+                    songs = songs,
+                    onPlay = { viewModel.playCollection(songs, 0) },
+                    onShuffle = { viewModel.playCollection(songs.shuffled(), 0) },
+                    onDownload = { viewModel.downloadAll(songs) },
+                )
+            }
             items(songs, key = { it.id }) { song ->
                 SongRow(
                     song = song,

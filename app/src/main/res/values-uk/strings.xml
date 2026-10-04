@@ -545,4 +545,5 @@
     <string name="downloads_select">Вибрати</string>
     <string name="downloads_redownload">Знову</string>
     <string name="downloads_failed">Не завантажилися</string>
+    <string name="collection_tracks">Треків: %1$d</string>
 </resources>

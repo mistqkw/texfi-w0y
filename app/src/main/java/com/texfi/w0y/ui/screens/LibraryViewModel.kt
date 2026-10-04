@@ -302,6 +302,10 @@ class LibraryViewModel @Inject constructor(
 
     fun renamePlaylist(id: Long, name: String) = viewModelScope.launch { library.renamePlaylist(id, name) }
 
+    /** Новый порядок плейлиста: в базу и, если плейлист в аккаунте, туда же. */
+    fun reorderPlaylist(playlistId: Long, songIds: List<String>) =
+        viewModelScope.launch { library.reorderPlaylist(playlistId, songIds) }
+
     fun removeFromPlaylist(playlistId: Long, songId: String) =
         viewModelScope.launch { library.removeFromPlaylist(playlistId, songId) }
 

@@ -49,7 +49,7 @@ object SmoothIcons {
             s.close to close, s.check to check, s.github to github, s.license to license,
             s.globe to globe, s.headphones to headphones, s.sync to sync, s.palette to palette,
             s.shield to shield, s.rocket to rocket, s.box to box, s.share to share,
-            s.chevronUp to chevronUp, s.note to note,
+            s.chevronUp to chevronUp, s.note to note, s.grip to grip,
         )
     }
 
@@ -1292,6 +1292,30 @@ object SmoothIcons {
                 reflectiveCurveToRelative(-0.9f, -2.0f, -2.0f, -2.0f)
                 horizontalLineToRelative(-2.0f)
                 curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
+                close()
+            }
+        }
+    }
+
+    /** Rounded.DragHandle */
+    val grip: ImageVector by lazy {
+        icon("DragHandle") {
+            materialPath {
+                moveTo(19.0f, 9.0f)
+                horizontalLineTo(5.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                reflectiveCurveToRelative(0.45f, 1.0f, 1.0f, 1.0f)
+                horizontalLineToRelative(14.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                reflectiveCurveToRelative(-0.45f, -1.0f, -1.0f, -1.0f)
+                close()
+                moveTo(5.0f, 15.0f)
+                horizontalLineToRelative(14.0f)
+                curveToRelative(0.55f, 0.0f, 1.0f, -0.45f, 1.0f, -1.0f)
+                reflectiveCurveToRelative(-0.45f, -1.0f, -1.0f, -1.0f)
+                horizontalLineTo(5.0f)
+                curveToRelative(-0.55f, 0.0f, -1.0f, 0.45f, -1.0f, 1.0f)
+                reflectiveCurveToRelative(0.45f, 1.0f, 1.0f, 1.0f)
                 close()
             }
         }
