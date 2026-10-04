@@ -550,6 +550,7 @@ private fun settingsRows(
     val startupAverage by viewModel.startupAverage.collectAsStateWithLifecycle()
     val startupLast by viewModel.startupLast.collectAsStateWithLifecycle()
     val startupCount by viewModel.startupCount.collectAsStateWithLifecycle()
+    val startupBreakdown by viewModel.startupBreakdown.collectAsStateWithLifecycle()
     val cacheBytes by viewModel.cacheBytes.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
@@ -765,6 +766,14 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.PLAYER,
+                title = stringResource(R.string.settings_playlist_recs),
+                description = stringResource(R.string.settings_playlist_recs_hint),
+                control = SettingControl.Toggle(settings.showPlaylistRecommendations, viewModel::setShowPlaylistRecommendations),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
                 title = stringResource(R.string.settings_sleep_title),
                 description = stringResource(R.string.settings_sleep_desc),
                 control =
@@ -803,6 +812,26 @@ private fun settingsRows(
                     ),
             ),
         )
+        startupBreakdown?.takeIf { it.count > 0 }?.let { b ->
+            fun part(stat: com.texfi.w0y.playback.PartStat?) = stat?.let { "${it.median} / ${it.worst}" } ?: "—"
+            add(
+                SettingRow(
+                    section = SettingsSection.SPEED,
+                    title = stringResource(R.string.settings_startup_parts_title),
+                    description =
+                        stringResource(
+                            R.string.settings_startup_parts_desc,
+                            part(b.resolve),
+                            part(b.firstByte),
+                            part(b.ready),
+                            part(b.total),
+                            b.fromDisk,
+                            b.count,
+                        ),
+                    control = SettingControl.Info(stringResource(R.string.settings_startup_parts_value, b.count)),
+                ),
+            )
+        }
         add(
             SettingRow(
                 section = SettingsSection.SPEED,

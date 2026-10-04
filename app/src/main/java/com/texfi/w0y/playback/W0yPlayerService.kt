@@ -20,6 +20,13 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.audio.TeeAudioProcessor
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.TransferListener
+import com.texfi.w0y.data.ListenSession
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.texfi.w0y.BuildConfig
@@ -83,6 +90,10 @@ class W0yPlayerService : MediaSessionService() {
 
     @Inject lateinit var widgetUpdater: WidgetUpdater
 
+    @Inject lateinit var spectrum: SpectrumBus
+
+    @Inject lateinit var readAhead: ReadAhead
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val settings = MutableStateFlow(W0ySettings())
     private var session: MediaSession? = null
@@ -103,6 +114,19 @@ class W0yPlayerService : MediaSessionService() {
     private var swearJob: Job? = null
     private var lyricsForId: String? = null
 
+    /** Текущее включение для правила прослушивания и его строка в истории. */
+    private var listen: ListenSession? = null
+    private var listenRowId: Long? = null
+    private var listenSavedMs = 0L
+    private var listenJob: Job? = null
+
+    /** Части запуска текущего трека — для разбора «нажал → звук». */
+    @Volatile private var firstByteAt: Long = 0L
+
+    @Volatile private var firstByteFromDisk = false
+    private var readyAt: Long = 0L
+    private var startingId: String? = null
+
     override fun onCreate() {
         super.onCreate()
 
@@ -118,10 +142,46 @@ class W0yPlayerService : MediaSessionService() {
                     /* bufferForPlaybackAfterRebufferMs = */ 1_000,
                 ).build()
 
+        // Отвод звука для визуализатора: копия PCM, сам звук идёт дальше без
+        // изменений. Остальная цепочка (пропуск тишины, скорость) — как была.
+        val renderers =
+            object : DefaultRenderersFactory(this) {
+                override fun buildAudioSink(
+                    context: Context,
+                    enableFloatOutput: Boolean,
+                    enableAudioTrackPlaybackParams: Boolean,
+                ): AudioSink =
+                    DefaultAudioSink
+                        .Builder(context)
+                        .setAudioProcessors(arrayOf(TeeAudioProcessor(spectrum)))
+                        .setEnableFloatOutput(enableFloatOutput)
+                        .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                        .build()
+            }
+        // Первый байт звука после команды — граница между «ждали адрес и
+        // сеть» и «ждали буфер». Слушатель только ставит отметку времени.
+        val timing =
+            object : TransferListener {
+                override fun onTransferInitializing(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) = Unit
+
+                override fun onTransferStart(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) = Unit
+
+                override fun onBytesTransferred(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean, bytesTransferred: Int) {
+                    if (playRequestedAt != 0L && firstByteAt == 0L) {
+                        firstByteAt = System.nanoTime()
+                        firstByteFromDisk = !isNetwork
+                    }
+                }
+
+                override fun onTransferEnd(source: DataSource, dataSpec: DataSpec, isNetwork: Boolean) = Unit
+            }
+        val timedFactory =
+            DataSource.Factory { dataSourceFactory.createDataSource().also { it.addTransferListener(timing) } }
+
         val player =
             ExoPlayer
-                .Builder(this)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+                .Builder(this, renderers)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(timedFactory))
                 .setLoadControl(loadControl)
                 .setAudioAttributes(
                     AudioAttributes
@@ -165,6 +225,7 @@ class W0yPlayerService : MediaSessionService() {
         )
         player.addListener(TrackListener(player))
         player.addListener(WidgetListener(player))
+        startListenWatch(player)
         startSwearWatch(player)
         attachFirstAudioTrace(player)
 
@@ -228,6 +289,8 @@ class W0yPlayerService : MediaSessionService() {
         // и кнопки после смерти сервиса адресованы уже никому.
         widgetUpdater.clear()
         swearJob?.cancel()
+        finishListen()
+        readAhead.cancel()
         releaseReverb()
         headsetReceiver?.let { runCatching { unregisterReceiver(it) } }
         headsetReceiver = null
@@ -453,18 +516,21 @@ class W0yPlayerService : MediaSessionService() {
             currentId.value = mediaItem?.mediaId
             applyLoudness(player)
             if (settings.value.muteSwearLines) loadSwearWindows(mediaItem) else swearWindows = emptyList()
+            // Каждый переход — новое включение, в том числе повтор того же
+            // трека: он считается отдельно.
+            finishListen()
             val item = mediaItem ?: return
             if (!settings.value.keepHistory) return
-            scope.launch {
-                library.remember(
-                    SongItem(
-                        id = item.mediaId,
-                        title = item.mediaMetadata.title?.toString().orEmpty(),
-                        artist = item.mediaMetadata.artist?.toString().orEmpty(),
-                        album = item.mediaMetadata.albumTitle?.toString(),
-                        thumbnailUrl = item.mediaMetadata.artworkUri?.toString(),
-                    ),
-                )
+            startListen(item)
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+                listen?.seeked(newPosition.positionMs, System.currentTimeMillis())
             }
         }
 
@@ -504,13 +570,33 @@ class W0yPlayerService : MediaSessionService() {
             skipStuck()
         }
 
-        /** Греет ссылку следующего трека — переход должен быть без паузы. */
+        /**
+         * Греет следующие треки: адрес ближайшего — сразу, а начало его
+         * файла и адреса ещё двух — через [ReadAhead]. Переход должен быть
+         * без паузы, и пролистывание подряд — тоже.
+         */
         private fun prefetchNext() {
-            if (!settings.value.preloadNext) return
+            if (!settings.value.preloadNext) {
+                readAhead.cancel()
+                return
+            }
             val next = player.nextMediaItemIndex
-            if (next == C.INDEX_UNSET) return
+            if (next == C.INDEX_UNSET) {
+                readAhead.cancel()
+                return
+            }
             val id = player.getMediaItemAt(next).mediaId
             if (id.isNotEmpty()) repository.prefetch(id)
+            val upcoming =
+                (next until minOf(player.mediaItemCount, next + 3)).map { index ->
+                    val item = player.getMediaItemAt(index)
+                    SongItem(
+                        id = item.mediaId,
+                        title = item.mediaMetadata.title?.toString().orEmpty(),
+                        artist = item.mediaMetadata.artist?.toString().orEmpty(),
+                    )
+                }
+            readAhead.prepare(upcoming, repository.onWifi())
         }
     }
 
@@ -519,11 +605,17 @@ class W0yPlayerService : MediaSessionService() {
         player.addListener(
             object : Player.Listener {
                 override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-                    if (playWhenReady) playRequestedAt = System.nanoTime()
+                    if (playWhenReady) markRequest(player.currentMediaItem?.mediaId)
                 }
 
                 override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    playRequestedAt = System.nanoTime()
+                    markRequest(mediaItem?.mediaId)
+                }
+
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY && playRequestedAt != 0L && readyAt == 0L) {
+                        readyAt = System.nanoTime()
+                    }
                 }
             },
         )
@@ -534,16 +626,107 @@ class W0yPlayerService : MediaSessionService() {
                     playoutStartSystemTimeMs: Long,
                 ) {
                     if (playRequestedAt == 0L) return
-                    val ms = (System.nanoTime() - playRequestedAt) / 1_000_000
+                    val now = System.nanoTime()
+                    val start = playRequestedAt
+                    fun part(at: Long) = if (at == 0L || at < start) null else (at - start) / 1_000_000
+                    val sample =
+                        StartupSample(
+                            totalMs = (now - start) / 1_000_000,
+                            resolveMs = startingId?.let(repository::takeResolveMs),
+                            firstByteMs = part(firstByteAt),
+                            readyMs = part(readyAt),
+                            fromDisk = firstByteFromDisk,
+                        )
                     playRequestedAt = 0L
-                    startupMetrics.record(ms)
-                    if (BuildConfig.DEBUG) Timber.i("Звук пошёл через $ms мс после команды")
+                    startupMetrics.record(sample)
+                    if (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "bench") {
+                        android.util.Log.i("w0y-start", sample.toString())
+                    }
                 }
             },
         )
     }
 
+    /** Отметка «команда дана» для разбора старта по частям. */
+    private fun markRequest(mediaId: String?) {
+        playRequestedAt = System.nanoTime()
+        firstByteAt = 0L
+        firstByteFromDisk = false
+        readyAt = 0L
+        startingId = mediaId
+        // Замер от предзагрузки не в счёт: адрес тогда уже в кэше, и
+        // получение для этого запуска честно равно нулю.
+        if (mediaId != null) repository.takeResolveMs(mediaId)
+    }
+
+    /** Новое включение: строка истории сразу, засчитывание — по правилу. */
+    private fun startListen(item: MediaItem) {
+        val session = ListenSession(item.mediaId, durationMs = null)
+        listen = session
+        listenRowId = null
+        listenSavedMs = 0
+        scope.launch {
+            listenRowId =
+                library.remember(
+                    SongItem(
+                        id = item.mediaId,
+                        title = item.mediaMetadata.title?.toString().orEmpty(),
+                        artist = item.mediaMetadata.artist?.toString().orEmpty(),
+                        album = item.mediaMetadata.albumTitle?.toString(),
+                        thumbnailUrl = item.mediaMetadata.artworkUri?.toString(),
+                    ),
+                )
+        }
+    }
+
+    /** Закрыть включение: дописать проигранное время. */
+    private fun finishListen() {
+        val session = listen ?: return
+        val row = listenRowId
+        listen = null
+        listenRowId = null
+        if (row != null && session.listenedMs != listenSavedMs) {
+            scope.launch { library.updateListen(row, session.listenedMs, session.counted) }
+        }
+    }
+
+    /**
+     * Раз в секунду: снимок позиции для правила прослушивания. Засчитанное
+     * пишется сразу, проигранное время — не чаще раза в 15 секунд.
+     */
+    private fun startListenWatch(player: Player) {
+        listenJob?.cancel()
+        listenJob =
+            scope.launch {
+                while (true) {
+                    delay(LISTEN_TICK_MS)
+                    val session = listen ?: continue
+                    if (player.currentMediaItem?.mediaId != session.songId) continue
+                    val duration = player.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+                    if (duration != null && session.durationMs == null) {
+                        session.durationMs = duration
+                        launch { library.rememberDuration(session.songId, duration) }
+                    }
+                    val crossed =
+                        session.sample(
+                            positionMs = player.currentPosition,
+                            wallMs = System.currentTimeMillis(),
+                            playing = player.isPlaying,
+                            speed = player.playbackParameters.speed,
+                        )
+                    val row = listenRowId ?: continue
+                    if (crossed || session.listenedMs - listenSavedMs >= LISTEN_SAVE_MS) {
+                        listenSavedMs = session.listenedMs
+                        library.updateListen(row, session.listenedMs, session.counted)
+                    }
+                }
+            }
+    }
+
     private companion object {
+        const val LISTEN_TICK_MS = 1_000L
+        const val LISTEN_SAVE_MS = 15_000L
+
         /** Приоритет вставки эффекта: выше нуля, чтобы система не вытеснила его чужим. */
         const val REVERB_PRIORITY = 1
 

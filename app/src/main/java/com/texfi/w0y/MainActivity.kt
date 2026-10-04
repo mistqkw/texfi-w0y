@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import com.texfi.w0y.data.LocalePrefs
+import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.playback.PlayerConnection
 import javax.inject.Inject
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -23,6 +24,8 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var playerConnection: PlayerConnection
+
+    @Inject lateinit var youtube: YouTubeRepository
 
     // Язык подставляется до создания экрана: ресурсы читаются уже при
     // первом кадре, и менять их позже — значит показать один кадр на
@@ -56,6 +59,10 @@ class MainActivity : ComponentActivity() {
                 W0yShell(shellViewModel)
             }
         }
+        // Прогрев извлечения (клиенты, ключи плеера) — после первого кадра и
+        // в фоне: первое нажатие на трек не ждёт этой подготовки, а запуск
+        // приложения не ждёт её саму.
+        window.decorView.post { youtube.prewarm() }
     }
 
     /**
