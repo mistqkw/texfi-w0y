@@ -26,6 +26,7 @@ ktor = "3.6.0"
 innertubex = "v0.7.4"
 timber = "5.0.1"
 jump3r = "1.0.5"
+backdrop = "2.0.1"
 junit = "4.13.2"
 robolectric = "4.17"
 androidxTestCore = "1.7.0"
@@ -73,6 +74,7 @@ ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", 
 
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 jump3r = { module = "de.sciss:jump3r", version.ref = "jump3r" }
+backdrop = { module = "io.github.kyant0:backdrop", version.ref = "backdrop" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

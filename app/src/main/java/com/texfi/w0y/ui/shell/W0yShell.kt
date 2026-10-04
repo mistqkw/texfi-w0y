@@ -45,6 +45,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import com.texfi.w0y.ui.theme.screenBackdrop
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -201,11 +203,27 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         LocalSongActions provides songActions,
     ) {
     val haptic = rememberHaptics()
+    // Стеклянный Smooth: экран уходит под нижние панели, а они его размывают
+    // и преломляют. В остальных стилях панели стоят под экраном, как раньше:
+    // список кончается над ними, и под непрозрачной панелью ничего не прячется.
+    val glassBars = com.texfi.w0y.ui.theme.isSmooth && com.texfi.w0y.ui.theme.styleTokens.glass
+    val barBackdrop = com.texfi.w0y.ui.theme.rememberScreenBackdrop()
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var barsHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val barsHeight = with(density) { barsHeightPx.toDp() }
     Box(
         Modifier
             .fillMaxSize()
             .screenBackground(),
     ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .screenBackdrop(barBackdrop)
+                // Фон — внутри записи: без него текст на прозрачном размывался
+                // в бледное пятно, и сквозь стекло читался чёткий оригинал.
+                .screenBackground(),
+        ) {
         // Фон экосистемы: он виден в промежутках между карточками и
         // строками — как на сайте, где чёрный тоже не пустой.
         if (com.texfi.w0y.ui.theme.isSmooth) {
@@ -216,9 +234,11 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         Column(
             Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .padding(bottom = if (glassBars) 0.dp else barsHeight),
         ) {
             Box(Modifier.weight(1f)) {
+            CompositionLocalProvider(com.texfi.w0y.ui.components.LocalBarsInset provides if (glassBars) barsHeight else 0.dp) {
                 // Смена вкладки — спокойное ступенчатое проявление: экран стоит
                 // на месте с первого кадра, без ожидания и без цветных блоков.
                 Box(Modifier.fillMaxSize().softEnter(tab)) {
@@ -245,6 +265,16 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     onBack = { if (browseStack.isNotEmpty()) browseStack.removeAt(browseStack.lastIndex) },
                 )
             }
+            }
+        }
+        }
+        CompositionLocalProvider(com.texfi.w0y.ui.theme.LocalBarBackdrop provides if (glassBars) barBackdrop else null) {
+        Column(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .onSizeChanged { barsHeightPx = it.height },
+        ) {
             DownloadToast(
                 notices = viewModel.downloads.notices,
                 onOpen = {
@@ -278,9 +308,11 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                         items = Tab.entries.map { NavItem(stringResource(it.labelRes), it.sprite) },
                         selected = tab.ordinal,
                         onSelect = { tab = Tab.entries[it] },
+                        standalone = Tab.SEARCH.ordinal,
                     )
                 }
             }
+        }
         }
 
         PlayerSheet(
@@ -295,6 +327,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 menuSong = null
                 menuNewName = null
             }
+            CompositionLocalProvider(com.texfi.w0y.ui.theme.LocalPanelBackdrop provides if (glassBars) barBackdrop else null) {
             AddToPlaylistPanel(
                 song = song,
                 playlists = menuPlaylists.map { it.id to it.name },
@@ -333,6 +366,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                         }
                     },
             )
+            }
         }
 
         AnimatedVisibility(

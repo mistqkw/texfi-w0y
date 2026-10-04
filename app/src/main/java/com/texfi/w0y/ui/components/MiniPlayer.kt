@@ -81,10 +81,13 @@ fun MiniPlayer(
             )
         }
         val smooth = isSmooth
+        // На стекле — как в iOS: без полосы прогресса, она есть в самом плеере.
+        val glass = com.texfi.w0y.ui.theme.LocalBarBackdrop.current != null && com.texfi.w0y.ui.theme.styleTokens.glass
         // Плавающий блок над навигацией; отступ снизу — зазор до неё.
-        FloatingSurface(Modifier.padding(bottom = 8.dp)) {
+        FloatingSurface(Modifier.padding(bottom = if (glass) 10.dp else 8.dp)) {
         Column(Modifier.fillMaxWidth()) {
             val duration = state.durationMs
+            if (!glass) {
             // Позиция читается только при рисовании: полоса двигается,
             // а строка мини-плеера не пересобирается.
             SegmentedBar(
@@ -100,6 +103,7 @@ fun MiniPlayer(
                 height = if (smooth) 3.dp else 4.dp,
                 cell = 10.dp,
             )
+            }
             // Смахивание мини-плеера: вправо — предыдущий трек, влево — следующий.
             SwipeRow(
                 onSwipeRight = onPrevious,
@@ -111,7 +115,7 @@ fun MiniPlayer(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = if (glass) 10.dp else 12.dp, vertical = if (glass) 10.dp else 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CoverImage(
@@ -119,7 +123,8 @@ fun MiniPlayer(
                     px = Thumbnails.ROW,
                     modifier =
                         Modifier
-                            .size(42.dp)
+                            .size(if (glass) 46.dp else 42.dp)
+                            .then(if (glass) Modifier.clip(RoundedCornerShape(10.dp)) else Modifier)
                             .graphicsLayer {
                                 scaleX = bump.value
                                 scaleY = bump.value
@@ -127,7 +132,7 @@ fun MiniPlayer(
                             .then(if (smooth) Modifier else Modifier.border(2.dp, colors.border, RoundedCornerShape(4.dp)))
                             .clickable(onClick = onExpand),
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(if (glass) 12.dp else 10.dp))
                 Column(
                     Modifier
                         .weight(1f)
@@ -135,7 +140,12 @@ fun MiniPlayer(
                 ) {
                     Text(
                         text = song.title,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style =
+                            if (glass) {
+                                MaterialTheme.typography.bodyMedium.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                            } else {
+                                MaterialTheme.typography.bodyMedium
+                            },
                         color = colors.text,
                         maxLines = 1,
                     )

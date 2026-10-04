@@ -125,6 +125,7 @@ private fun SmoothCard(
             .liquidGlass(styleTokens.card)
             .padding(16.dp),
     ) {
+        androidx.compose.runtime.CompositionLocalProvider(com.texfi.w0y.ui.theme.LocalPanelBackdrop provides null) {
         if (label != null) {
             Text(
                 text = label,
@@ -134,6 +135,7 @@ private fun SmoothCard(
             )
         }
         content()
+        }
     }
 }
 

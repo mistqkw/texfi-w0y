@@ -56,7 +56,9 @@ fun AddToPlaylistPanel(
     Box(
         Modifier
             .fillMaxSize()
-            .background(colors.shadow.copy(alpha = 0.85f))
+            // Под стеклянной панелью экран размыт ею самой: затемнять его
+            // почти до черноты тогда незачем.
+            .background(colors.shadow.copy(alpha = if (com.texfi.w0y.ui.theme.LocalPanelBackdrop.current != null) 0.35f else 0.85f))
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,14 @@ import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.isSmooth
 import com.texfi.w0y.ui.theme.liquidGlass
+import com.texfi.w0y.ui.theme.LocalBarBackdrop
+import com.texfi.w0y.ui.theme.glassBar
+import com.texfi.w0y.ui.theme.glassSelection
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import com.texfi.w0y.ui.theme.styleTokens
 import kotlin.math.roundToInt
@@ -58,10 +67,16 @@ data class NavItem(val label: String, val sprite: List<String>)
 @Composable
 fun FloatingSurface(
     modifier: Modifier = Modifier,
+    shape: Shape? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = LocalW0yColors.current
     val tokens = styleTokens
+    val backdrop = LocalBarBackdrop.current
+    if (backdrop != null && tokens.glass) {
+        Box(modifier.glassBar(shape ?: GlassCapsule, backdrop), content = content)
+        return
+    }
     if (isSmooth || colors.glass) {
         Box(
             modifier
@@ -104,7 +119,12 @@ fun FloatingNavBar(
     selected: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    standalone: Int? = null,
 ) {
+    if (LocalBarBackdrop.current != null && styleTokens.glass) {
+        GlassNavBar(items, selected, onSelect, modifier, standalone)
+        return
+    }
     val colors = LocalW0yColors.current
     val smooth = isSmooth
     val tokens = styleTokens
@@ -196,9 +216,137 @@ fun FloatingNavBar(
     }
 }
 
+/**
+ * Навигация на стекле, как в iOS 26: вкладки в одной капсуле, поиск —
+ * отдельным кругом справа. Выбранная вкладка — светлая капсула под
+ * иконкой, она плавно переезжает; по капсуле можно вести пальцем.
+ */
+@Composable
+private fun GlassNavBar(
+    items: List<NavItem>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier,
+    standalone: Int?,
+) {
+    val inCapsule = items.indices.filter { it != standalone }
+    val capsuleIndex = inCapsule.indexOf(selected)
+    val position = remember { Animatable(capsuleIndex.coerceAtLeast(0).toFloat()) }
+    LaunchedEffect(capsuleIndex) {
+        if (capsuleIndex >= 0) position.animateTo(capsuleIndex.toFloat(), spring(dampingRatio = 0.8f, stiffness = 500f))
+    }
+    val pillAlpha by animateFloatAsState(if (capsuleIndex >= 0) 1f else 0f, tween(180), label = "pill")
+    val tick = rememberTapHaptic()
+    val select by rememberUpdatedState(onSelect)
+    val currentSelected by rememberUpdatedState(selected)
+    val pill = glassSelection
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        FloatingSurface(Modifier.weight(1f)) {
+            BoxWithConstraints(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(NAV_INSET)
+                    .pointerInput(inCapsule) {
+                        fun slotAt(x: Float) = (x / (size.width.toFloat() / inCapsule.size)).toInt().coerceIn(0, inCapsule.lastIndex)
+                        var last = -1
+                        fun moveTo(x: Float) {
+                            val index = inCapsule[slotAt(x)]
+                            if (index != last) {
+                                last = index
+                                tick()
+                                select(index)
+                            }
+                        }
+                        detectHorizontalDragGestures(onDragStart = {
+                            last = currentSelected
+                            moveTo(it.x)
+                        }) { change, _ ->
+                            change.consume()
+                            moveTo(change.position.x)
+                        }
+                    },
+            ) {
+                val slot = maxWidth / inCapsule.size
+                Box(
+                    Modifier
+                        .offset { IntOffset((slot.toPx() * position.value).roundToInt(), 0) }
+                        .width(slot)
+                        .height(NAV_HEIGHT)
+                        .graphicsLayer { alpha = pillAlpha }
+                        .clip(GlassCapsule)
+                        .background(pill),
+                )
+                Row(Modifier.fillMaxWidth()) {
+                    inCapsule.forEach { index ->
+                        NavCell(items[index], active = index == selected, label = true, onClick = { onSelect(index) }, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+        if (standalone != null) {
+            val active = selected == standalone
+            Spacer(Modifier.width(10.dp))
+            FloatingSurface(Modifier.size(NAV_HEIGHT + NAV_INSET * 2), shape = CircleShape) {
+                Box(
+                    Modifier
+                        .padding(NAV_INSET)
+                        .size(NAV_HEIGHT)
+                        .clip(CircleShape)
+                        .background(if (active) pill else Color.Transparent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    NavCell(items[standalone], active = active, label = false, onClick = { onSelect(standalone) }, modifier = Modifier.size(NAV_HEIGHT))
+                }
+            }
+        }
+    }
+}
+
+/** Пункт стеклянной навигации: иконка и подпись, выбранный — ярче. */
+@Composable
+private fun NavCell(item: NavItem, active: Boolean, label: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val colors = LocalW0yColors.current
+    val interaction = remember { MutableInteractionSource() }
+    val tint by animateColorAsState(if (active) colors.text else colors.textMuted, tween(180), label = "glassNavTint")
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+        modifier =
+            modifier
+                .height(NAV_HEIGHT)
+                .pressScale(interaction, pressed = 0.9f)
+                .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+    ) {
+        PixelSprite(
+            rows = item.sprite,
+            color = tint,
+            modifier = Modifier.size(if (label) 22.dp else 24.dp).popWhenActivated(active, peak = 1.18f),
+        )
+        if (label) {
+            Text(
+                text = item.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = tint,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 3.dp),
+            )
+        }
+    }
+}
+
+/** Капсула стеклянных панелей: скругление на всю высоту. */
+private val GlassCapsule = RoundedCornerShape(50)
+
 /** Высота пункта навигации: 48 dp касания плюс подпись. */
 val NAV_HEIGHT: Dp = 54.dp
 private val NAV_INSET = 5.dp
 private val FLOAT_SHADOW = 4.dp
 private const val NAV_MS = 200
 private const val NAV_STEPS = 5
+
+/**
+ * Сколько снизу экрана закрыто стеклянными панелями. Списки добавляют это
+ * в отступ снизу: экран виден сквозь стекло, но последний трек всё равно
+ * докручивается до места над панелями. Без стекла — ноль.
+ */
+val LocalBarsInset = androidx.compose.runtime.compositionLocalOf { 0.dp }

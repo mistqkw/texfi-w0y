@@ -150,6 +150,7 @@ dependencies {
     implementation(libs.timber)
     // LAME на чистой Java: MP3 при сохранении на устройство (LGPL).
     implementation(libs.jump3r)
+    implementation(libs.backdrop)
     testImplementation(libs.junit)
     // Robolectric нужен, чтобы ловить android-специфичные поломки локально:
     // на чистой JVM подключается JVM-вариант библиотеки, а на телефоне —
