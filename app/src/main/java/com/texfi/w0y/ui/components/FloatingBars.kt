@@ -27,6 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +94,9 @@ fun FloatingSurface(
  * Выбранный пункт подсвечен блоком, который переезжает под новый пункт —
  * в Pixel ступенями (5 шагов за 200 мс), в Smooth плавно. Каждый пункт не
  * меньше 48 dp по высоте и по ширине.
+ *
+ * По панели можно вести пальцем: вкладка под пальцем открывается сразу,
+ * без отдельного нажатия на каждую, с лёгким откликом на каждой смене.
  */
 @Composable
 fun FloatingNavBar(
@@ -109,8 +115,38 @@ fun FloatingNavBar(
             if (smooth) spring(dampingRatio = 0.8f, stiffness = 500f) else tween(NAV_MS, easing = SteppedEasing(NAV_STEPS)),
         )
     }
+    val tick = rememberTapHaptic()
+    val currentSelected by rememberUpdatedState(selected)
+    val select by rememberUpdatedState(onSelect)
     FloatingSurface(modifier.fillMaxWidth()) {
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(NAV_INSET)) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .padding(NAV_INSET)
+                .pointerInput(items.size) {
+                    fun slotAt(x: Float) = (x / (size.width.toFloat() / items.size)).toInt().coerceIn(0, items.lastIndex)
+                    // Последняя вкладка этого жеста: выбор доходит до экрана не
+                    // мгновенно, и без неё быстрый палец выбрал бы одну вкладку дважды.
+                    var last = -1
+                    fun moveTo(x: Float) {
+                        val index = slotAt(x)
+                        if (index != last) {
+                            last = index
+                            tick()
+                            select(index)
+                        }
+                    }
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            last = currentSelected
+                            moveTo(it.x)
+                        },
+                    ) { change, _ ->
+                        change.consume()
+                        moveTo(change.position.x)
+                    }
+                },
+        ) {
             val slot = maxWidth / items.size
             // Блок выбранного пункта: рисуется под иконками, сдвиг читается в слое раскладки.
             Box(
