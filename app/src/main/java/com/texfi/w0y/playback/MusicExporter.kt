@@ -16,6 +16,9 @@ import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import dagger.hilt.android.qualifiers.ApplicationContext
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -23,6 +26,10 @@ import java.io.OutputStream
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -40,14 +47,15 @@ data class ExportResult(val saved: Int, val existed: Int, val failed: Int)
  * Папку выбирает сам человек через системный выбор (доступ только к ней,
  * без разрешения на всю память); не выбрал — «Музыка/w0y music» через
  * MediaStore. Трек читается из хранилища загрузок тем же источником, что и
- * воспроизведение (только хранилище, в сеть не ходим), и пишется одним
- * файлом в исходном формате — без перекодирования, без потерь и без
- * ожидания.
+ * воспроизведение (только хранилище, в сеть не ходим), и перекодируется в
+ * MP3 320 кбит/с ([Mp3Transcoder]) — этот формат открывает любой плеер,
+ * магнитола и компьютер. Качество при этом не растёт: исходник с YouTube
+ * сжат сильнее, 320 — просто чтобы ничего не потерять при перекодировании.
  *
- * Имя — «Исполнитель - Название». Дубли не плодятся: если файл с таким
- * именем уже лежит, трек считается сохранённым. Внутрь m4a кладутся
- * название, исполнитель, альбом и обложка ([Mp4Tagger]); WebM/Opus без
- * сторонней библиотеки так не разметить — у него теги только в медиатеке.
+ * Имя — «Исполнитель - Название.mp3». Дубли не плодятся: если файл с таким
+ * именем уже лежит, трек считается сохранённым, и кодировать его заново не
+ * нужно. Внутрь кладутся название, исполнитель, альбом и обложка
+ * ([Id3Tagger]). Кодирование долгое, поэтому идёт по [PARALLEL] трека сразу.
  */
 @Singleton
 @OptIn(UnstableApi::class)
@@ -57,39 +65,50 @@ class MusicExporter @Inject constructor(
     private val settings: SettingsRepository,
     private val okHttp: OkHttpClient,
 ) {
-    suspend fun export(songs: List<SongItem>): ExportResult = withContext(Dispatchers.IO) {
+    /** [onProgress] — сколько треков из всех уже обработано (в любом исходе). */
+    suspend fun export(
+        songs: List<SongItem>,
+        onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
+    ): ExportResult = withContext(Dispatchers.IO) {
         val tree = settings.settings.first().exportTreeUri.takeIf { it.isNotBlank() }?.let(Uri::parse)
-        var saved = 0
-        var existed = 0
-        var failed = 0
-        songs.forEach { song ->
-            runCatching { exportOne(song, tree) }
-                .onSuccess { if (it) saved++ else existed++ }
-                .onFailure {
-                    Timber.w(it, "Не выгрузился трек %s", song.id)
-                    failed++
+        val saved = AtomicInteger()
+        val existed = AtomicInteger()
+        val failed = AtomicInteger()
+        val done = AtomicInteger()
+        onProgress(0, songs.size)
+        val workers = Dispatchers.IO.limitedParallelism(PARALLEL)
+        coroutineScope {
+            songs.map { song ->
+                async(workers) {
+                    runCatching { exportOne(song, tree) }
+                        .onSuccess { if (it) saved.incrementAndGet() else existed.incrementAndGet() }
+                        .onFailure {
+                            Timber.w(it, "Не выгрузился трек %s", song.id)
+                            failed.incrementAndGet()
+                        }
+                    onProgress(done.incrementAndGet(), songs.size)
                 }
+            }.awaitAll()
         }
-        ExportResult(saved, existed, failed)
+        ExportResult(saved.get(), existed.get(), failed.get())
     }
 
     /** true — файл записан, false — такой уже лежит в папке. */
     private fun exportOne(song: SongItem, tree: Uri?): Boolean {
-        val bytes = readAll(song)
-        val format = detect(bytes)
-        val name = fileName(song, format.extension)
-        val body =
-            if (format.extension == "m4a") {
-                Mp4Tagger.tag(bytes, AudioTags(song.title, song.artist, song.album, cover(song))) ?: bytes
-            } else {
-                bytes
-            }
-        val sink = (if (tree != null) openTree(tree, name, format.mime) else open(song, name, format.mime)) ?: return false
+        val name = fileName(song, MP3.extension)
+        // Сначала место в папке: если файл уже есть, не тратим полминуты на кодирование.
+        val sink = (if (tree != null) openTree(tree, name, MP3.mime) else open(song, name, MP3.mime)) ?: return false
         var complete = false
+        val source = File(context.cacheDir, "export-${song.id}.src")
         try {
-            sink.stream.write(body)
+            source.writeBytes(readAll(song))
+            val stream = BufferedOutputStream(sink.stream, BUFFER)
+            stream.write(Id3Tagger.tag(AudioTags(song.title, song.artist, song.album, cover(song))))
+            Mp3Transcoder.transcode(source, stream, KBPS)
+            stream.flush()
             complete = true
         } finally {
+            source.delete()
             sink.stream.close()
             sink.finish(complete)
         }
@@ -123,12 +142,27 @@ class MusicExporter @Inject constructor(
     /** Обложка для тегов; не скачалась — файл просто без неё. */
     private fun cover(song: SongItem): ByteArray? {
         val url = Thumbnails.sized(song.thumbnailUrl, COVER_PX) ?: return null
-        return runCatching {
-            okHttp.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                if (!response.isSuccessful) return@use null
-                response.body?.bytes()?.takeIf { it.size in 1..MAX_COVER }
-            }
-        }.getOrNull()
+        val bytes =
+            runCatching {
+                okHttp.newCall(Request.Builder().url(url).build()).execute().use { response ->
+                    if (!response.isSuccessful) return@use null
+                    response.body?.bytes()?.takeIf { it.size in 1..MAX_COVER }
+                }
+            }.getOrNull() ?: return null
+        return asJpegOrPng(bytes)
+    }
+
+    /** Плееры понимают в тегах JPEG и PNG; WebP и прочее пережимается в JPEG. */
+    private fun asJpegOrPng(bytes: ByteArray): ByteArray? {
+        val jpeg = bytes.size > 2 && bytes[0] == 0xFF.toByte() && bytes[1] == 0xD8.toByte()
+        val png = bytes.size > 3 && bytes[0] == 0x89.toByte() && bytes[1] == 'P'.code.toByte()
+        if (jpeg || png) return bytes
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        return ByteArrayOutputStream().use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, COVER_QUALITY, out)
+            bitmap.recycle()
+            out.toByteArray()
+        }
     }
 
     class Format(val extension: String, val mime: String)
@@ -137,7 +171,13 @@ class MusicExporter @Inject constructor(
         const val FOLDER = "w0y music"
         private const val BUFFER = 64 * 1024
         private const val COVER_PX = 600
+        private const val COVER_QUALITY = 92
         private const val MAX_COVER = 2 * 1024 * 1024
+        private const val KBPS = 320
+
+        /** Сколько треков кодируется одновременно: быстрее в разы, а памяти — по паре мегабайт на трек. */
+        private const val PARALLEL = 3
+        private val MP3 = Format("mp3", "audio/mpeg")
 
         fun detect(head: ByteArray): Format {
             fun at(i: Int) = if (i < head.size) head[i].toInt() and 0xFF else -1

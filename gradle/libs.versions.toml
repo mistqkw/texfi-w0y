@@ -25,6 +25,7 @@ ktor = "3.6.0"
 # обновление — только осознанно и с проверкой воспроизведения.
 innertubex = "v0.7.0"
 timber = "5.0.1"
+jump3r = "1.0.5"
 junit = "4.13.2"
 robolectric = "4.17"
 androidxTestCore = "1.7.0"
@@ -71,6 +72,7 @@ ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negoti
 ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+jump3r = { module = "de.sciss:jump3r", version.ref = "jump3r" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

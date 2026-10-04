@@ -14,6 +14,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import com.texfi.w0y.playback.DownloadFailure
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -414,6 +416,13 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
     val pending = progress.values.filter { it.state != DownloadState.DONE }
     val exporting by viewModel.exporting.collectAsStateWithLifecycle()
     val exportStatus by viewModel.exportStatus.collectAsStateWithLifecycle()
+    val exportProgress by viewModel.exportProgress.collectAsStateWithLifecycle()
+    val folder by viewModel.exportFolder.collectAsStateWithLifecycle()
+    // Отмена выбора папки ничего не меняет: вопрос остаётся, папка — прежней.
+    val folderLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            uri?.let(viewModel::answerExportFolder)
+        }
     // Выбор начинается долгим нажатием; пока он идёт, нажатие отмечает трек.
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var selecting by remember { mutableStateOf(false) }
@@ -447,6 +456,37 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             color = colors.textMuted,
             modifier = Modifier.padding(top = 4.dp),
         )
+        folder?.let { current ->
+            if (!current.asked) {
+                // Первый заход: куда сохранять на телефон — спрашиваем здесь,
+                // рядом с кнопкой сохранения, а не в глубине настроек.
+                PixelCard(label = stringResource(R.string.dl_folder_ask_title), modifier = Modifier.padding(top = 12.dp)) {
+                    Text(
+                        stringResource(R.string.dl_folder_ask_text, stringResource(R.string.dl_folder_default)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.text,
+                    )
+                    Text(
+                        stringResource(R.string.export_warning_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textMuted,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 12.dp)) {
+                        PixelButton(stringResource(R.string.dl_folder_ask_pick), onClick = { folderLauncher.launch(null) })
+                        PixelButton(stringResource(R.string.dl_folder_ask_keep), onClick = { viewModel.answerExportFolder(null) }, fill = colors.surfaceHigh)
+                    }
+                }
+            } else {
+                Text(
+                    stringResource(R.string.dl_folder_current, folderName(current.tree) ?: stringResource(R.string.dl_folder_default)) +
+                        " · " + stringResource(R.string.dl_folder_change),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.accentText,
+                    modifier = Modifier.clickable { folderLauncher.launch(null) }.padding(vertical = 6.dp),
+                )
+            }
+        }
         Spacer(Modifier.height(10.dp))
         if (selecting) {
             // Панель выбора: сколько отмечено, «все», и что с ними сделать.
@@ -469,7 +509,11 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
                 SpriteButton(Sprites.close, onClick = { selecting = false; selected = emptySet() })
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 6.dp)) {
-                PixelButton(stringResource(R.string.downloads_export), onClick = { viewModel.exportDownloads(selectedSongs) }, enabled = selected.isNotEmpty() && !exporting)
+                PixelButton(
+                    if (exporting) stringResource(R.string.downloads_exporting, exportProgress.first, exportProgress.second) else stringResource(R.string.downloads_export),
+                    onClick = { viewModel.exportDownloads(selectedSongs) },
+                    enabled = selected.isNotEmpty() && !exporting,
+                )
                 PixelButton(stringResource(R.string.downloads_redownload), onClick = { viewModel.redownload(selected); selecting = false; selected = emptySet() }, enabled = selected.isNotEmpty(), fill = colors.surfaceHigh)
                 PixelButton(stringResource(R.string.dl_clear_button), onClick = { viewModel.deleteDownloads(selected); selecting = false; selected = emptySet() }, enabled = selected.isNotEmpty(), fill = colors.surfaceHigh)
             }
@@ -477,7 +521,11 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 PixelButton(
                     text =
-                        if (exporting) stringResource(R.string.downloads_exporting) else stringResource(R.string.downloads_export),
+                        if (exporting) {
+                            stringResource(R.string.downloads_exporting, exportProgress.first, exportProgress.second)
+                        } else {
+                            stringResource(R.string.downloads_export)
+                        },
                     onClick = { viewModel.exportDownloads(songs) },
                     enabled = !exporting,
                 )
@@ -792,3 +840,10 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
     }
 }
 
+/** Имя выбранной папки из адреса SAF: «primary:Music/w0y» → «Music/w0y». */
+private fun folderName(tree: String): String? {
+    if (tree.isBlank()) return null
+    return runCatching {
+        android.provider.DocumentsContract.getTreeDocumentId(android.net.Uri.parse(tree)).substringAfter(':').ifBlank { "/" }
+    }.getOrNull()
+}

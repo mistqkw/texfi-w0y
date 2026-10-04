@@ -117,10 +117,6 @@ fun SettingsScreen(
                 context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
             }
         }
-    val folderLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            uri?.let(viewModel::setExportFolder)
-        }
     val currentSettings by viewModel.settings.collectAsStateWithLifecycle()
     // Предупреждение об авторских правах — один раз, при первом включении
     // сохранения на устройство; действие выполняется после согласия.
@@ -178,7 +174,6 @@ fun SettingsScreen(
             onOpenAbout = { aboutOpen = true },
             onExport = { exportLauncher.launch("w0y-settings.json") },
             onImport = { importLauncher.launch(arrayOf("application/json")) },
-            onPickFolder = { withCopyrightNotice { folderLauncher.launch(null) } },
             onAutoExport = { on -> if (on) withCopyrightNotice { viewModel.setAutoExport(true) } else viewModel.setAutoExport(false) },
         )
     val current = section?.let { name -> SettingsSection.entries.firstOrNull { it.name == name } }
@@ -577,7 +572,6 @@ private fun settingsRows(
     onOpenAbout: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
-    onPickFolder: () -> Unit,
     onAutoExport: (Boolean) -> Unit,
 ): List<SettingRow> {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
@@ -1123,27 +1117,6 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.DOWNLOADS,
-                title = stringResource(R.string.dl_folder_title),
-                description = stringResource(R.string.dl_folder_desc, folderName(settings.exportTreeUri) ?: stringResource(R.string.dl_folder_default)),
-                keywords = "saf export save device music",
-                control =
-                    SettingControl.Custom {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            PixelButton(stringResource(R.string.dl_folder_pick), onClick = onPickFolder)
-                            if (settings.exportTreeUri.isNotBlank()) {
-                                PixelButton(
-                                    stringResource(R.string.dl_folder_reset),
-                                    onClick = { viewModel.setExportFolder(null) },
-                                    fill = LocalW0yColors.current.surfaceHigh,
-                                )
-                            }
-                        }
-                    },
-            ),
-        )
-        add(
-            SettingRow(
-                section = SettingsSection.DOWNLOADS,
                 title = stringResource(R.string.dl_auto_export_title),
                 description = stringResource(R.string.dl_auto_export_desc),
                 control = SettingControl.Toggle(settings.autoExport, onAutoExport),
@@ -1549,12 +1522,4 @@ private fun HiddenDialList(
         Spacer(Modifier.height(8.dp))
         PixelButton(text = stringResource(R.string.dial_restore_all), onClick = onRestoreAll)
     }
-}
-
-/** Имя выбранной папки из адреса SAF: «primary:Music/w0y» → «Music/w0y». */
-private fun folderName(tree: String): String? {
-    if (tree.isBlank()) return null
-    return runCatching {
-        android.provider.DocumentsContract.getTreeDocumentId(android.net.Uri.parse(tree)).substringAfter(':').ifBlank { "/" }
-    }.getOrNull()
 }

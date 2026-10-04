@@ -392,7 +392,7 @@
     <string name="download_done_one">Downloaded “%1$s” — it plays with no network</string>
     <string name="download_done_many">Downloaded tracks: %1$d</string>
     <string name="download_failed">“%1$s” did not download</string>
-    <string name="downloads_where">Inside the app, so other players do not see them and they go away with the app. “Save to music” puts a copy in Music/w0y music — from there you can take it to a computer.</string>
+    <string name="downloads_where">Inside the app, so other players do not see them and they go away with the app. “Save to music” puts MP3 copies in the folder you chose — from there you can take them to a computer.</string>
     <string name="search_filter_videos">VIDEOS</string>
     <string name="player_edit_title">READY-MADE EDITS</string>
     <string name="player_edit_desc">Someone else’s slowed or sped up edit from YouTube — with its own mix and echo. The original stays in the queue behind it.</string>
@@ -437,9 +437,9 @@
     <string name="playlist_rename">rename</string>
     <string name="playlist_rename_save">save</string>
     <string name="downloads_export">SAVE TO MUSIC</string>
-    <string name="downloads_exporting">SAVING…</string>
-    <string name="downloads_export_done">Saved to Music/w0y music: %1$d, already there: %2$d, failed: %3$d.</string>
-    <string name="downloads_export_failed">Could not save: the tracks are not readable from the app cache.</string>
+    <string name="downloads_exporting">SAVING %1$d/%2$d</string>
+    <string name="downloads_export_done">Saved as MP3: %1$d, already there: %2$d, failed: %3$d.</string>
+    <string name="downloads_export_failed">Could not save: the tracks could not be read or converted.</string>
     <!-- next: загрузки, статистика, стиль, лирика, визуализатор, подставка -->
     <string name="stats_period_year">YEAR</string>
     <string name="stats_legacy_note">Minutes before the update are estimated from track length: back then every start counted as a play.</string>
@@ -517,13 +517,15 @@
     <string name="dl_auto_resume_desc">After the network comes back or the phone restarts, the queue continues from where it stopped.</string>
     <string name="dl_notifications_title">Notify when done</string>
     <string name="dl_notifications_desc">A notification when the queue finishes. Progress is always shown while downloading.</string>
-    <string name="dl_folder_title">Folder on the phone</string>
-    <string name="dl_folder_desc">Where “Save to device” puts files: %1$s. Only this folder is accessible, not the whole storage.</string>
+    <string name="dl_folder_ask_title">Where to save on the phone?</string>
+    <string name="dl_folder_ask_text">“Save to music” makes MP3 files at 320 kbps with cover, title, artist and album. The app gets access to this folder only. Without a choice it is %1$s.</string>
+    <string name="dl_folder_ask_pick">CHOOSE FOLDER</string>
+    <string name="dl_folder_ask_keep">KEEP DEFAULT</string>
+    <string name="dl_folder_current">Folder: %1$s</string>
+    <string name="dl_folder_change">change</string>
     <string name="dl_folder_default">Music/w0y music</string>
-    <string name="dl_folder_pick">Choose</string>
-    <string name="dl_folder_reset">Default</string>
     <string name="dl_auto_export_title">Save to device automatically</string>
-    <string name="dl_auto_export_desc">Every finished download is also copied to the folder as “Artist - Title”, with tags and cover for m4a.</string>
+    <string name="dl_auto_export_desc">Every finished download is also saved to the folder as “Artist - Title.mp3”, 320 kbps with tags and cover.</string>
     <string name="dl_storage_limit_title">Space for downloads</string>
     <string name="dl_storage_limit_desc">Used now: %1$d MB. When the limit is reached new downloads do not start.</string>
     <string name="dl_verify_title">Check downloads</string>

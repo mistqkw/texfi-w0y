@@ -2,6 +2,8 @@ package com.texfi.w0y
 
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.playback.AudioTags
+import com.texfi.w0y.playback.Id3Tagger
+import com.texfi.w0y.playback.Mp3Encoder
 import com.texfi.w0y.playback.Mp4Tagger
 import com.texfi.w0y.playback.MusicExporter
 import com.texfi.w0y.playback.SpectrumAnalyzer
@@ -111,5 +113,66 @@ class MediaToolsTest {
         analyzer.samples.fill(0f)
         analyzer.analyze(44_100)
         assertTrue(analyzer.levels.all { it < 0.01f })
+    }
+
+    @Test
+    fun id3TagHoldsTextAndCover() {
+        val cover = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 1, 2, 3)
+        val tag = Id3Tagger.tag(AudioTags("Название", "Артист", "Альбом", cover))
+        assertEquals("ID3", String(tag, 0, 3, Charsets.ISO_8859_1))
+        assertEquals(3, tag[3].toInt())
+        // Размер в заголовке — synchsafe и равен телу тега.
+        val size = (tag[6].toInt() shl 21) or (tag[7].toInt() shl 14) or (tag[8].toInt() shl 7) or tag[9].toInt()
+        assertEquals(tag.size - 10, size)
+        val frames = mutableMapOf<String, ByteArray>()
+        var at = 10
+        while (at < tag.size) {
+            val id = String(tag, at, 4, Charsets.ISO_8859_1)
+            val n = ByteBuffer.wrap(tag, at + 4, 4).int
+            frames[id] = tag.copyOfRange(at + 10, at + 10 + n)
+            at += 10 + n
+        }
+        fun text(id: String) = frames.getValue(id).let { String(it, 3, it.size - 3, Charsets.UTF_16LE) }
+        assertEquals("Название", text("TIT2"))
+        assertEquals("Артист", text("TPE1"))
+        assertEquals("Альбом", text("TALB"))
+        val apic = frames.getValue("APIC")
+        assertTrue(String(apic, 1, 10, Charsets.ISO_8859_1) == "image/jpeg")
+        assertTrue(apic.copyOfRange(apic.size - cover.size, apic.size).contentEquals(cover))
+    }
+
+    @Test
+    fun id3SkipsMissingAlbum() {
+        val tag = Id3Tagger.tag(AudioTags("a", "b", null, null))
+        assertTrue(String(tag, Charsets.ISO_8859_1).contains("TIT2"))
+        assertTrue(!String(tag, Charsets.ISO_8859_1).contains("TALB"))
+    }
+
+    @Test
+    fun mp3EncoderMakesConstant320() {
+        val out = ByteArrayOutputStream()
+        val rate = 48_000
+        val encoder = Mp3Encoder(rate, 2, 320, out)
+        val frames = 4096
+        val pcm = ShortArray(frames * 2)
+        var t = 0
+        repeat(rate * 2 / frames) {
+            for (i in 0 until frames) {
+                val v = (8000 * sin(2 * PI * 440 * (t + i) / rate)).toInt().toShort()
+                pcm[2 * i] = v
+                pcm[2 * i + 1] = v
+            }
+            t += frames
+            encoder.encode(pcm, frames)
+        }
+        encoder.finish()
+        val mp3 = out.toByteArray()
+        // Первый кадр: синхрослово, MPEG-1 Layer III, индекс битрейта 14 = 320 кбит/с, 48 кГц.
+        assertEquals(0xFF, mp3[0].toInt() and 0xFF)
+        assertEquals(0xFB, mp3[1].toInt() and 0xFF)
+        assertEquals(14, (mp3[2].toInt() and 0xFF) shr 4)
+        assertEquals(1, ((mp3[2].toInt() and 0xFF) shr 2) and 3)
+        // Две секунды при 320 кбит/с — около 80 КБ.
+        assertTrue("размер ${mp3.size}", mp3.size in 75_000..86_000)
     }
 }

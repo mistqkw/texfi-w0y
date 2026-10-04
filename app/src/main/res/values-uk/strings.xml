@@ -392,7 +392,7 @@
     <string name="download_done_one">Завантажено: «%1$s» — грає без мережі</string>
     <string name="download_done_many">Завантажено треків: %1$d</string>
     <string name="download_failed">Не завантажилось: «%1$s»</string>
-    <string name="downloads_where">Лежать усередині застосунку: інші плеєри їх не бачать, і вони зникають разом із застосунком. Кнопка «зберегти в музику» кладе копії в Музика/w0y music — звідти їх можна забрати на комп’ютер.</string>
+    <string name="downloads_where">Лежать усередині застосунку: інші плеєри їх не бачать, і видаляються вони разом із застосунком. Кнопка «зберегти в музику» кладе копії в MP3 у вибрану теку — звідти їх можна забрати на комп’ютер.</string>
     <string name="search_filter_videos">ВІДЕО</string>
     <string name="player_edit_title">ГОТОВІ ПЕРЕРОБКИ</string>
     <string name="player_edit_desc">Чужий slowed або sped up з YouTube — зі своїм зведенням і ехом. Оригінал лишається в черзі позаду.</string>
@@ -437,9 +437,9 @@
     <string name="playlist_rename">перейменувати</string>
     <string name="playlist_rename_save">зберегти</string>
     <string name="downloads_export">ЗБЕРЕГТИ В МУЗИКУ</string>
-    <string name="downloads_exporting">ЗБЕРІГАЮ…</string>
-    <string name="downloads_export_done">Збережено в Музика/w0y music: %1$d, уже було: %2$d, не вийшло: %3$d.</string>
-    <string name="downloads_export_failed">Не вийшло: треки не читаються з кешу застосунку.</string>
+    <string name="downloads_exporting">ЗБЕРІГАЮ %1$d/%2$d</string>
+    <string name="downloads_export_done">Збережено в MP3: %1$d, вже було: %2$d, не вийшло: %3$d.</string>
+    <string name="downloads_export_failed">Не вийшло: треки не читаються або не перекодовуються.</string>
     <!-- next: загрузки, статистика, стиль, лирика, визуализатор, подставка -->
     <string name="stats_period_year">РІК</string>
     <string name="stats_legacy_note">Хвилини до оновлення оцінено за довжиною треків: тоді прослуховуванням вважався будь-який старт.</string>
@@ -517,13 +517,15 @@
     <string name="dl_auto_resume_desc">Після повернення мережі чи перезапуску телефона черга продовжується з того ж місця.</string>
     <string name="dl_notifications_title">Сповіщати про готовність</string>
     <string name="dl_notifications_desc">Сповіщення, коли черга завершилася. Перебіг завантаження видно завжди.</string>
-    <string name="dl_folder_title">Тека на телефоні</string>
-    <string name="dl_folder_desc">Куди «Зберегти на пристрій» кладе файли: %1$s. Доступ лише до цієї теки, не до всієї памʼяті.</string>
+    <string name="dl_folder_ask_title">Куди зберігати на телефон?</string>
+    <string name="dl_folder_ask_text">«Зберегти в музику» робить MP3 320 кбіт/с з обкладинкою, назвою, виконавцем і альбомом. Доступ — лише до цієї теки. Якщо не вибирати — %1$s.</string>
+    <string name="dl_folder_ask_pick">ВИБРАТИ ТЕКУ</string>
+    <string name="dl_folder_ask_keep">ЛИШИТИ ТАК</string>
+    <string name="dl_folder_current">Тека: %1$s</string>
+    <string name="dl_folder_change">змінити</string>
     <string name="dl_folder_default">Музика/w0y music</string>
-    <string name="dl_folder_pick">Обрати</string>
-    <string name="dl_folder_reset">Типово</string>
     <string name="dl_auto_export_title">Зберігати на пристрій одразу</string>
-    <string name="dl_auto_export_desc">Кожне готове завантаження ще й копіюється в теку як «Виконавець - Назва», у m4a з тегами й обкладинкою.</string>
+    <string name="dl_auto_export_desc">Кожне готове завантаження ще й зберігається в теку як «Виконавець - Назва.mp3», 320 кбіт/с з тегами й обкладинкою.</string>
     <string name="dl_storage_limit_title">Місце під завантаження</string>
     <string name="dl_storage_limit_desc">Зайнято зараз: %1$d МБ. На межі нові завантаження не починаються.</string>
     <string name="dl_verify_title">Перевірити завантаження</string>

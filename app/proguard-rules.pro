@@ -16,3 +16,7 @@
 -keep class io.ktor.client.engine.okhttp.** { *; }
 -dontwarn io.ktor.**
 -dontwarn org.slf4j.**
+
+# jump3r: высокоуровневый LameEncoder ссылается на javax.sound, которого в Android нет;
+# мы его не используем, кодер собирается из низкоуровневых классов.
+-dontwarn javax.sound.**

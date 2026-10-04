@@ -345,13 +345,37 @@ class LibraryViewModel @Inject constructor(
     private val _exporting = MutableStateFlow(false)
     val exporting: StateFlow<Boolean> = _exporting.asStateFlow()
 
+    /** Сколько треков из скольких уже сохранено: MP3 кодируется не мгновенно. */
+    private val _exportProgress = MutableStateFlow(0 to 0)
+    val exportProgress: StateFlow<Pair<Int, Int>> = _exportProgress.asStateFlow()
+
+    /** Папка для сохранения на телефон; [ExportFolder.asked] — вопрос о ней уже был. */
+    val exportFolder: StateFlow<ExportFolder?> =
+        settings.settings
+            .map { ExportFolder(it.exportTreeUri, it.exportFolderAsked || it.exportTreeUri.isNotBlank()) }
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Ответ на вопрос о папке: своя папка или null — «Музыка/w0y music». Доступ к своей сохраняется. */
+    fun answerExportFolder(uri: android.net.Uri?) = viewModelScope.launch {
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+        }
+        settings.answerExportFolder(uri?.toString().orEmpty())
+    }
+
     /** Складывает скачанные треки в обычную папку, откуда их видят другие плееры и компьютер. */
     fun exportDownloads(songs: List<SongItem>) {
         if (_exporting.value || songs.isEmpty()) return
         viewModelScope.launch {
             _exporting.value = true
             _exportStatus.value = null
-            val r = exporter.export(songs)
+            val r = exporter.export(songs) { done, total -> _exportProgress.value = done to total }
             _exportStatus.value =
                 when {
                     r.failed > 0 && r.saved == 0 && r.existed == 0 -> context.getString(R.string.downloads_export_failed)
@@ -435,3 +459,6 @@ private const val SPEED_DIAL_SIZE = SPEED_DIAL_PAGE * SPEED_DIAL_PAGES
 
 /** Запас кандидатов на случай скрытых плиток. */
 private const val SPEED_DIAL_SPARE = 40
+
+/** Папка для «сохранить в музыку»: пустой [tree] — Музыка/w0y music. */
+data class ExportFolder(val tree: String, val asked: Boolean)

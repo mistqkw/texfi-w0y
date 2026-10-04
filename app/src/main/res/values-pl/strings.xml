@@ -392,7 +392,7 @@
     <string name="download_done_one">Pobrano: „%1$s” — gra bez sieci</string>
     <string name="download_done_many">Pobrano utworów: %1$d</string>
     <string name="download_failed">Nie pobrało się: „%1$s”</string>
-    <string name="downloads_where">Leżą wewnątrz aplikacji: inne odtwarzacze ich nie widzą i znikają razem z aplikacją. Przycisk „zapisz w muzyce” kładzie kopie w Muzyka/w0y music — stamtąd możesz je zabrać na komputer.</string>
+    <string name="downloads_where">Leżą wewnątrz aplikacji: inne odtwarzacze ich nie widzą i znikają razem z aplikacją. „Zapisz w muzyce” kładzie kopie MP3 w wybranym folderze — stamtąd można je przenieść na komputer.</string>
     <string name="search_filter_videos">WIDEO</string>
     <string name="player_edit_title">GOTOWE PRZERÓBKI</string>
     <string name="player_edit_desc">Cudzy slowed albo sped up z YouTube — z własnym miksem i pogłosem. Oryginał zostaje w kolejce za nim.</string>
@@ -437,9 +437,9 @@
     <string name="playlist_rename">zmień nazwę</string>
     <string name="playlist_rename_save">zapisz</string>
     <string name="downloads_export">ZAPISZ W MUZYCE</string>
-    <string name="downloads_exporting">ZAPISUJĘ…</string>
-    <string name="downloads_export_done">Zapisano w Muzyka/w0y music: %1$d, już były: %2$d, nie wyszło: %3$d.</string>
-    <string name="downloads_export_failed">Nie wyszło: utwory nie dają się odczytać z pamięci podręcznej aplikacji.</string>
+    <string name="downloads_exporting">ZAPISUJĘ %1$d/%2$d</string>
+    <string name="downloads_export_done">Zapisano jako MP3: %1$d, już było: %2$d, nie wyszło: %3$d.</string>
+    <string name="downloads_export_failed">Nie wyszło: utworów nie da się odczytać ani przekonwertować.</string>
     <!-- next: загрузки, статистика, стиль, лирика, визуализатор, подставка -->
     <string name="stats_period_year">ROK</string>
     <string name="stats_legacy_note">Minuty sprzed aktualizacji są szacowane z długości utworów: wtedy każde włączenie liczyło się jako odsłuch.</string>
@@ -517,13 +517,15 @@
     <string name="dl_auto_resume_desc">Po powrocie sieci lub restarcie telefonu kolejka wznawia się od miejsca przerwania.</string>
     <string name="dl_notifications_title">Powiadamiaj o ukończeniu</string>
     <string name="dl_notifications_desc">Powiadomienie po zakończeniu kolejki. Postęp pobierania jest zawsze widoczny.</string>
-    <string name="dl_folder_title">Folder w telefonie</string>
-    <string name="dl_folder_desc">Gdzie „Zapisz na urządzeniu” umieszcza pliki: %1$s. Dostęp tylko do tego folderu, nie do całej pamięci.</string>
+    <string name="dl_folder_ask_title">Gdzie zapisywać na telefonie?</string>
+    <string name="dl_folder_ask_text">„Zapisz w muzyce” tworzy MP3 320 kb/s z okładką, tytułem, wykonawcą i albumem. Dostęp tylko do tego folderu. Bez wyboru — %1$s.</string>
+    <string name="dl_folder_ask_pick">WYBIERZ FOLDER</string>
+    <string name="dl_folder_ask_keep">ZOSTAW TAK</string>
+    <string name="dl_folder_current">Folder: %1$s</string>
+    <string name="dl_folder_change">zmień</string>
     <string name="dl_folder_default">Muzyka/w0y music</string>
-    <string name="dl_folder_pick">Wybierz</string>
-    <string name="dl_folder_reset">Domyślny</string>
     <string name="dl_auto_export_title">Zapisuj na urządzeniu automatycznie</string>
-    <string name="dl_auto_export_desc">Każde ukończone pobranie jest też kopiowane do folderu jako „Wykonawca - Tytuł”, w m4a z tagami i okładką.</string>
+    <string name="dl_auto_export_desc">Każde gotowe pobranie trafia też do folderu jako „Wykonawca - Tytuł.mp3”, 320 kb/s z tagami i okładką.</string>
     <string name="dl_storage_limit_title">Miejsce na pobrania</string>
     <string name="dl_storage_limit_desc">Zajęte teraz: %1$d MB. Po osiągnięciu limitu nowe pobrania się nie zaczynają.</string>
     <string name="dl_verify_title">Sprawdź pobrania</string>

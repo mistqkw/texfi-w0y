@@ -148,6 +148,8 @@ dependencies {
     implementation(libs.ktor.serialization.json)
 
     implementation(libs.timber)
+    // LAME на чистой Java: MP3 при сохранении на устройство (LGPL).
+    implementation(libs.jump3r)
     testImplementation(libs.junit)
     // Robolectric нужен, чтобы ловить android-специфичные поломки локально:
     // на чистой JVM подключается JVM-вариант библиотеки, а на телефоне —

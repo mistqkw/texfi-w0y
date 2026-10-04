@@ -91,21 +91,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Папка для «сохранить на устройство»: доступ сохраняется, чтобы не спрашивать снова. */
-    fun setExportFolder(uri: android.net.Uri?) {
-        if (uri == null) {
-            setExportTree("")
-            return
-        }
-        runCatching {
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
-            )
-        }
-        setExportTree(uri.toString())
-    }
-
     /** Выходы звука: то, что система видит подключённым прямо сейчас. */
     val outputs: StateFlow<List<AudioOutput>> =
         devices.outputs.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -262,8 +247,6 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadStorageLimit(mb: Int) = update { repository.setDownloadStorageLimit(mb) }
 
     fun setDownloadNotifications(value: Boolean) = update { repository.setDownloadNotifications(value) }
-
-    fun setExportTree(uri: String) = update { repository.setExportTree(uri) }
 
     fun setAutoExport(value: Boolean) = update { repository.setAutoExport(value) }
 

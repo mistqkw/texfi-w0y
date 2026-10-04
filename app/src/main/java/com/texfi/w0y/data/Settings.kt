@@ -267,6 +267,8 @@ data class W0ySettings(
     val exportTreeUri: String = "",
     val autoExport: Boolean = false,
     val exportWarningSeen: Boolean = false,
+    /** Спросили ли на экране «Скачано», куда сохранять на телефон. */
+    val exportFolderAsked: Boolean = false,
     /** Свои плейлисты, которые докачиваются сами. */
     val autoDownloadPlaylists: Set<Long> = emptySet(),
     // ── Плейлисты и быстрый набор ────────────────────────────────────────
@@ -362,6 +364,7 @@ class SettingsRepository @Inject constructor(
                     exportTreeUri = prefs[Keys.EXPORT_TREE].orEmpty(),
                     autoExport = prefs[Keys.AUTO_EXPORT] ?: false,
                     exportWarningSeen = prefs[Keys.EXPORT_WARNING] ?: false,
+                    exportFolderAsked = prefs[Keys.EXPORT_FOLDER_ASKED] ?: false,
                     autoDownloadPlaylists =
                         prefs[Keys.AUTO_DL_PLAYLISTS].orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toSet(),
                     showPlaylistRecommendations = prefs[Keys.PLAYLIST_RECS] ?: false,
@@ -499,11 +502,18 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setDownloadNotifications(value: Boolean) = put(Keys.DL_NOTIFICATIONS, value)
 
-    suspend fun setExportTree(uri: String) = put(Keys.EXPORT_TREE, uri)
-
     suspend fun setAutoExport(value: Boolean) = put(Keys.AUTO_EXPORT, value)
 
     suspend fun setExportWarningSeen(value: Boolean) = put(Keys.EXPORT_WARNING, value)
+
+    /** Ответ на вопрос о папке: своя папка (uri) или пустая строка — по умолчанию. */
+    suspend fun answerExportFolder(uri: String) {
+        context.dataStore.edit {
+            it[Keys.EXPORT_TREE] = uri
+            it[Keys.EXPORT_FOLDER_ASKED] = true
+            it[Keys.EXPORT_WARNING] = true
+        }
+    }
 
     suspend fun setAutoDownloadPlaylist(id: Long, enabled: Boolean) {
         context.dataStore.edit { prefs ->
@@ -713,6 +723,7 @@ class SettingsRepository @Inject constructor(
         val EXPORT_TREE = stringPreferencesKey("export_tree_uri")
         val AUTO_EXPORT = booleanPreferencesKey("auto_export")
         val EXPORT_WARNING = booleanPreferencesKey("export_warning_seen")
+        val EXPORT_FOLDER_ASKED = booleanPreferencesKey("export_folder_asked")
         val AUTO_DL_PLAYLISTS = stringPreferencesKey("auto_download_playlists")
         val PLAYLIST_RECS = booleanPreferencesKey("playlist_recommendations")
         val DIAL_MIN_PLAYS = intPreferencesKey("dial_min_plays")
