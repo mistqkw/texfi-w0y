@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import com.texfi.w0y.ui.components.W0yMotion
 import com.texfi.w0y.ui.components.SteppedEasing
 import com.texfi.w0y.ui.components.rememberReorderState
@@ -310,7 +312,7 @@ private fun CollectionRow(
             Box(
                 Modifier
                     .size(44.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .styledClip(4)
                     .background(colors.surfaceHigh),
                 contentAlignment = Alignment.Center,
             ) {
@@ -337,9 +339,9 @@ private fun ShortcutCard(
     val colors = LocalW0yColors.current
     Box(
         modifier
-            .clip(RoundedCornerShape(8.dp))
+            .styledClip(8)
             .background(colors.surface)
-            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
+            .styledBorder(8)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {

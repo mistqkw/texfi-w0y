@@ -58,7 +58,9 @@ fun PixelButton(
         SmoothButton(text, onClick, modifier, body, enabled, interaction, pressed, tap)
         return
     }
-    Box(modifier = modifier) {
+    // Минимальный размер снаружи передаётся телу кнопки: иначе при заданной
+    // ширине тень растягивалась, а кнопка оставалась по тексту.
+    Box(modifier = modifier, propagateMinConstraints = true) {
         Box(
             Modifier
                 .matchParentSize()

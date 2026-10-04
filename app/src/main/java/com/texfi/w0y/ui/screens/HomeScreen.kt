@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -343,7 +345,7 @@ private fun UndoBar(onUndo: () -> Unit, modifier: Modifier = Modifier) {
         modifier
             .padding(16.dp)
             .background(colors.surfaceHigh)
-            .border(2.dp, colors.border)
+            .styledBorder(0)
             .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -372,7 +374,7 @@ private fun GhostTile(modifier: Modifier = Modifier) {
         modifier
             .aspectRatio(1f)
             .background(colors.surface)
-            .border(2.dp, colors.border),
+            .styledBorder(0),
         contentAlignment = Alignment.Center,
     ) {
         Text(

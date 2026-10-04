@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.components
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -183,7 +185,7 @@ fun ReleaseTile(card: PlaylistCard, onClick: () -> Unit) {
             modifier =
                 Modifier
                     .size(132.dp)
-                    .border(2.dp, colors.border, RoundedCornerShape(6.dp)),
+                    .styledBorder(6),
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -221,7 +223,7 @@ fun SongTile(song: SongItem, onClick: () -> Unit) {
             modifier =
                 Modifier
                     .size(132.dp)
-                    .border(2.dp, colors.border, RoundedCornerShape(6.dp)),
+                    .styledBorder(6),
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -296,7 +298,7 @@ fun PixelSegmented(
                 if (smooth) {
                     Modifier.clip(tokens.chip).background(colors.surfaceHigh).padding(4.dp)
                 } else {
-                    Modifier.border(2.dp, colors.border)
+                    Modifier.styledBorder(0)
                 },
             ),
     ) {

@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.gestures.detectTapGestures
 import com.texfi.w0y.ui.components.forUi
 import com.texfi.w0y.ui.components.Visualizer
@@ -367,11 +369,11 @@ fun PlayerScreen(
                             ) { _, dragAmount -> total += dragAmount }
                         },
                 ) {
-                    Box(
+                    if (!com.texfi.w0y.ui.theme.isSmooth) Box(
                         Modifier
                             .matchParentSize()
                             .offset(5.dp, 5.dp)
-                            .clip(RoundedCornerShape(10.dp))
+                            .styledClip(10)
                             .background(colors.shadow),
                     )
                     if (art == PlayerArt.VISUALIZER) {
@@ -387,7 +389,7 @@ fun PlayerScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .styledClip(10)
                                     .background(colors.surface)
                                     .pointerInput(Unit) { detectTapGestures { toggleArt() } },
                         )
@@ -400,7 +402,7 @@ fun PlayerScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .aspectRatio(1f)
-                                    .border(2.dp, colors.border, RoundedCornerShape(10.dp))
+                                    .styledBorder(10)
                                     .pointerInput(Unit) { detectTapGestures { toggleArt() } },
                         )
                     }
@@ -1002,9 +1004,9 @@ private fun StepButton(text: String, onClick: () -> Unit) {
     val colors = LocalW0yColors.current
     Box(
         Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .styledClip(6)
             .background(colors.surfaceHigh)
-            .border(2.dp, colors.border, RoundedCornerShape(6.dp))
+            .styledBorder(6)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp),
     ) {

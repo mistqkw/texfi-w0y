@@ -1,6 +1,8 @@
 package com.texfi.w0y.ui.theme
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -110,3 +112,20 @@ val styleTokens: StyleTokens
 val isSmooth: Boolean
     @Composable @ReadOnlyComposable
     get() = LocalStyleTokens.current.style == UiStyle.SMOOTH
+
+/**
+ * Рамка элемента по стилю: в Pixel — сплошная 2 dp, в Smooth — никакой
+ * (элемент отделяется тоном). Для мест, которые рисуют подложку сами, а не
+ * через карточку.
+ */
+@Composable
+fun androidx.compose.ui.Modifier.styledBorder(
+    corner: Int,
+    color: androidx.compose.ui.graphics.Color = LocalW0yColors.current.border,
+): androidx.compose.ui.Modifier =
+    if (isSmooth) this else border(2.dp, color, if (corner == 0) RectangleShape else RoundedCornerShape(corner.dp))
+
+/** Скругление по стилю: в Smooth углы крупнее — в той же пропорции, что у карточек. */
+@Composable
+fun androidx.compose.ui.Modifier.styledClip(corner: Int): androidx.compose.ui.Modifier =
+    clip(RoundedCornerShape((if (isSmooth) minOf(corner * 5 / 2 + 6, 24) else corner).dp))

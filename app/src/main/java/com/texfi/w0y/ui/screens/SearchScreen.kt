@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -447,9 +449,9 @@ private fun SearchField(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .styledClip(8)
             .background(colors.surface)
-            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
+            .styledBorder(8)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -98,7 +100,7 @@ private fun Swatch(
     val interaction = remember { MutableInteractionSource() }
     Box(modifier.aspectRatio(1f).padding(end = 3.dp, bottom = 3.dp)) {
         // Жёсткая тень без размытия — как у всех карточек TexFi.
-        Box(Modifier.matchParent().offset(3.dp, 3.dp).background(colors.shadow))
+        if (!com.texfi.w0y.ui.theme.isSmooth) Box(Modifier.matchParent().offset(3.dp, 3.dp).background(colors.shadow))
         Box(
             Modifier
                 .matchParent()
@@ -127,7 +129,7 @@ private fun Preview() {
         Modifier
             .fillMaxWidth()
             .background(colors.surface)
-            .border(2.dp, colors.border)
+            .styledBorder(0)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -189,7 +191,7 @@ private fun CustomEditor(argb: Int, onCustom: (Int) -> Unit) {
                 Modifier
                     .weight(1f)
                     .background(colors.surface)
-                    .border(2.dp, colors.border)
+                    .styledBorder(0)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 BasicTextField(

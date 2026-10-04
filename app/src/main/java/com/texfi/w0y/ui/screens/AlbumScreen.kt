@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -97,11 +99,11 @@ fun AlbumScreen(
                 // Обложка со смещённой тенью — тот же приём, что у карточек:
                 // резкий прямоугольник вместо размытой Material-подложки.
                 Box(Modifier.size(208.dp)) {
-                    Box(
+                    if (!com.texfi.w0y.ui.theme.isSmooth) Box(
                         Modifier
                             .matchParentSize()
                             .offset(5.dp, 5.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .styledClip(8)
                             .background(colors.shadow),
                     )
                     CoverImage(
@@ -111,7 +113,7 @@ fun AlbumScreen(
                         modifier =
                             Modifier
                                 .matchParentSize()
-                                .border(2.dp, colors.border, RoundedCornerShape(8.dp)),
+                                .styledBorder(8),
                     )
                 }
                 Spacer(Modifier.height(18.dp))

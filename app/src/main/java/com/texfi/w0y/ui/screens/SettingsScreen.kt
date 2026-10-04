@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import android.app.Activity
 import android.content.Intent
 import android.media.audiofx.AudioEffect
@@ -349,9 +351,9 @@ private fun SectionCard(section: SettingsSection, onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .pressScale(interaction, pressed = 0.98f)
-            .clip(RoundedCornerShape(8.dp))
+            .styledClip(8)
             .background(colors.surface)
-            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
+            .styledBorder(8)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -386,9 +388,9 @@ private fun SettingsSearchField(value: String, onValueChange: (String) -> Unit) 
         Modifier
             .padding(horizontal = 18.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .styledClip(8)
             .background(colors.surface)
-            .border(2.dp, colors.border, RoundedCornerShape(8.dp))
+            .styledBorder(8)
             .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

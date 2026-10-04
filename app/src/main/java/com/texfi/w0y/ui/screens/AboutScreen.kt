@@ -1,5 +1,7 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledClip
+import com.texfi.w0y.ui.theme.styledBorder
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -370,7 +372,7 @@ private fun DonateCard(onClick: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .pressScale(interaction, pressed = 0.985f)
-            .clip(RoundedCornerShape(8.dp))
+            .styledClip(8)
             .background(colors.surface)
             // Единственная карточка с акцентной рамкой на экране — как
             // в m0ney: просьбу о поддержке видно, но она не кричит.
