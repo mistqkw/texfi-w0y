@@ -1,7 +1,12 @@
 package com.texfi.w0y.ui.components
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import com.texfi.w0y.ui.icons.SmoothIcons
+import com.texfi.w0y.ui.theme.isSmooth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -21,6 +26,15 @@ fun PixelSprite(
     color: Color,
     modifier: Modifier = Modifier,
 ) {
+    // Плавный стиль рисует ту же иконку из своего набора: имя одно, рисунок
+    // разный. Фирменные знаки TexFi пиксельные в обоих стилях — у них
+    // плавной версии нет и быть не должно.
+    if (isSmooth) {
+        SmoothIcons.forSprite(rows)?.let { vector ->
+            Image(rememberVectorPainter(vector), null, modifier, colorFilter = ColorFilter.tint(color))
+            return
+        }
+    }
     Canvas(modifier = modifier) {
         val cols = rows.maxOf { it.length }
         val cell = minOf(size.width / cols, size.height / rows.size)

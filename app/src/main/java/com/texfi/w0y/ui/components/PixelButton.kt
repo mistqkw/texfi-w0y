@@ -23,6 +23,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.luminance
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
+import com.texfi.w0y.ui.theme.Contrast
+import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.styleTokens
 
 private val ButtonShape = RoundedCornerShape(8.dp)
 
@@ -49,6 +52,10 @@ fun PixelButton(
 
     if (colors.glass) {
         GlassButton(text, onClick, modifier, body, enabled, interaction, pressed, tap)
+        return
+    }
+    if (isSmooth) {
+        SmoothButton(text, onClick, modifier, body, enabled, interaction, pressed, tap)
         return
     }
     Box(modifier = modifier) {
@@ -90,12 +97,7 @@ fun PixelButton(
                 // на синей кнопке нужен тёмный текст, а на тёмной — светлый.
                 // Раньше он всегда был тёмным, и «К АРТИСТУ» на сером фоне
                 // просто не читалось.
-                color =
-                    when {
-                        !enabled -> colors.textMuted
-                        body.luminance() > CONTRAST_SWITCH -> colors.background
-                        else -> colors.text
-                    },
+                color = if (enabled) Contrast.on(body, dark = colors.background.takeIf { it.luminance() < 0.2f } ?: Color(0xFF111116)) else colors.textMuted,
             )
         }
     }
@@ -148,5 +150,44 @@ private fun GlassButton(
     }
 }
 
-/** Граница, за которой заливка считается светлой и требует тёмной подписи. */
-private const val CONTRAST_SWITCH = 0.35f
+/** Кнопка плавного стиля: капсула с заливкой, нажатие — лёгкое уменьшение. */
+@Composable
+private fun SmoothButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    body: Color,
+    enabled: Boolean,
+    interaction: MutableInteractionSource,
+    pressed: Boolean,
+    tap: () -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    val tokens = styleTokens
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        if (pressed) tokens.pressScale else 1f,
+        androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMedium),
+        label = "smoothPress",
+    )
+    val fill = if (enabled) body else colors.surfaceHigh
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }.clip(tokens.button)
+            .background(fill)
+            .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
+                tap()
+                onClick()
+            }.padding(horizontal = 22.dp, vertical = 13.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = PixelSectionLabel,
+            color = if (enabled) Contrast.on(fill) else colors.textMuted,
+        )
+    }
+}
+

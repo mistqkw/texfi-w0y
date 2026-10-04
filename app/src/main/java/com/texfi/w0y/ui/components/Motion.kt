@@ -56,7 +56,13 @@ object W0yMotion {
 
     /** Нажатие: три ступени, чтобы кнопка «щёлкала», а не мялась. */
     val Press: Easing = SteppedEasing(3)
+
+    /** Ступени включены (Pixel) или нет (Smooth). Ставит тема. */
+    @Volatile
+    var stepped: Boolean = true
 }
+
+private val SmoothCurve = androidx.compose.animation.core.FastOutSlowInEasing
 
 /**
  * Квантованный прогресс. [overshoot] добавляет перелёт на 70% — как у
@@ -69,6 +75,9 @@ class SteppedEasing(
 ) : Easing {
     override fun transform(fraction: Float): Float {
         if (fraction >= 1f) return 1f
+        // В плавном стиле те же анимации идут без ступеней: кривые одни на
+        // всё приложение, поэтому переключаются здесь, а не на каждом экране.
+        if (!W0yMotion.stepped) return SmoothCurve.transform(fraction)
         val stepped = floor(fraction * steps) / steps
         if (!overshoot) return stepped
         val p = stepped - 1f

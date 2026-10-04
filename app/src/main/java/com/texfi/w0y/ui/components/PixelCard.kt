@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
+import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.styleTokens
 
 private val CardShape = RoundedCornerShape(8.dp)
 
@@ -36,6 +38,10 @@ fun PixelCard(
     val colors = LocalW0yColors.current
     if (colors.glass) {
         GlassCard(modifier, label, content)
+        return
+    }
+    if (isSmooth) {
+        SmoothCard(modifier, label, content)
         return
     }
     Box(modifier = modifier) {
@@ -61,7 +67,7 @@ fun PixelCard(
                 Text(
                     text = "❯ $label",
                     style = PixelSectionLabel,
-                    color = colors.accent,
+                    color = colors.accentText,
                     modifier = Modifier.padding(bottom = 10.dp),
                 )
             }
@@ -97,6 +103,33 @@ private fun GlassCard(
                 text = label,
                 style = PixelSectionLabel,
                 color = colors.accent,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+        }
+        content()
+    }
+}
+
+/** Карточка плавного стиля: крупное скругление, без рамки и тени — разделяет тон. */
+@Composable
+private fun SmoothCard(
+    modifier: Modifier,
+    label: String?,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = LocalW0yColors.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(styleTokens.card)
+            .background(colors.surface)
+            .padding(16.dp),
+    ) {
+        if (label != null) {
+            Text(
+                text = label,
+                style = PixelSectionLabel,
+                color = colors.accentText,
                 modifier = Modifier.padding(bottom = 10.dp),
             )
         }

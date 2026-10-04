@@ -22,6 +22,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.styleTokens
+import androidx.compose.ui.draw.clip
 import kotlin.math.roundToInt
 
 /** Квадратный ползунок: плоская дорожка и квадратный бегунок, без Material-теней. */
@@ -70,19 +73,45 @@ fun PixelSlider(
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .background(colors.surface)
-                .border(2.dp, colors.border),
-        )
-        Box(
-            Modifier
-                .offset { IntOffset(((widthPx - thumbPx) * fraction).roundToInt(), 0) }
-                .size(thumb)
-                .background(colors.accent)
-                .border(2.dp, colors.border),
-        )
+        if (isSmooth) {
+            // Плавный: тонкая скруглённая дорожка, пройденная часть акцентом, круглый бегунок.
+            val tokens = styleTokens
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(tokens.switchTrack)
+                    .background(colors.surfaceHigh),
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth(fraction.coerceAtLeast(0.001f))
+                    .height(6.dp)
+                    .clip(tokens.switchTrack)
+                    .background(colors.accent),
+            )
+            Box(
+                Modifier
+                    .offset { IntOffset(((widthPx - thumbPx) * fraction).roundToInt(), 0) }
+                    .size(thumb)
+                    .clip(tokens.sliderThumb)
+                    .background(colors.accent),
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(colors.surface)
+                    .border(2.dp, colors.border),
+            )
+            Box(
+                Modifier
+                    .offset { IntOffset(((widthPx - thumbPx) * fraction).roundToInt(), 0) }
+                    .size(thumb)
+                    .background(colors.accent)
+                    .border(2.dp, colors.border),
+            )
+        }
     }
 }

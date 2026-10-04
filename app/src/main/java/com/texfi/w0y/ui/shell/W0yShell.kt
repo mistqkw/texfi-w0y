@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
 import com.texfi.w0y.data.StartTab
+import com.texfi.w0y.data.UiStyle
 import com.texfi.w0y.ui.components.LocalCompactRows
 import com.texfi.w0y.ui.components.Buzz
 import com.texfi.w0y.ui.components.LocalHaptics
@@ -59,6 +60,9 @@ import com.texfi.w0y.ui.components.LocalPlayingSongId
 import com.texfi.w0y.ui.components.AddToPlaylistPanel
 import com.texfi.w0y.ui.components.LocalSongActions
 import com.texfi.w0y.ui.components.MiniPlayer
+import com.texfi.w0y.ui.components.FloatingNavBar
+import com.texfi.w0y.ui.components.NavItem
+import androidx.compose.foundation.layout.widthIn
 import com.texfi.w0y.ui.components.SongActions
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.ui.components.softEnter
@@ -134,6 +138,10 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val libraryViewModel: LibraryViewModel = hiltViewModel()
     val welcomeSeen by viewModel.welcomeSeen.collectAsStateWithLifecycle()
     val theme by viewModel.theme.collectAsStateWithLifecycle()
+    val stylePicked by viewModel.stylePicked.collectAsStateWithLifecycle()
+    val uiStyle by viewModel.uiStyle.collectAsStateWithLifecycle()
+    val accent by viewModel.accent.collectAsStateWithLifecycle()
+    val customAccent by viewModel.customAccent.collectAsStateWithLifecycle()
     val animatedBackground by viewModel.animatedBackground.collectAsStateWithLifecycle()
     val haptics by viewModel.haptics.collectAsStateWithLifecycle()
     // Заставка играет один раз за запуск, а не при каждом повороте экрана.
@@ -197,7 +205,11 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     ) {
         // Фон экосистемы: он виден в промежутках между карточками и
         // строками — как на сайте, где чёрный тоже не пустой.
-        Starfield(Modifier.fillMaxSize(), animated = animatedBackground)
+        if (com.texfi.w0y.ui.theme.isSmooth) {
+            com.texfi.w0y.ui.components.SmoothBackdrop(playerState.song?.thumbnailUrl, Modifier.fillMaxSize())
+        } else {
+            Starfield(Modifier.fillMaxSize(), animated = animatedBackground)
+        }
         Column(
             Modifier
                 .fillMaxSize()
@@ -240,15 +252,32 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     tab = Tab.LIBRARY
                 },
             )
-            MiniPlayer(
-                state = playerState,
-                positionProvider = viewModel.player::positionMs,
-                onToggle = viewModel.player::togglePlayPause,
-                onNext = { viewModel.player.skipNext() },
-                onPrevious = { viewModel.player.skipPrevious() },
-                onExpand = { playerExpanded = true },
-            )
-            PixelNavBar(selected = tab, onSelect = { tab = it })
+            // Мини-плеер и навигация — плавающие блоки в одной колонке с
+            // контентом: список заканчивается над ними и ничем не закрыт.
+            // На широком экране блоки стоят по центру, не растягиваясь.
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Column(Modifier.widthIn(max = BAR_MAX_WIDTH)) {
+                    MiniPlayer(
+                        state = playerState,
+                        positionProvider = viewModel.player::positionMs,
+                        onToggle = viewModel.player::togglePlayPause,
+                        onNext = { viewModel.player.skipNext() },
+                        onPrevious = { viewModel.player.skipPrevious() },
+                        onExpand = { playerExpanded = true },
+                    )
+                    FloatingNavBar(
+                        items = Tab.entries.map { NavItem(stringResource(it.labelRes), it.sprite) },
+                        selected = tab.ordinal,
+                        onSelect = { tab = Tab.entries[it] },
+                    )
+                }
+            }
         }
 
         PlayerSheet(
@@ -332,6 +361,23 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             )
         }
 
+        // Выбор стиля — после приветствия, один раз; обновившимся тоже один раз.
+        if (welcomeSeen == true && stylePicked == false) {
+            StylePickerScreen(
+                current = uiStyle,
+                accent = accent,
+                customAccent = customAccent,
+                theme = theme,
+                onAccent = viewModel::setAccent,
+                onDone = viewModel::completeStylePick,
+                onSkip = {
+                    // Пропуск оставляет Pixel, даже если по пути успели переключить.
+                    viewModel.setUiStyle(UiStyle.PIXEL)
+                    viewModel.completeStylePick()
+                },
+            )
+        }
+
         if (!introDone) {
             FeatherIntro(onFinished = { introDone = true })
         }
@@ -394,76 +440,4 @@ private fun BrowseOverlay(visible: Boolean, route: BrowseRoute?, onBack: () -> U
     }
 }
 
-@Composable
-private fun PixelNavBar(selected: Tab, onSelect: (Tab) -> Unit) {
-    val colors = LocalW0yColors.current
-    Column(Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .background(colors.border),
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(colors.surface)
-                .navigationBarsPadding()
-                .padding(vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            Tab.entries.forEach { entry ->
-                val active = entry == selected
-                val interaction = remember { MutableInteractionSource() }
-                // Своя анимация на смену вкладки: иконка подпрыгивает,
-                // подчёркивание разъезжается в стороны. Отклик отличается
-                // от нажатия на трек, и поэтому по нему сразу понятно,
-                // что сменился весь экран, а не сработала кнопка в списке.
-                val iconColor by animateColorAsState(
-                    targetValue = if (active) colors.accent else colors.textMuted,
-                    animationSpec = snap(),
-                    label = "tabIcon",
-                )
-                val labelColor by animateColorAsState(
-                    targetValue = if (active) colors.text else colors.textMuted,
-                    animationSpec = snap(),
-                    label = "tabLabel",
-                )
-                val underline by animateDpAsState(
-                    targetValue = if (active) 20.dp else 0.dp,
-                    animationSpec = tween(W0yMotion.FAST_MS, easing = W0yMotion.StepBack),
-                    label = "tabUnderline",
-                )
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier =
-                        Modifier
-                            .pressScale(interaction, pressed = 0.88f)
-                            .clickable(interactionSource = interaction, indication = null) { onSelect(entry) }
-                            .padding(horizontal = 18.dp, vertical = 4.dp),
-                ) {
-                    PixelSprite(
-                        rows = entry.sprite,
-                        color = iconColor,
-                        modifier = Modifier.size(24.dp).popWhenActivated(active, peak = 1.22f),
-                    )
-                    Text(
-                        text = stringResource(entry.labelRes),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = labelColor,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                    // Подчёркивание активной вкладки: подсветки иконки мало,
-                    // на ходу разницу цвета не поймать.
-                    Box(
-                        Modifier
-                            .padding(top = 4.dp)
-                            .width(underline)
-                            .height(3.dp)
-                            .background(colors.accent),
-                    )
-                }
-            }
-        }
-    }
-}
+private val BAR_MAX_WIDTH = 560.dp

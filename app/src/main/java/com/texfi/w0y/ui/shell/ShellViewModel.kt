@@ -73,6 +73,24 @@ class ShellViewModel @Inject constructor(
             .map { it.haptics }
             .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    val uiStyle: StateFlow<com.texfi.w0y.data.UiStyle> =
+        settings.settings
+            .map { it.uiStyle }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, com.texfi.w0y.data.UiStyle.PIXEL)
+
+    /** null, пока настройки не прочитаны: выбор стиля вслепую не показываем. */
+    val stylePicked: StateFlow<Boolean?> =
+        settings.settings
+            .map { it.stylePicked }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setUiStyle(style: com.texfi.w0y.data.UiStyle) = viewModelScope.launch { settings.setUiStyle(style) }
+
+    fun setAccent(accent: Accent) = viewModelScope.launch { settings.setAccent(accent) }
+
+    /** Выбор стиля закрыт — выбором или пропуском; больше не показываем. */
+    fun completeStylePick() = viewModelScope.launch { settings.setStylePicked(true) }
+
     val theme: StateFlow<ThemeMode> =
         settings.settings
             .map { it.theme }

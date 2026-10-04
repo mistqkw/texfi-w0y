@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.isSmooth
 import com.texfi.w0y.ui.theme.PixelScreenTitle
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 
@@ -59,13 +60,15 @@ fun ScreenTitle(
             Text(title, style = PixelScreenTitle, color = colors.text, modifier = Modifier.weight(1f))
             actions()
         }
-        Spacer(Modifier.height(10.dp))
-        Box(
-            Modifier
-                .width(34.dp)
-                .height(3.dp)
-                .background(colors.accent),
-        )
+        if (!isSmooth) {
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier
+                    .width(34.dp)
+                    .height(3.dp)
+                    .background(colors.accent),
+            )
+        }
         subtitle?.let {
             Spacer(Modifier.height(10.dp))
             Text(it, style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
@@ -88,6 +91,7 @@ fun SectionHeader(
     action: @Composable () -> Unit = {},
 ) {
     val colors = LocalW0yColors.current
+    val smooth = isSmooth
     Column(modifier.fillMaxWidth()) {
         // Подписи отдаётся столько, сколько ей нужно, но не больше 80%:
         // иначе линия и действие делили бы ширину с ней поровну, и
@@ -104,9 +108,9 @@ fun SectionHeader(
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(
-                    text = "❯ ${label.uppercase()}",
-                    style = PixelSectionLabel,
-                    color = colors.accent,
+                    text = if (smooth) label else "❯ ${label.uppercase()}",
+                    style = if (smooth) MaterialTheme.typography.titleMedium else PixelSectionLabel,
+                    color = if (smooth) colors.text else colors.accentText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.widthIn(max = labelMax),
@@ -115,7 +119,7 @@ fun SectionHeader(
                 Box(
                     Modifier
                         .weight(1f)
-                        .height(2.dp)
+                        .height(if (smooth) 0.dp else 2.dp)
                         .background(colors.border),
                 )
                 Spacer(Modifier.width(10.dp))
@@ -141,14 +145,16 @@ fun SectionHeader(
 fun ShelfTitle(text: String, modifier: Modifier = Modifier) {
     val colors = LocalW0yColors.current
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(6.dp)
-                .background(colors.accent),
-        )
-        Spacer(Modifier.width(8.dp))
+        if (!isSmooth) {
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .background(colors.accent),
+            )
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
-            text = text.uppercase(),
+            text = if (isSmooth) text else text.uppercase(),
             style = PixelSectionLabel,
             color = colors.text,
             maxLines = 1,

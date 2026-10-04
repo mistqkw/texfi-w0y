@@ -47,6 +47,8 @@ import com.texfi.w0y.data.PlaylistCard
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.styleTokens
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 
 private val TileShape = RoundedCornerShape(8.dp)
@@ -285,10 +287,18 @@ fun PixelSegmented(
 ) {
     val colors = LocalW0yColors.current
     val tap = rememberTapHaptic()
+    val smooth = isSmooth
+    val tokens = styleTokens
     Row(
         modifier
             .fillMaxWidth()
-            .border(2.dp, colors.border),
+            .then(
+                if (smooth) {
+                    Modifier.clip(tokens.chip).background(colors.surfaceHigh).padding(4.dp)
+                } else {
+                    Modifier.border(2.dp, colors.border)
+                },
+            ),
     ) {
         options.forEachIndexed { index, option ->
             val active = index == selectedIndex
@@ -296,18 +306,19 @@ fun PixelSegmented(
             // Мгновенная перекраска читается как перерисовка экрана,
             // плавная — как ответ именно на этот тап.
             val fill by animateColorAsState(
-                targetValue = if (active) colors.accent else colors.surface,
+                targetValue = if (active) colors.accent else if (smooth) colors.surfaceHigh else colors.surface,
                 animationSpec = tween(160),
                 label = "segmentFill",
             )
             val label by animateColorAsState(
-                targetValue = if (active) colors.background else colors.text,
+                targetValue = if (active) colors.onAccent else colors.text,
                 animationSpec = tween(160),
                 label = "segmentLabel",
             )
             Box(
                 Modifier
                     .weight(1f)
+                    .then(if (smooth) Modifier.clip(tokens.chip) else Modifier)
                     .background(fill)
                     .clickable {
                         tap()
@@ -328,7 +339,7 @@ fun PixelSegmented(
                 )
             }
             // Разделитель между секциями — тот же бордер, без скруглений.
-            if (index != options.lastIndex) {
+            if (index != options.lastIndex && !smooth) {
                 Box(
                     Modifier
                         .width(2.dp)

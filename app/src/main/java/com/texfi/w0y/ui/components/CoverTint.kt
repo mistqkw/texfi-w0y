@@ -31,10 +31,15 @@ import kotlinx.coroutines.withContext
 @Composable
 fun rememberCoverTint(url: String?, fallback: Color): State<Color> {
     val context = LocalContext.current
-    val tint = remember(url) { mutableStateOf(fallback) }
+    val tint = remember(url) { mutableStateOf(url?.let(TintCache::get) ?: fallback) }
     LaunchedEffect(url, fallback) {
         if (url == null) {
             tint.value = fallback
+            return@LaunchedEffect
+        }
+        // Цвет уже считали — фон не ждёт загрузки и не мигает при возврате к треку.
+        TintCache.get(url)?.let {
+            tint.value = it
             return@LaunchedEffect
         }
         val loader: ImageLoader = SingletonImageLoader.get(context)
@@ -52,9 +57,25 @@ fun rememberCoverTint(url: String?, fallback: Color): State<Color> {
                 val image = (result as? SuccessResult)?.image ?: return@withContext null
                 runCatching { average(image.toBitmap()) }.getOrNull()
             }
+        sampled?.let { TintCache.put(url, it) }
         tint.value = sampled ?: fallback
     }
     return tint
+}
+
+/** Последние посчитанные цвета обложек. */
+private object TintCache {
+    private val map = object : LinkedHashMap<String, Color>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Color>?) = size > 64
+    }
+
+    @Synchronized
+    fun get(url: String): Color? = map[url]
+
+    @Synchronized
+    fun put(url: String, color: Color) {
+        map[url] = color
+    }
 }
 
 /**

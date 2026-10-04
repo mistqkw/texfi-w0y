@@ -19,6 +19,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.floor
+import com.texfi.w0y.ui.theme.styleTokens
 
 /**
  * Сегментированный индикатор: квадратики зажигаются по одному, как в сцене
@@ -37,6 +38,16 @@ fun SegmentedBar(
     cell: Dp = 8.dp,
     gap: Dp = 2.dp,
 ) {
+    if (!styleTokens.segmented) {
+        // Плавный стиль: сплошная скруглённая полоса вместо клеток.
+        Canvas(modifier.height(height)) {
+            val r = androidx.compose.ui.geometry.CornerRadius(size.height / 2)
+            drawRoundRect(dim, cornerRadius = r)
+            val w = size.width * progress().coerceIn(0f, 1f)
+            if (w > 0f) drawRoundRect(lit, size = Size(maxOf(w, size.height), size.height), cornerRadius = r)
+        }
+        return
+    }
     Canvas(modifier.height(height)) {
         val cellPx = cell.toPx()
         val gapPx = gap.toPx()

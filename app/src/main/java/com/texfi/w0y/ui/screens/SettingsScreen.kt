@@ -992,6 +992,30 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.LOOK,
+                title = stringResource(R.string.settings_style_title),
+                description = stringResource(R.string.settings_style_desc),
+                keywords = "pixel smooth",
+                control =
+                    SettingControl.Custom {
+                        // Весь экран и есть живой предпросмотр: стиль меняется
+                        // сразу, кругом от середины, а образец ниже показывает
+                        // компоненты крупно.
+                        val switcher = com.texfi.w0y.ui.shell.LocalStyleSwitcher.current
+                        Column {
+                            PixelSegmented(
+                                options = com.texfi.w0y.data.UiStyle.entries.map { stringResource(it.label) },
+                                selectedIndex = settings.uiStyle.ordinal,
+                                onSelect = { switcher.switch(com.texfi.w0y.data.UiStyle.entries[it], null) },
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            com.texfi.w0y.ui.shell.StyleSample()
+                        }
+                    },
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.LOOK,
                 title = stringResource(R.string.settings_theme_title),
                 description = stringResource(R.string.settings_theme_desc),
                 keywords = "oled",

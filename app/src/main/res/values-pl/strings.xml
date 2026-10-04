@@ -482,4 +482,11 @@
     <string name="settings_startup_parts_title">Na co idzie czas</string>
     <string name="settings_startup_parts_desc">Mediana / najgorzej, ms. Adres: %1$s · pierwszy bajt: %2$s · gotowy: %3$s · dźwięk: %4$s. Z dysku: %5$d z %6$d.</string>
     <string name="settings_startup_parts_value">%1$d startów</string>
+    <string name="style_pick_title">Wybierz wygląd</string>
+    <string name="style_pick_text">Dwa style, te same funkcje. Zmienisz w każdej chwili: Ustawienia → Wygląd.</string>
+    <string name="style_pick_accent">Akcent</string>
+    <string name="style_pick_done">Gotowe</string>
+    <string name="style_sample_label">Teraz gra</string>
+    <string name="settings_style_title">Styl</string>
+    <string name="settings_style_desc">Pixel — pikselowa czcionka TexFi, sprite’y i ostre cienie. Smooth — zaokrąglenia, zwykła czcionka, płynny ruch. Muzyka gra dalej przy zmianie.</string>
 </resources>

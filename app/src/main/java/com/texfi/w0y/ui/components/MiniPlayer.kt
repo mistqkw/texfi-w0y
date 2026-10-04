@@ -37,6 +37,7 @@ import com.texfi.w0y.R
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.playback.PlayerUiState
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.isSmooth
 import kotlinx.coroutines.delay
 
 /**
@@ -79,11 +80,10 @@ fun MiniPlayer(
                 androidx.compose.animation.core.tween(W0yMotion.MID_MS, easing = W0yMotion.StepBack),
             )
         }
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .background(colors.surfaceHigh),
-        ) {
+        val smooth = isSmooth
+        // Плавающий блок над навигацией; отступ снизу — зазор до неё.
+        FloatingSurface(Modifier.padding(bottom = 8.dp)) {
+        Column(Modifier.fillMaxWidth()) {
             val duration = state.durationMs
             // Позиция читается только при рисовании: полоса двигается,
             // а строка мини-плеера не пересобирается.
@@ -91,8 +91,13 @@ fun MiniPlayer(
                 progress = { if (duration > 0) position.toFloat() / duration else 0f },
                 lit = colors.secondary,
                 dim = colors.border,
-                modifier = Modifier.fillMaxWidth(),
-                height = 4.dp,
+                modifier =
+                    if (smooth) {
+                        Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp)
+                    } else {
+                        Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, top = 2.dp)
+                    },
+                height = if (smooth) 3.dp else 4.dp,
                 cell = 10.dp,
             )
             // Смахивание мини-плеера: вправо — предыдущий трек, влево — следующий.
@@ -101,7 +106,7 @@ fun MiniPlayer(
                 rightLabel = "<<",
                 onSwipeLeft = onNext,
                 leftLabel = ">>",
-                backdrop = colors.surfaceHigh,
+                backdrop = androidx.compose.ui.graphics.Color.Transparent,
             ) {
             Row(
                 Modifier
@@ -119,7 +124,7 @@ fun MiniPlayer(
                                 scaleX = bump.value
                                 scaleY = bump.value
                             }
-                            .border(2.dp, colors.border, RoundedCornerShape(4.dp))
+                            .then(if (smooth) Modifier else Modifier.border(2.dp, colors.border, RoundedCornerShape(4.dp)))
                             .clickable(onClick = onExpand),
                 )
                 Spacer(Modifier.width(10.dp))
@@ -143,10 +148,11 @@ fun MiniPlayer(
                 }
                 // Кнопки с запасом вокруг: на 22dp в мини-плеере промахнуться
                 // мимо «паузы» проще, чем попасть.
-                PlayPauseButton(isPlaying = state.isPlaying, size = 22, onClick = onToggle, touchPadding = 8)
-                TransportButton(Sprites.next, size = 22, onClick = onNext, touchPadding = 8)
+                PlayPauseButton(isPlaying = state.isPlaying, size = 24, onClick = onToggle, touchPadding = 12)
+                TransportButton(Sprites.next, size = 24, onClick = onNext, touchPadding = 12)
             }
             }
+        }
         }
     }
 }

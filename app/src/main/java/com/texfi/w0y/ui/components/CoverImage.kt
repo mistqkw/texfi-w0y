@@ -17,6 +17,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
+import com.texfi.w0y.ui.theme.isSmooth
 
 /**
  * Обложка: сразу в нужном размере и с проявлением вместо рывка.
@@ -32,7 +33,8 @@ fun CoverImage(
     corner: Int = 4,
 ) {
     val colors = LocalW0yColors.current
-    val shape = RoundedCornerShape(corner.dp())
+    // В плавном стиле углы обложек крупнее: та же пропорция к размеру, что у карточек.
+    val shape = RoundedCornerShape((if (isSmooth) corner * 3 else corner).dp())
     Box(
         modifier
             .clip(shape)

@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.ui.shell.ShellViewModel
+import com.texfi.w0y.ui.shell.StyleRevealHost
 import com.texfi.w0y.ui.shell.W0yShell
 import com.texfi.w0y.ui.theme.W0yTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,8 +56,13 @@ class MainActivity : ComponentActivity() {
             val theme by shellViewModel.theme.collectAsStateWithLifecycle()
             val accent by shellViewModel.accent.collectAsStateWithLifecycle()
             val customAccent by shellViewModel.customAccent.collectAsStateWithLifecycle()
-            W0yTheme(mode = theme, accent = accent, customAccent = customAccent) {
-                W0yShell(shellViewModel)
+            val style by shellViewModel.uiStyle.collectAsStateWithLifecycle()
+            W0yTheme(mode = theme, accent = accent, customAccent = customAccent, style = style) {
+                // Смена стиля — снимок старого вида и круг нового поверх, без
+                // пересоздания экрана: музыка и состояние экранов не трогаются.
+                StyleRevealHost(current = style, onApply = shellViewModel::setUiStyle) {
+                    W0yShell(shellViewModel)
+                }
             }
         }
         // Прогрев извлечения (клиенты, ключи плеера) — после первого кадра и

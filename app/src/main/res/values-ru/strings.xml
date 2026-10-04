@@ -482,4 +482,11 @@
     <string name="settings_startup_parts_title">Из чего складывается старт</string>
     <string name="settings_startup_parts_desc">Медиана / худшее, мс. Адрес: %1$s · первый байт: %2$s · готов: %3$s · звук: %4$s. С диска: %5$d из %6$d.</string>
     <string name="settings_startup_parts_value">%1$d запусков</string>
+    <string name="style_pick_title">Выбери вид</string>
+    <string name="style_pick_text">Два стиля, возможности одинаковые. Переключить можно в любой момент: настройки → «Вид».</string>
+    <string name="style_pick_accent">Акцент</string>
+    <string name="style_pick_done">Готово</string>
+    <string name="style_sample_label">Сейчас играет</string>
+    <string name="settings_style_title">Стиль</string>
+    <string name="settings_style_desc">Pixel — пиксельный шрифт TexFi, спрайты и жёсткие тени. Smooth — скругления, обычный шрифт, плавное движение. Музыка при смене не прерывается.</string>
 </resources>

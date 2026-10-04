@@ -1,6 +1,12 @@
 package com.texfi.w0y.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import com.texfi.w0y.data.UiStyle
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -32,6 +38,10 @@ data class W0yColors(
     val textMuted: Color,
     /** Стеклянная тема: скругления, полупрозрачность, без офсетной тени. */
     val glass: Boolean = false,
+    /** Подпись на заливке акцентом — выводится по контрасту, не задаётся руками. */
+    val onAccent: Color = Color.White,
+    /** Текст цветом акцента, подтянутый до читаемого на фоне. */
+    val accentText: Color = TexFiBlue,
 )
 
 /**
@@ -115,30 +125,22 @@ fun W0yTheme(
     mode: ThemeMode = ThemeMode.DARK,
     accent: Accent = Accent.BLUE,
     customAccent: Int = 0xFFA06CFF.toInt(),
+    style: UiStyle = UiStyle.PIXEL,
     content: @Composable () -> Unit,
 ) {
-    val base =
-        when (mode) {
-            ThemeMode.DARK -> DarkColors
-            ThemeMode.OLED -> OledColors
-            ThemeMode.GLASS -> GlassColors
-            ThemeMode.LIGHT -> LightColors
-        }
-    // Схема меняет только пару акцентов: фон, поверхности и текст остаются
-    // от темы. Иначе «розовая» схема на светлой теме превращалась бы
-    // в отдельную, четвёртую тему, которую никто не проверял.
+    val target = resolveColors(mode, accent, customAccent)
+    // Смена акцента — перетекание цвета, а не скачок: так видно, что
+    // поменялся именно акцент, а не перерисовался весь экран.
+    val spec = tween<Color>(ACCENT_MS)
+    val accentNow by animateColorAsState(target.accent, spec, label = "accent")
+    val accentDeepNow by animateColorAsState(target.accentDeep, spec, label = "accentDeep")
+    val secondaryNow by animateColorAsState(target.secondary, spec, label = "secondary")
     val colors =
-        if (accent == Accent.BLUE) {
-            base
-        } else {
-            val main = if (accent == Accent.CUSTOM) Color(customAccent) else Color(accent.accent)
-            base.copy(
-                accent = main,
-                accentDeep = if (accent == Accent.CUSTOM) deepen(main) else Color(accent.deep),
-                secondary = Color(accent.secondary),
-                secondaryDeep = deepen(Color(accent.secondary)),
-            )
-        }
+        target.copy(
+            accent = accentNow,
+            accentDeep = accentDeepNow,
+            secondary = secondaryNow,
+        )
     val scheme =
         if (mode == ThemeMode.LIGHT) {
             lightColorScheme(
@@ -172,14 +174,56 @@ fun W0yTheme(
             )
         }
 
-    CompositionLocalProvider(LocalW0yColors provides colors) {
+    val tokens = tokensFor(style)
+    val typography = remember(style) { typographyFor(style) }
+    SideEffect { com.texfi.w0y.ui.components.W0yMotion.stepped = tokens.stepped }
+    CompositionLocalProvider(LocalW0yColors provides colors, LocalStyleTokens provides tokens) {
         MaterialTheme(
             colorScheme = scheme,
-            typography = W0yTypography,
+            typography = typography,
             content = content,
         )
     }
 }
+
+/**
+ * Палитра темы с акцентом — без Compose, чтобы проверять контраст всех
+ * сочетаний тестом.
+ */
+fun resolveColors(mode: ThemeMode, accent: Accent, customAccent: Int): W0yColors {
+    val base =
+        when (mode) {
+            ThemeMode.DARK -> DarkColors
+            ThemeMode.OLED -> OledColors
+            ThemeMode.GLASS -> GlassColors
+            ThemeMode.LIGHT -> LightColors
+        }
+    // Схема меняет только пару акцентов: фон, поверхности и текст остаются
+    // от темы. Иначе «розовая» схема на светлой теме превращалась бы
+    // в отдельную, четвёртую тему, которую никто не проверял.
+    val tinted =
+        if (accent == Accent.BLUE) {
+            base
+        } else {
+            val main = if (accent == Accent.CUSTOM) Color(customAccent) else Color(accent.accent)
+            base.copy(
+                accent = main,
+                accentDeep = if (accent == Accent.CUSTOM) deepen(main) else Color(accent.deep),
+                secondary = Color(accent.secondary),
+                secondaryDeep = deepen(Color(accent.secondary)),
+            )
+        }
+    // Стекло полупрозрачное: контраст считается по непрозрачной подложке.
+    val ground = if (tinted.glass) GlassOpaqueSurface else tinted.background
+    return tinted.copy(
+        text = Contrast.ensure(tinted.text, ground),
+        textMuted = Contrast.ensure(tinted.textMuted, if (tinted.glass) GlassOpaqueSurface else tinted.surface),
+        onAccent = Contrast.on(tinted.accent),
+        accentText = Contrast.ensure(tinted.accent, ground),
+    )
+}
+
+private const val ACCENT_MS = 450
 
 private val GlassOpaqueSurface = Color(0xFF1A2036)
 
