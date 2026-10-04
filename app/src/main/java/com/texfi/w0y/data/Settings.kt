@@ -275,6 +275,8 @@ data class W0ySettings(
     val dialMinPlays: Int = 1,
     // ── Стиль ────────────────────────────────────────────────────────────
     val uiStyle: UiStyle = UiStyle.PIXEL,
+    /** Smooth: жидкое стекло с бликами (true) или матовые плотные поверхности. */
+    val smoothGlass: Boolean = true,
     /** Показан ли выбор стиля — на первом запуске и один раз после обновления. */
     val stylePicked: Boolean = false,
     // ── Лирика и визуализатор ────────────────────────────────────────────
@@ -365,6 +367,7 @@ class SettingsRepository @Inject constructor(
                     showPlaylistRecommendations = prefs[Keys.PLAYLIST_RECS] ?: false,
                     dialMinPlays = (prefs[Keys.DIAL_MIN_PLAYS] ?: 1).coerceIn(1, 20),
                     uiStyle = prefs.enum(Keys.UI_STYLE, UiStyle.PIXEL),
+                    smoothGlass = prefs[Keys.SMOOTH_GLASS] ?: true,
                     stylePicked = prefs[Keys.STYLE_PICKED] ?: false,
                     lyricsSize = prefs.enum(Keys.LYRICS_SIZE, LyricsSize.MEDIUM),
                     visualizerStyle = prefs.enum(Keys.VIZ_STYLE, VisualizerStyle.SEGMENTS),
@@ -516,6 +519,8 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setUiStyle(value: UiStyle) = put(Keys.UI_STYLE, value.name)
 
+    suspend fun setSmoothGlass(value: Boolean) = put(Keys.SMOOTH_GLASS, value)
+
     suspend fun setStylePicked(value: Boolean) = put(Keys.STYLE_PICKED, value)
 
     suspend fun setLyricsSize(value: LyricsSize) = put(Keys.LYRICS_SIZE, value.name)
@@ -582,6 +587,7 @@ class SettingsRepository @Inject constructor(
             .put("fallbackAudio", current.fallbackAudio)
             .put("fallbackSource", current.fallbackSource.name)
             .put("uiStyle", current.uiStyle.name)
+            .put("smoothGlass", current.smoothGlass)
             .put("downloadQualityWifi", current.downloadQualityWifi.name)
             .put("downloadQualityMobile", current.downloadQualityMobile.name)
             .put("downloadParallel", current.downloadParallel)
@@ -619,6 +625,7 @@ class SettingsRepository @Inject constructor(
             if (obj.has("fallbackAudio")) prefs[Keys.FALLBACK_AUDIO] = obj.getBoolean("fallbackAudio")
             obj.optString("fallbackSource").takeIf { it.isNotBlank() }?.let { prefs[Keys.FALLBACK_SOURCE] = it }
             obj.optString("uiStyle").takeIf { it.isNotBlank() }?.let { prefs[Keys.UI_STYLE] = it }
+            if (obj.has("smoothGlass")) prefs[Keys.SMOOTH_GLASS] = obj.getBoolean("smoothGlass")
             obj.optString("downloadQualityWifi").takeIf { it.isNotBlank() }?.let { prefs[Keys.DL_QUALITY_WIFI] = it }
             obj.optString("downloadQualityMobile").takeIf { it.isNotBlank() }?.let { prefs[Keys.DL_QUALITY_MOBILE] = it }
             if (obj.has("downloadParallel")) prefs[Keys.DL_PARALLEL] = obj.getInt("downloadParallel")
@@ -710,6 +717,7 @@ class SettingsRepository @Inject constructor(
         val PLAYLIST_RECS = booleanPreferencesKey("playlist_recommendations")
         val DIAL_MIN_PLAYS = intPreferencesKey("dial_min_plays")
         val UI_STYLE = stringPreferencesKey("ui_style")
+        val SMOOTH_GLASS = booleanPreferencesKey("smooth_glass")
         val STYLE_PICKED = booleanPreferencesKey("style_picked")
         val LYRICS_SIZE = stringPreferencesKey("lyrics_size")
         val VIZ_STYLE = stringPreferencesKey("visualizer_style")

@@ -141,6 +141,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val theme by viewModel.theme.collectAsStateWithLifecycle()
     val stylePicked by viewModel.stylePicked.collectAsStateWithLifecycle()
     val uiStyle by viewModel.uiStyle.collectAsStateWithLifecycle()
+    val smoothGlass by viewModel.smoothGlass.collectAsStateWithLifecycle()
     val accent by viewModel.accent.collectAsStateWithLifecycle()
     val customAccent by viewModel.customAccent.collectAsStateWithLifecycle()
     val animatedBackground by viewModel.animatedBackground.collectAsStateWithLifecycle()
@@ -370,6 +371,8 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                 accent = accent,
                 customAccent = customAccent,
                 theme = theme,
+                glass = smoothGlass,
+                onGlass = viewModel::setSmoothGlass,
                 onAccent = viewModel::setAccent,
                 onDone = viewModel::completeStylePick,
                 onSkip = {

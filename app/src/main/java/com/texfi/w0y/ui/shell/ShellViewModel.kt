@@ -22,6 +22,13 @@ class ShellViewModel @Inject constructor(
     private val settings: SettingsRepository,
     val downloads: DownloadsRepository,
 ) : ViewModel() {
+    val smoothGlass: StateFlow<Boolean> =
+        settings.settings
+            .map { it.smoothGlass }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun setSmoothGlass(value: Boolean) = viewModelScope.launch { settings.setSmoothGlass(value) }
+
     /** null, пока настройки не прочитаны: показывать приветствие вслепую нельзя. */
     val welcomeSeen: StateFlow<Boolean?> =
         settings.settings

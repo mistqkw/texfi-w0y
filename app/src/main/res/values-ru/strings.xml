@@ -484,6 +484,8 @@
     <string name="settings_startup_parts_value">%1$d запусков</string>
     <string name="style_pick_title">Выбери вид</string>
     <string name="style_pick_text">Два стиля, возможности одинаковые. Переключить можно в любой момент: настройки → «Вид».</string>
+    <string name="style_glass">Жидкое стекло</string>
+    <string name="style_matte">Матовый</string>
     <string name="style_pick_accent">Акцент</string>
     <string name="style_pick_done">Готово</string>
     <string name="style_sample_label">Сейчас играет</string>

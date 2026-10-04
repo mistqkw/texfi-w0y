@@ -51,6 +51,8 @@ data class StyleTokens(
     val stepped: Boolean,
     /** Сегментный прогресс (Pixel) или сплошная полоса (Smooth). */
     val segmented: Boolean,
+    /** Поверхности — жидкое стекло; иначе плотные матовые. Только Smooth. */
+    val glass: Boolean = false,
 )
 
 val PixelTokens =
@@ -96,11 +98,13 @@ val SmoothTokens =
     )
 
 /** Токены стиля; ветка на каждый стиль обязательна — компилятор не даст забыть новый. */
-fun tokensFor(style: UiStyle): StyleTokens =
+fun tokensFor(style: UiStyle, glass: Boolean = true): StyleTokens =
     when (style) {
         UiStyle.PIXEL -> PixelTokens
-        UiStyle.SMOOTH -> SmoothTokens
+        UiStyle.SMOOTH -> if (glass) SmoothGlassTokens else SmoothTokens
     }
+
+private val SmoothGlassTokens = SmoothTokens.copy(glass = true)
 
 val LocalStyleTokens = staticCompositionLocalOf { PixelTokens }
 

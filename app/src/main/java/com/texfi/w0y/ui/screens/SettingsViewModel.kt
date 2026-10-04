@@ -277,6 +277,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setUiStyle(value: com.texfi.w0y.data.UiStyle) = update { repository.setUiStyle(value) }
 
+    fun setSmoothGlass(value: Boolean) = update { repository.setSmoothGlass(value) }
+
     fun setStylePicked(value: Boolean) = update { repository.setStylePicked(value) }
 
     fun setLyricsSize(value: com.texfi.w0y.data.LyricsSize) = update { repository.setLyricsSize(value) }

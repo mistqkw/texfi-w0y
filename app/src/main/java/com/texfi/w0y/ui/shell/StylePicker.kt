@@ -66,6 +66,8 @@ fun StylePickerScreen(
     accent: Accent,
     customAccent: Int,
     theme: ThemeMode,
+    glass: Boolean,
+    onGlass: (Boolean) -> Unit,
     onAccent: (Accent) -> Unit,
     onDone: () -> Unit,
     onSkip: () -> Unit,
@@ -107,8 +109,18 @@ fun StylePickerScreen(
                     accent = accent,
                     customAccent = customAccent,
                     theme = theme,
+                    glass = glass,
                     onPick = { from -> switcher.switch(style, from) },
                 )
+                // У Smooth два вида поверхностей: стекло с бликами или матовые.
+                if (style == UiStyle.SMOOTH && style == current) {
+                    Spacer(Modifier.height(10.dp))
+                    com.texfi.w0y.ui.components.PixelSegmented(
+                        options = listOf(stringResource(R.string.style_glass), stringResource(R.string.style_matte)),
+                        selectedIndex = if (glass) 0 else 1,
+                        onSelect = { onGlass(it == 0) },
+                    )
+                }
                 Spacer(Modifier.height(14.dp))
             }
             Text(stringResource(R.string.style_pick_accent), style = PixelSectionLabel, color = colors.accentText)
@@ -150,6 +162,7 @@ private fun StyleOption(
     accent: Accent,
     customAccent: Int,
     theme: ThemeMode,
+    glass: Boolean,
     onPick: (Offset?) -> Unit,
 ) {
     val colors = LocalW0yColors.current
@@ -170,7 +183,7 @@ private fun StyleOption(
         Text(stringResource(style.hint), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
         Spacer(Modifier.height(12.dp))
         // Живой образец: тот же код компонентов, только под этим стилем.
-        W0yTheme(mode = theme, accent = accent, customAccent = customAccent, style = style) {
+        W0yTheme(mode = theme, accent = accent, customAccent = customAccent, style = style, glass = glass) {
             StyleSample()
         }
     }

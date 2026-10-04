@@ -1300,6 +1300,14 @@ private fun settingsRows(
                                 selectedIndex = settings.uiStyle.ordinal,
                                 onSelect = { switcher.switch(com.texfi.w0y.data.UiStyle.entries[it], null) },
                             )
+                            if (settings.uiStyle == com.texfi.w0y.data.UiStyle.SMOOTH) {
+                                Spacer(Modifier.height(10.dp))
+                                PixelSegmented(
+                                    options = listOf(stringResource(R.string.style_glass), stringResource(R.string.style_matte)),
+                                    selectedIndex = if (settings.smoothGlass) 0 else 1,
+                                    onSelect = { viewModel.setSmoothGlass(it == 0) },
+                                )
+                            }
                             Spacer(Modifier.height(12.dp))
                             com.texfi.w0y.ui.shell.StyleSample()
                         }

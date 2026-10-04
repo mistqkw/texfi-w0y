@@ -484,6 +484,8 @@
     <string name="settings_startup_parts_value">%1$d starts</string>
     <string name="style_pick_title">Pick a look</string>
     <string name="style_pick_text">Two styles with the same features. You can switch any time in Settings → Look.</string>
+    <string name="style_glass">Liquid glass</string>
+    <string name="style_matte">Matte</string>
     <string name="style_pick_accent">Accent</string>
     <string name="style_pick_done">Done</string>
     <string name="style_sample_label">Now playing</string>

@@ -126,6 +126,7 @@ fun W0yTheme(
     accent: Accent = Accent.SAND,
     customAccent: Int = 0xFFA06CFF.toInt(),
     style: UiStyle = UiStyle.PIXEL,
+    glass: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val target = resolveColors(mode, accent, customAccent)
@@ -174,7 +175,7 @@ fun W0yTheme(
             )
         }
 
-    val tokens = tokensFor(style)
+    val tokens = tokensFor(style, glass)
     val typography = remember(style) { typographyFor(style) }
     SideEffect { com.texfi.w0y.ui.components.W0yMotion.stepped = tokens.stepped }
     CompositionLocalProvider(LocalW0yColors provides colors, LocalStyleTokens provides tokens) {

@@ -57,7 +57,8 @@ class MainActivity : ComponentActivity() {
             val accent by shellViewModel.accent.collectAsStateWithLifecycle()
             val customAccent by shellViewModel.customAccent.collectAsStateWithLifecycle()
             val style by shellViewModel.uiStyle.collectAsStateWithLifecycle()
-            W0yTheme(mode = theme, accent = accent, customAccent = customAccent, style = style) {
+            val glass by shellViewModel.smoothGlass.collectAsStateWithLifecycle()
+            W0yTheme(mode = theme, accent = accent, customAccent = customAccent, style = style, glass = glass) {
                 // Смена стиля — снимок старого вида и круг нового поверх, без
                 // пересоздания экрана: музыка и состояние экранов не трогаются.
                 StyleRevealHost(current = style, onApply = shellViewModel::setUiStyle) {

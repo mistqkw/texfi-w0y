@@ -20,13 +20,16 @@ import androidx.compose.ui.unit.dp
  * верхней кромке яркий блик, к низу он гаснет — так читается толщина
  * стекла; в верхнем углу мягкий отсвет. Всё это градиенты, посчитанные
  * один раз на размер: размытия в реальном времени нет, и скорость
- * отрисовки та же, что у плоской карточки.
+ * отрисовки та же, что у плоской карточки. В матовом варианте Smooth
+ * поверхность просто плотная.
  */
 @Composable
 fun Modifier.liquidGlass(shape: Shape, tint: Color? = null): Modifier {
     val colors = LocalW0yColors.current
     val light = colors.background.luminance() > 0.5f
     val base = tint ?: colors.surface
+    // Матовый вариант Smooth: та же форма, плотная заливка без бликов.
+    if (!LocalStyleTokens.current.glass) return clip(shape).background(base)
     val fill = base.copy(alpha = if (light) 0.72f else 0.62f)
     val rimTop = Color.White.copy(alpha = if (light) 0.9f else 0.32f)
     val rimBottom = Color.White.copy(alpha = if (light) 0.25f else 0.04f)
