@@ -509,7 +509,7 @@
     <string name="dl_retries_title">Повторы</string>
     <string name="dl_retries_desc">Сколько раз повторять неудачную загрузку, прежде чем остановиться с причиной.</string>
     <string name="dl_low_battery_title">Пауза при низком заряде</string>
-    <string name="dl_low_battery_desc">Ниже 15% и без зарядки очередь ждёт.</string>
+    <string name="dl_low_battery_desc" formatted="false">Ниже 15% и без зарядки очередь ждёт.</string>
     <string name="dl_auto_resume_title">Продолжать самостоятельно</string>
     <string name="dl_auto_resume_desc">После возврата сети или перезапуска телефона очередь продолжается с того же места.</string>
     <string name="dl_notifications_title">Уведомлять о готовности</string>
@@ -568,7 +568,7 @@
     <string name="stand_max_title">Подставка: предел времени</string>
     <string name="stand_max_desc">Через это время режим подставки закроется и экран сможет погаснуть.</string>
     <string name="stand_battery_title">Подставка: выход при низком заряде</string>
-    <string name="stand_battery_desc">Ниже 15% без зарядки режим подставки закрывается. Иначе только предупреждает.</string>
+    <string name="stand_battery_desc" formatted="false">Ниже 15% без зарядки режим подставки закрывается. Иначе только предупреждает.</string>
     <string name="stand_exit_unplugged">Подставка закрыта: зарядку отключили.</string>
     <string name="stand_exit_timeout">Подставка закрыта: вышло время.</string>
     <string name="stand_exit_battery">Подставка закрыта: мало заряда.</string>

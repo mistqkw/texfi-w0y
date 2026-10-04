@@ -509,7 +509,7 @@
     <string name="dl_retries_title">Повтори</string>
     <string name="dl_retries_desc">Скільки разів повторювати невдале завантаження, перш ніж зупинитися з причиною.</string>
     <string name="dl_low_battery_title">Пауза при низькому заряді</string>
-    <string name="dl_low_battery_desc">Нижче 15% і без заряджання черга чекає.</string>
+    <string name="dl_low_battery_desc" formatted="false">Нижче 15% і без заряджання черга чекає.</string>
     <string name="dl_auto_resume_title">Продовжувати самостійно</string>
     <string name="dl_auto_resume_desc">Після повернення мережі чи перезапуску телефона черга продовжується з того ж місця.</string>
     <string name="dl_notifications_title">Сповіщати про готовність</string>
@@ -568,7 +568,7 @@
     <string name="stand_max_title">Підставка: межа часу</string>
     <string name="stand_max_desc">Через цей час режим підставки закриється й екран зможе згаснути.</string>
     <string name="stand_battery_title">Підставка: вихід при низькому заряді</string>
-    <string name="stand_battery_desc">Нижче 15% без заряджання режим підставки закривається. Інакше лише попереджає.</string>
+    <string name="stand_battery_desc" formatted="false">Нижче 15% без заряджання режим підставки закривається. Інакше лише попереджає.</string>
     <string name="stand_exit_unplugged">Підставку закрито: заряджання відʼєднали.</string>
     <string name="stand_exit_timeout">Підставку закрито: минув час.</string>
     <string name="stand_exit_battery">Підставку закрито: мало заряду.</string>

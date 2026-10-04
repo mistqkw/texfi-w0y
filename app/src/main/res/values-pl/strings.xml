@@ -509,7 +509,7 @@
     <string name="dl_retries_title">Ponowienia</string>
     <string name="dl_retries_desc">Ile razy ponawiać nieudane pobieranie, zanim zatrzyma się z podaniem przyczyny.</string>
     <string name="dl_low_battery_title">Pauza przy niskiej baterii</string>
-    <string name="dl_low_battery_desc">Poniżej 15% i bez ładowania kolejka czeka.</string>
+    <string name="dl_low_battery_desc" formatted="false">Poniżej 15% i bez ładowania kolejka czeka.</string>
     <string name="dl_auto_resume_title">Wznawiaj samodzielnie</string>
     <string name="dl_auto_resume_desc">Po powrocie sieci lub restarcie telefonu kolejka wznawia się od miejsca przerwania.</string>
     <string name="dl_notifications_title">Powiadamiaj o ukończeniu</string>
@@ -568,7 +568,7 @@
     <string name="stand_max_title">Podstawka: limit czasu</string>
     <string name="stand_max_desc">Po tym czasie tryb podstawki się zamknie i ekran będzie mógł zgasnąć.</string>
     <string name="stand_battery_title">Podstawka: wyjście przy niskiej baterii</string>
-    <string name="stand_battery_desc">Poniżej 15% bez ładowania tryb podstawki się zamyka. W przeciwnym razie tylko ostrzega.</string>
+    <string name="stand_battery_desc" formatted="false">Poniżej 15% bez ładowania tryb podstawki się zamyka. W przeciwnym razie tylko ostrzega.</string>
     <string name="stand_exit_unplugged">Podstawka zamknięta: odłączono ładowarkę.</string>
     <string name="stand_exit_timeout">Podstawka zamknięta: minął czas.</string>
     <string name="stand_exit_battery">Podstawka zamknięta: niski poziom baterii.</string>

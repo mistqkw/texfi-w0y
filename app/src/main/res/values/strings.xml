@@ -509,7 +509,7 @@
     <string name="dl_retries_title">Retries</string>
     <string name="dl_retries_desc">How many times a failed download is retried before it stops with a reason.</string>
     <string name="dl_low_battery_title">Pause on low battery</string>
-    <string name="dl_low_battery_desc">Below 15% and not charging the queue waits.</string>
+    <string name="dl_low_battery_desc" formatted="false">Below 15% and not charging the queue waits.</string>
     <string name="dl_auto_resume_title">Resume by itself</string>
     <string name="dl_auto_resume_desc">After the network comes back or the phone restarts, the queue continues from where it stopped.</string>
     <string name="dl_notifications_title">Notify when done</string>
@@ -568,7 +568,7 @@
     <string name="stand_max_title">Stand: time limit</string>
     <string name="stand_max_desc">After this time stand mode closes and the screen can sleep.</string>
     <string name="stand_battery_title">Stand: leave on low battery</string>
-    <string name="stand_battery_desc">Below 15% without charging stand mode closes. Otherwise it only warns.</string>
+    <string name="stand_battery_desc" formatted="false">Below 15% without charging stand mode closes. Otherwise it only warns.</string>
     <string name="stand_exit_unplugged">Stand mode closed: the charger was unplugged.</string>
     <string name="stand_exit_timeout">Stand mode closed: time limit reached.</string>
     <string name="stand_exit_battery">Stand mode closed: battery is low.</string>
