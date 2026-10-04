@@ -14,7 +14,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +61,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.texfi.w0y.R
+import com.texfi.w0y.data.StandView
 import com.texfi.w0y.ui.components.LyricsTicker
 import com.texfi.w0y.ui.components.PlayPauseButton
 import com.texfi.w0y.ui.components.SpriteButton
@@ -83,10 +86,12 @@ enum class StandExit(val message: Int?) {
 /**
  * Режим подставки — свой, внутри приложения, а не системный Always-On.
  *
- * Чёрный экран без системных панелей, крупные название и исполнитель,
- * большие кнопки. Экран не гаснет, только пока режим открыт; яркость
- * приглушена. Против выгорания всё содержимое раз в минуту сдвигается на
- * несколько точек. Нажатие показывает и прячет кнопки. Выход — кнопкой
+ * Чёрный экран без системных панелей, крупные название и исполнитель
+ * (или крупная обложка), большие кнопки. Экран не гаснет, только пока
+ * режим открыт; яркость — как в системе или своя, и её можно двигать
+ * ползунком прямо здесь. Против выгорания всё содержимое раз в минуту
+ * сдвигается на несколько точек. Нажатие показывает и прячет кнопки,
+ * долгое нажатие переключает вид «название / обложка». Выход — кнопкой
  * или жестом «назад»; сам — по пределу времени, при отключении зарядки
  * (если выбрано «только на зарядке») и при низком заряде.
  */
@@ -103,7 +108,11 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
 
     BackHandler { exit(StandExit.USER) }
 
-    // Окно: без панелей, не гаснет, приглушено. Всё возвращается при выходе.
+    // Яркость меняется ползунком сразу, а в настройки уходит по отпусканию.
+    var brightness by remember(settings.standBrightness) { mutableStateOf(settings.standBrightness) }
+    fun overrideOf(value: Float) = if (value < 0f) WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE else value
+
+    // Окно: без панелей, не гаснет. Всё возвращается при выходе.
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, view) }
@@ -111,17 +120,20 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
         controller?.hide(WindowInsetsCompat.Type.systemBars())
         view.keepScreenOn = true
         val before = window?.attributes?.screenBrightness ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-        window?.attributes = window?.attributes?.apply { screenBrightness = settings.standBrightness }
         onDispose {
             controller?.show(WindowInsetsCompat.Type.systemBars())
             view.keepScreenOn = false
             window?.attributes = window?.attributes?.apply { screenBrightness = before }
         }
     }
-    LaunchedEffect(settings.standBrightness) {
+    LaunchedEffect(brightness) {
         val window = (context as? Activity)?.window ?: return@LaunchedEffect
-        window.attributes = window.attributes.apply { screenBrightness = settings.standBrightness }
+        window.attributes = window.attributes.apply { screenBrightness = overrideOf(brightness) }
+        // Сохраняем, когда палец остановился, а не на каждый шаг ползунка.
+        delay(BRIGHTNESS_SAVE_MS)
+        if (brightness != settings.standBrightness) viewModel.setStandBrightness(brightness)
     }
+    val switchHaptic = com.texfi.w0y.ui.components.rememberSelectHaptic()
 
     // Заряд: отключили зарядку или заряд упал — по настройкам.
     var lowBattery by remember { mutableStateOf(false) }
@@ -176,7 +188,14 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onLongClick = {
+                    switchHaptic()
+                    viewModel.setStandView(if (settings.standView == StandView.TEXT) StandView.COVER else StandView.TEXT)
+                },
+            ) {
                 controls = !controls
                 touch++
             },
@@ -194,6 +213,7 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
             val wide = maxWidth > maxHeight
             val text = Color(0xFFE8E4DA)
             val dim = Color(0xFF8A877F)
+            val cover = settings.standView == StandView.COVER
             @Composable
             fun Info(modifier: Modifier) {
                 Column(modifier, verticalArrangement = Arrangement.Center) {
@@ -202,10 +222,16 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                         // Название читают — обычный шрифт, просто крупно.
                         style = MaterialTheme.typography.bodyLarge.copy(fontSize = if (wide) 32.sp else 28.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold),
                         color = text,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
+                        // Бегущая строка — по выбору: одна строка вместо переноса.
+                        maxLines = if (settings.standMarquee) 1 else 3,
+                        overflow = if (settings.standMarquee) TextOverflow.Clip else TextOverflow.Ellipsis,
                         textAlign = if (wide) TextAlign.Start else TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            if (settings.standMarquee) {
+                                Modifier.fillMaxWidth().basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 1_500)
+                            } else {
+                                Modifier.fillMaxWidth()
+                            },
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
@@ -234,7 +260,21 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                     }
                 }
             }
-            if (wide) {
+            // Обложка во весь доступный квадрат: в ширину — слева от текста, в высоту — над ним.
+            val coverSide = if (wide) maxHeight * 0.82f else minOf(maxWidth, maxHeight * 0.55f)
+            if (cover && wide) {
+                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    com.texfi.w0y.ui.components.CoverImage(song?.thumbnailUrl, px = 720, modifier = Modifier.size(coverSide), corner = 6)
+                    Spacer(Modifier.width(32.dp))
+                    Info(Modifier.weight(1f))
+                }
+            } else if (cover) {
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                    com.texfi.w0y.ui.components.CoverImage(song?.thumbnailUrl, px = 720, modifier = Modifier.size(coverSide), corner = 6)
+                    Spacer(Modifier.height(28.dp))
+                    Info(Modifier.fillMaxWidth())
+                }
+            } else if (wide) {
                 Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                     Info(Modifier.weight(1f))
                     if (settings.standVisualizer) {
@@ -279,6 +319,40 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                 SpriteButton(Sprites.close, onClick = { exit(StandExit.USER) }, size = 26)
             }
         }
+        // Яркость — вместе с кнопками: ползунок и «как в системе».
+        AnimatedVisibility(
+            visible = controls,
+            enter = fadeIn(tween(160)),
+            exit = fadeOut(tween(160)),
+            modifier = Modifier.align(Alignment.TopStart),
+        ) {
+            Row(Modifier.padding(start = 24.dp, top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.stand_brightness_hint), style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A877F))
+                Spacer(Modifier.width(12.dp))
+                com.texfi.w0y.ui.components.PixelSlider(
+                    value = if (brightness < 0f) 0.3f else brightness,
+                    range = 0.01f..1f,
+                    step = 0.01f,
+                    onValueChange = {
+                        brightness = it
+                        touch++
+                    },
+                    modifier = Modifier.width(200.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    stringResource(R.string.stand_brightness_system),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (brightness < 0f) colors.accentText else Color(0xFF8A877F),
+                    modifier =
+                        Modifier
+                            .clickable {
+                                brightness = com.texfi.w0y.data.STAND_BRIGHTNESS_SYSTEM
+                                touch++
+                            }.padding(8.dp),
+                )
+            }
+        }
     }
 }
 
@@ -302,3 +376,4 @@ private const val SHIFT_PX = 14
 private const val CONTROLS_MS = 5_000L
 private const val ENTER_MS = 400
 private const val LOW_BATTERY = 15
+private const val BRIGHTNESS_SAVE_MS = 500L

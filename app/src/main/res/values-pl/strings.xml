@@ -562,7 +562,15 @@
     <string name="stand_viz_title">Podstawka: wizualizator</string>
     <string name="stand_viz_desc">Wizualizator nad tytułem w trybie podstawki, 30 klatek na sekundę.</string>
     <string name="stand_brightness_title">Podstawka: jasność</string>
-    <string name="stand_brightness_desc">Jasność ekranu w trybie podstawki. Po wyjściu wraca poprzednia.</string>
+    <string name="stand_brightness_desc">Jasność ekranu w trybie podstawki; można ją zmieniać też w nim. „Systemowa” nigdy nie rozjaśnia ekranu bardziej niż był.</string>
+    <string name="stand_brightness_system">Systemowa</string>
+    <string name="stand_view_title">Podstawka: widok</string>
+    <string name="stand_view_desc">Co jest duże na ekranie podstawki. Przełączanie — długie przytrzymanie ekranu.</string>
+    <string name="stand_view_text">Tytuł</string>
+    <string name="stand_view_cover">Okładka</string>
+    <string name="stand_marquee_title">Podstawka: przewijany tytuł</string>
+    <string name="stand_marquee_desc">Długi tytuł przewija się w jednej linii zamiast się zawijać.</string>
+    <string name="stand_brightness_hint">Jasność</string>
     <string name="stand_charging_title">Podstawka: tylko podczas ładowania</string>
     <string name="stand_charging_desc">Tryb podstawki zamyka się po odłączeniu ładowarki.</string>
     <string name="stand_max_title">Podstawka: limit czasu</string>

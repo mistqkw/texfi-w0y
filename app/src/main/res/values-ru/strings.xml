@@ -562,7 +562,15 @@
     <string name="stand_viz_title">Подставка: визуализатор</string>
     <string name="stand_viz_desc">Визуализатор над названием в режиме подставки, 30 кадров в секунду.</string>
     <string name="stand_brightness_title">Подставка: яркость</string>
-    <string name="stand_brightness_desc">Яркость экрана, пока открыт режим подставки. При выходе возвращается прежняя.</string>
+    <string name="stand_brightness_desc">Яркость экрана, пока открыт режим подставки; её можно двигать и прямо в нём. «Как в системе» никогда не делает экран ярче, чем был.</string>
+    <string name="stand_brightness_system">Как в системе</string>
+    <string name="stand_view_title">Подставка: вид</string>
+    <string name="stand_view_desc">Что крупно на экране подставки. Переключить — долгое нажатие на экран.</string>
+    <string name="stand_view_text">Название</string>
+    <string name="stand_view_cover">Обложка</string>
+    <string name="stand_marquee_title">Подставка: бегущее название</string>
+    <string name="stand_marquee_desc">Длинное название бежит в одну строку, а не переносится.</string>
+    <string name="stand_brightness_hint">Яркость</string>
     <string name="stand_charging_title">Подставка: только на зарядке</string>
     <string name="stand_charging_desc">Режим подставки закрывается, когда зарядку отключили.</string>
     <string name="stand_max_title">Подставка: предел времени</string>

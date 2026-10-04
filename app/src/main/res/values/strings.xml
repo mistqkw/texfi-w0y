@@ -562,7 +562,15 @@
     <string name="stand_viz_title">Stand: visualizer</string>
     <string name="stand_viz_desc">A visualizer above the title in stand mode, at 30 frames per second.</string>
     <string name="stand_brightness_title">Stand: brightness</string>
-    <string name="stand_brightness_desc">Screen brightness while stand mode is open. Brightness returns when you leave.</string>
+    <string name="stand_brightness_desc">Screen brightness while stand mode is open; also adjustable right in it. “System” never makes the screen brighter than it was.</string>
+    <string name="stand_brightness_system">System</string>
+    <string name="stand_view_title">Stand: view</string>
+    <string name="stand_view_desc">What is big on the stand screen. Long-press the screen to switch.</string>
+    <string name="stand_view_text">Title</string>
+    <string name="stand_view_cover">Cover</string>
+    <string name="stand_marquee_title">Stand: scrolling title</string>
+    <string name="stand_marquee_desc">A long title scrolls in one line instead of wrapping.</string>
+    <string name="stand_brightness_hint">Brightness</string>
     <string name="stand_charging_title">Stand: only while charging</string>
     <string name="stand_charging_desc">Stand mode closes when the charger is unplugged.</string>
     <string name="stand_max_title">Stand: time limit</string>

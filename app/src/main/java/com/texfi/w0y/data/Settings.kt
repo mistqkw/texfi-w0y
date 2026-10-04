@@ -200,6 +200,9 @@ enum class VisualizerStyle(@StringRes val label: Int, val smooth: Boolean) {
 /** Что занимает место обложки в плеере. */
 enum class PlayerArt { COVER, VISUALIZER }
 
+/** Что крупно в режиме подставки: название с исполнителем или обложка. */
+enum class StandView { TEXT, COVER }
+
 /**
  * Все настройки одним снимком — так экраны и плеер читают согласованное
  * состояние, а не собирают его из десятка отдельных потоков.
@@ -289,8 +292,14 @@ data class W0ySettings(
     // ── Режим подставки ──────────────────────────────────────────────────
     val standLyrics: Boolean = false,
     val standVisualizer: Boolean = false,
-    /** Яркость экрана в режиме, 0.05–1. */
-    val standBrightness: Float = 0.35f,
+    /**
+     * Яркость экрана в режиме, 0.01–1; меньше нуля — как в системе. По
+     * умолчанию системная: подставка не должна делать экран ярче, чем был.
+     */
+    val standBrightness: Float = STAND_BRIGHTNESS_SYSTEM,
+    /** Название бежит строкой, а не переносится. */
+    val standMarquee: Boolean = false,
+    val standView: StandView = StandView.TEXT,
     val standChargingOnly: Boolean = false,
     /** Сколько режим держится сам, минут; 0 — пока не выйдешь. */
     val standMaxMinutes: Int = 60,
@@ -377,7 +386,9 @@ class SettingsRepository @Inject constructor(
                     playerArt = prefs.enum(Keys.PLAYER_ART, PlayerArt.COVER),
                     standLyrics = prefs[Keys.STAND_LYRICS] ?: false,
                     standVisualizer = prefs[Keys.STAND_VIZ] ?: false,
-                    standBrightness = prefs[Keys.STAND_BRIGHTNESS] ?: 0.35f,
+                    standBrightness = prefs[Keys.STAND_BRIGHTNESS] ?: STAND_BRIGHTNESS_SYSTEM,
+                    standMarquee = prefs[Keys.STAND_MARQUEE] ?: false,
+                    standView = prefs.enum(Keys.STAND_VIEW, StandView.TEXT),
                     standChargingOnly = prefs[Keys.STAND_CHARGING] ?: false,
                     standMaxMinutes = prefs[Keys.STAND_MAX_MIN] ?: 60,
                     standLowBatteryExit = prefs[Keys.STAND_LOW_BATTERY] ?: true,
@@ -544,7 +555,12 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setStandVisualizer(value: Boolean) = put(Keys.STAND_VIZ, value)
 
-    suspend fun setStandBrightness(value: Float) = put(Keys.STAND_BRIGHTNESS, value.coerceIn(0.05f, 1f))
+    suspend fun setStandBrightness(value: Float) =
+        put(Keys.STAND_BRIGHTNESS, if (value < 0f) STAND_BRIGHTNESS_SYSTEM else value.coerceIn(0.01f, 1f))
+
+    suspend fun setStandMarquee(value: Boolean) = put(Keys.STAND_MARQUEE, value)
+
+    suspend fun setStandView(value: StandView) = put(Keys.STAND_VIEW, value.name)
 
     suspend fun setStandChargingOnly(value: Boolean) = put(Keys.STAND_CHARGING, value)
 
@@ -733,8 +749,13 @@ class SettingsRepository @Inject constructor(
         val STAND_LYRICS = booleanPreferencesKey("stand_lyrics")
         val STAND_VIZ = booleanPreferencesKey("stand_visualizer")
         val STAND_BRIGHTNESS = floatPreferencesKey("stand_brightness")
+        val STAND_MARQUEE = booleanPreferencesKey("stand_marquee")
+        val STAND_VIEW = stringPreferencesKey("stand_view")
         val STAND_CHARGING = booleanPreferencesKey("stand_charging_only")
         val STAND_MAX_MIN = intPreferencesKey("stand_max_minutes")
         val STAND_LOW_BATTERY = booleanPreferencesKey("stand_low_battery_exit")
     }
 }
+
+/** Яркость подставки «как в системе» — окно яркость не переопределяет. */
+const val STAND_BRIGHTNESS_SYSTEM = -1f

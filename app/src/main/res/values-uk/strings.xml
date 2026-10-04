@@ -562,7 +562,15 @@
     <string name="stand_viz_title">Підставка: візуалізатор</string>
     <string name="stand_viz_desc">Візуалізатор над назвою в режимі підставки, 30 кадрів на секунду.</string>
     <string name="stand_brightness_title">Підставка: яскравість</string>
-    <string name="stand_brightness_desc">Яскравість екрана, поки відкрито режим підставки. При виході повертається попередня.</string>
+    <string name="stand_brightness_desc">Яскравість екрана, поки відкрито режим підставки; її можна рухати й просто в ньому. «Як у системі» ніколи не робить екран яскравішим, ніж був.</string>
+    <string name="stand_brightness_system">Як у системі</string>
+    <string name="stand_view_title">Підставка: вигляд</string>
+    <string name="stand_view_desc">Що велике на екрані підставки. Перемкнути — довге натискання на екран.</string>
+    <string name="stand_view_text">Назва</string>
+    <string name="stand_view_cover">Обкладинка</string>
+    <string name="stand_marquee_title">Підставка: біжуча назва</string>
+    <string name="stand_marquee_desc">Довга назва біжить в один рядок, а не переноситься.</string>
+    <string name="stand_brightness_hint">Яскравість</string>
     <string name="stand_charging_title">Підставка: лише на заряджанні</string>
     <string name="stand_charging_desc">Режим підставки закривається, коли заряджання відʼєднали.</string>
     <string name="stand_max_title">Підставка: межа часу</string>

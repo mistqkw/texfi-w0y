@@ -279,6 +279,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setStandBrightness(value: Float) = update { repository.setStandBrightness(value) }
 
+    fun setStandMarquee(value: Boolean) = update { repository.setStandMarquee(value) }
+
+    fun setStandView(value: com.texfi.w0y.data.StandView) = update { repository.setStandView(value) }
+
     fun setStandChargingOnly(value: Boolean) = update { repository.setStandChargingOnly(value) }
 
     fun setStandMaxMinutes(value: Int) = update { repository.setStandMaxMinutes(value) }

@@ -55,6 +55,11 @@ class PlayerViewModel @Inject constructor(
 
     fun setLyricsSize(size: com.texfi.w0y.data.LyricsSize) = viewModelScope.launch { settingsRepository.setLyricsSize(size) }
 
+    /** Яркость, выставленная прямо в подставке, запоминается. */
+    fun setStandBrightness(value: Float) = viewModelScope.launch { settingsRepository.setStandBrightness(value) }
+
+    fun setStandView(view: com.texfi.w0y.data.StandView) = viewModelScope.launch { settingsRepository.setStandView(view) }
+
     private val _edit = MutableStateFlow<EditSearch>(EditSearch.Idle)
 
     /** Поиск готовой переделки: идёт, не нашлось или уже играет. */

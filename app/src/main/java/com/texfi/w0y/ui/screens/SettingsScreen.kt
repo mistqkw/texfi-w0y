@@ -882,7 +882,42 @@ private fun settingsRows(
                 title = stringResource(R.string.stand_brightness_title),
                 description = stringResource(R.string.stand_brightness_desc),
                 keywords = "stand always on",
-                control = SettingControl.Choice(listOf(0.1f, 0.2f, 0.35f, 0.5f), settings.standBrightness, { "${(it * 100).toInt()}%" }, viewModel::setStandBrightness),
+                control =
+                    SettingControl.Choice(
+                        listOf(com.texfi.w0y.data.STAND_BRIGHTNESS_SYSTEM, 0.05f, 0.15f, 0.3f, 0.6f),
+                        // Выставленное ползунком в подставке может не совпасть с вариантом — тогда ближайший.
+                        if (settings.standBrightness < 0f) {
+                            com.texfi.w0y.data.STAND_BRIGHTNESS_SYSTEM
+                        } else {
+                            listOf(0.05f, 0.15f, 0.3f, 0.6f).minBy { kotlin.math.abs(it - settings.standBrightness) }
+                        },
+                        { if (it < 0f) stringResource(R.string.stand_brightness_system) else "${(it * 100).toInt()}%" },
+                        viewModel::setStandBrightness,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_view_title),
+                description = stringResource(R.string.stand_view_desc),
+                keywords = "stand always on cover",
+                control =
+                    SettingControl.Choice(
+                        com.texfi.w0y.data.StandView.entries,
+                        settings.standView,
+                        { stringResource(if (it == com.texfi.w0y.data.StandView.TEXT) R.string.stand_view_text else R.string.stand_view_cover) },
+                        viewModel::setStandView,
+                    ),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_marquee_title),
+                description = stringResource(R.string.stand_marquee_desc),
+                keywords = "stand always on marquee",
+                control = SettingControl.Toggle(settings.standMarquee, viewModel::setStandMarquee),
             ),
         )
         add(
