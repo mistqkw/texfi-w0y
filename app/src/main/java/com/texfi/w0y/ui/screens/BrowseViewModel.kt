@@ -115,6 +115,9 @@ class BrowseViewModel @Inject constructor(
 
     fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
 
+    /** Альбом играет своими треками, без дозаполнения рекомендациями. */
+    fun playCollection(songs: List<SongItem>, index: Int) = playback.playCollection(songs, index)
+
     /** Явная кнопка «перемешать» сильнее выбранного режима: её только что нажали. */
     fun shuffle(songs: List<SongItem>) {
         if (songs.isEmpty()) return

@@ -54,6 +54,13 @@ class PlaybackStarter @Inject constructor(
     /** Для какого трека уже подобрано продолжение — чтобы не просить дважды. */
     private var extendedFor: String? = null
 
+    /**
+     * Очередь — это плейлист или альбом: только его треки, без
+     * дозаполнения рекомендациями. Снимается, когда режим «рекомендации»
+     * включают вручную из плеера.
+     */
+    private var collection = false
+
     init {
         // Режим держим под рукой готовым значением: решать, что играть
         // дальше, приходится в момент нажатия, и ждать чтение настроек там
@@ -70,7 +77,7 @@ class PlaybackStarter @Inject constructor(
         scope.launch {
             player.state.collect { state ->
                 val song = state.song ?: return@collect
-                if (_mode.value != QueueMode.RADIO) return@collect
+                if (_mode.value != QueueMode.RADIO || collection) return@collect
                 if (state.currentIndex < state.queue.lastIndex) return@collect
                 if (extendedFor == song.id) return@collect
                 extendWithRadio(song)
@@ -79,6 +86,22 @@ class PlaybackStarter @Inject constructor(
     }
 
     fun play(songs: List<SongItem>, index: Int) {
+        collection = false
+        launch(songs, index)
+    }
+
+    /**
+     * Запуск плейлиста или альбома: в очередь попадают только его треки.
+     * Режим «рекомендации» здесь играет плейлист по порядку — дозаполнять
+     * чужими треками то, что человек собрал сам, нельзя. Вперемешку
+     * остаётся вперемешку.
+     */
+    fun playCollection(songs: List<SongItem>, index: Int) {
+        collection = true
+        launch(songs, index)
+    }
+
+    private fun launch(songs: List<SongItem>, index: Int) {
         if (songs.isEmpty()) return
         val chosen = songs[index.coerceIn(songs.indices)]
         radioJob?.cancel()
@@ -132,7 +155,8 @@ class PlaybackStarter @Inject constructor(
 
     private fun start(songs: List<SongItem>, chosen: SongItem) {
         val index = songs.indexOfFirst { it.id == chosen.id }.coerceAtLeast(0)
-        when (_mode.value) {
+        val mode = if (collection && _mode.value == QueueMode.RADIO) QueueMode.ORDER else _mode.value
+        when (mode) {
             QueueMode.ORDER -> player.play(songs, index)
 
             QueueMode.SHUFFLE -> {
@@ -155,6 +179,8 @@ class PlaybackStarter @Inject constructor(
     fun applyMode(mode: QueueMode) {
         scope.launch { settings.setQueueMode(mode) }
         _mode.value = mode
+        // Режим включили руками — значит, рекомендации хотят и для плейлиста.
+        if (mode == QueueMode.RADIO) collection = false
         radioJob?.cancel()
         val current = player.state.value.song ?: return
         when (mode) {

@@ -325,6 +325,15 @@ object YtJson {
         return songs(root)
     }
 
+    /**
+     * Продолжение именно списка плейлиста, а не полки рекомендаций под ним:
+     * у той свой токен, и общий поиск мог взять его первым.
+     */
+    fun playlistContinuation(root: JsonElement): String? {
+        val shelves = root.findAll("musicPlaylistShelfRenderer")
+        return shelves.firstNotNullOfOrNull { continuation(it) } ?: if (shelves.isEmpty()) continuation(root) else null
+    }
+
     /** Идентификатор только что созданного в аккаунте плейлиста. */
     fun createdPlaylistId(root: JsonElement): String? =
         (root as? JsonObject)?.get("playlistId").asString()

@@ -9,6 +9,7 @@ import com.texfi.w0y.data.AccountSync
 import com.texfi.w0y.data.DialHiddenRepository
 import com.texfi.w0y.data.LibraryRepository
 import com.texfi.w0y.data.PlaylistCard
+import com.texfi.w0y.data.SettingsRepository
 import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.YouTubeRepository
 import com.texfi.w0y.data.YtPlaylistSync
@@ -25,7 +26,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -61,6 +66,7 @@ class LibraryViewModel @Inject constructor(
     private val playback: PlaybackStarter,
     val player: PlayerConnection,
     private val dialHidden: DialHiddenRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     val playlists: StateFlow<List<PlaylistEntity>> =
         library.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -81,6 +87,14 @@ class LibraryViewModel @Inject constructor(
     val playlistCovers: StateFlow<Map<Long, String>> =
         library.playlistCovers.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
+    /** Треки, набравшие порог прослушиваний; порог задаётся в настройках. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val dialSongs =
+        settings.settings
+            .map { it.dialMinPlays }
+            .distinctUntilChanged()
+            .flatMapLatest { library.dialCandidates(it) }
+
     /**
      * Быстрый набор: сначала закреплённое вручную, следом — то, что
      * слушается чаще всего. Закреплённое не дублируется в хвосте, иначе
@@ -89,11 +103,9 @@ class LibraryViewModel @Inject constructor(
     private val rawDial: kotlinx.coroutines.flow.Flow<List<DialItem>> =
         combine(
             library.pins,
-            library.mostPlayed,
-            library.liked,
-            library.recent,
+            dialSongs,
             library.playlists,
-        ) { pins, played, liked, recent, playlists ->
+        ) { pins, played, playlists ->
             val pinned =
                 pins.map { pin ->
                     DialItem(
@@ -118,11 +130,12 @@ class LibraryViewModel @Inject constructor(
                             },
                     )
                 }
-            // Набор собирается из всего своего: закреплённое, частое, лайки,
-            // недавнее, свои плейлисты. На одной истории страницы получались
-            // полупустыми — листать было нечего.
+            // Трек попадает в набор, только когда его действительно слушают:
+            // не меньше N засчитанных прослушиваний. Лайки и недавнее сюда
+            // больше не подмешиваются — один случайный запуск не должен
+            // занимать плитку.
             val songs =
-                (played + liked + recent)
+                played
                     .distinctBy { it.id }
                     .map { song ->
                         DialItem(
@@ -158,6 +171,18 @@ class LibraryViewModel @Inject constructor(
             val gone = hidden.filter { it.untilMs > now }.map { it.kind to it.id }.toSet()
             items.filterNot { (it.kind to it.id) in gone }.take(SPEED_DIAL_SIZE)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // Адреса первых плиток быстрого набора готовятся заранее: туда
+        // нажимают чаще всего, и старт с плитки не должен ждать извлечения.
+        // Только адреса, без звука — трафика почти нет. С паузой, чтобы не
+        // мешать первому экрану.
+        viewModelScope.launch {
+            val first = speedDial.first { list -> list.any { it.song != null } }
+            kotlinx.coroutines.delay(DIAL_PREFETCH_DELAY_MS)
+            youtube.prefetchSequential(first.mapNotNull { it.song?.id }.take(DIAL_PREFETCH))
+        }
+    }
 
     /**
      * Убирает плитку из набора на время. Закреплённая сначала открепляется —
@@ -202,6 +227,11 @@ class LibraryViewModel @Inject constructor(
     private val _remoteSongs = MutableStateFlow<List<SongItem>>(emptyList())
     val remoteSongs: StateFlow<List<SongItem>> = _remoteSongs.asStateFlow()
 
+    private val _remoteSuggestions = MutableStateFlow<List<SongItem>>(emptyList())
+
+    /** Рекомендации под плейлистом аккаунта; пусто, если они выключены. */
+    val remoteSuggestions: StateFlow<List<SongItem>> = _remoteSuggestions.asStateFlow()
+
     /** Сохранённые альбомы аккаунта: плейлисты аккаунта живут среди обычных. */
     val accountAlbums: StateFlow<List<PlaylistCard>> = accountSync.albums
 
@@ -239,10 +269,17 @@ class LibraryViewModel @Inject constructor(
             is LibraryRoute.Remote ->
                 viewModelScope.launch {
                     _remoteSongs.value = emptyList()
+                    _remoteSuggestions.value = emptyList()
                     _remoteSongs.value =
                         runCatching { youtube.playlistSongs(route.card.browseId) }
                             .onFailure { Timber.w(it, "Плейлист ${route.card.title} не открылся") }
                             .getOrDefault(emptyList())
+                    // Рекомендации YouTube под плейлистом — только по желанию и
+                    // отдельным блоком: в сам плейлист и в очередь они не попадают.
+                    if (settings.settings.first().showPlaylistRecommendations) {
+                        _remoteSuggestions.value =
+                            runCatching { youtube.playlistSuggestions(route.card.browseId) }.getOrDefault(emptyList())
+                    }
                 }
 
             else -> Unit
@@ -253,6 +290,7 @@ class LibraryViewModel @Inject constructor(
         _route.value = LibraryRoute.Root
         _currentPlaylistSongs.value = emptyList()
         _remoteSongs.value = emptyList()
+        _remoteSuggestions.value = emptyList()
     }
 
     fun createPlaylist(name: String) = viewModelScope.launch { library.createPlaylist(name) }
@@ -292,6 +330,9 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun play(songs: List<SongItem>, index: Int) = playback.play(songs, index)
+
+    /** Плейлист играет только своими треками — без рекомендаций в очереди. */
+    fun playCollection(songs: List<SongItem>, index: Int) = playback.playCollection(songs, index)
 
     private val _exportStatus = MutableStateFlow<String?>(null)
 
@@ -370,6 +411,8 @@ data class DialItem(
 
 /** Пять страниц по девять плиток: столько влезает без прокрутки экрана. */
 private const val SPEED_DIAL_PAGE = 9
+private const val DIAL_PREFETCH = 4
+private const val DIAL_PREFETCH_DELAY_MS = 2_500L
 private const val SPEED_DIAL_PAGES = 5
 private const val SPEED_DIAL_SIZE = SPEED_DIAL_PAGE * SPEED_DIAL_PAGES
 

@@ -128,7 +128,7 @@ fun AlbumScreen(
                 ) {
                     PixelButton(
                         text = stringResource(R.string.album_play),
-                        onClick = { viewModel.play(songs, 0) },
+                        onClick = { viewModel.playCollection(songs, 0) },
                         enabled = songs.isNotEmpty(),
                     )
                     PixelButton(
@@ -188,7 +188,7 @@ fun AlbumScreen(
                 SongRow(
                     song = song,
                     modifier = Modifier.weight(1f),
-                    onClick = { viewModel.play(songs, index) },
+                    onClick = { viewModel.playCollection(songs, index) },
                     actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
             }

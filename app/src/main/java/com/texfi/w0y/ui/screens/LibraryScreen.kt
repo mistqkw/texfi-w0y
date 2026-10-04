@@ -66,7 +66,7 @@ fun LibraryScreen(
         LibraryRoute.Root -> LibraryRoot(viewModel, onOpenLogin)
         is LibraryRoute.Local -> LocalPlaylist(current.playlistId, viewModel)
         is LibraryRoute.Remote -> RemotePlaylist(current, viewModel)
-        LibraryRoute.Liked -> SongList(stringResource(R.string.library_likes), viewModel.liked.collectAsStateWithLifecycle().value, viewModel)
+        LibraryRoute.Liked -> SongList(stringResource(R.string.library_likes), viewModel.liked.collectAsStateWithLifecycle().value, viewModel, collection = true)
         LibraryRoute.History -> SongList(stringResource(R.string.library_history), viewModel.recent.collectAsStateWithLifecycle().value, viewModel, onClear = viewModel::clearHistory)
         LibraryRoute.Downloads -> DownloadsList(viewModel)
         LibraryRoute.Stats -> StatsScreen(onBack = viewModel::back)
@@ -349,6 +349,8 @@ private fun SongList(
     songs: List<SongItem>,
     viewModel: LibraryViewModel,
     onClear: (() -> Unit)? = null,
+    /** Список играется как подборка — без рекомендаций в очереди. */
+    collection: Boolean = false,
 ) {
     val colors = LocalW0yColors.current
     Column(
@@ -377,7 +379,7 @@ private fun SongList(
             items(songs, key = { it.id }) { song ->
                 SongRow(
                     song = song,
-                    onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    onClick = { if (collection) viewModel.playCollection(songs, songs.indexOf(song)) else viewModel.play(songs, songs.indexOf(song)) },
                     // Трек уезжает из списка сам: после нажатия «удалить»
                     // должно быть видно, что удалилось именно это, а не
                     // что список перерисовался целиком.
@@ -449,7 +451,7 @@ private fun DownloadsList(viewModel: LibraryViewModel) {
             items(songs, key = { it.id }) { song ->
                 SongRow(
                     song = song,
-                    onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    onClick = { viewModel.playCollection(songs, songs.indexOf(song)) },
                     progressPercent = progress[song.id]?.percent,
                     modifier = Modifier.animateItem(),
                     actions = { SpriteButton(Sprites.trash, onClick = { viewModel.cancelDownload(song.id) }) },
@@ -557,7 +559,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
             items(songs, key = { it.id }) { song ->
                 SongRow(
                     song = song,
-                    onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    onClick = { viewModel.playCollection(songs, songs.indexOf(song)) },
                     modifier = Modifier.animateItem(),
                     actions = {
                         if (editable) {
@@ -577,6 +579,7 @@ private fun LocalPlaylist(playlistId: Long, viewModel: LibraryViewModel) {
 private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewModel) {
     val colors = LocalW0yColors.current
     val songs by viewModel.remoteSongs.collectAsStateWithLifecycle()
+    val suggestions by viewModel.remoteSuggestions.collectAsStateWithLifecycle()
     Column(
         Modifier
             .fillMaxSize()
@@ -593,13 +596,26 @@ private fun RemotePlaylist(route: LibraryRoute.Remote, viewModel: LibraryViewMod
             items(songs, key = { it.id }) { song ->
                 SongRow(
                     song = song,
-                    onClick = { viewModel.play(songs, songs.indexOf(song)) },
+                    onClick = { viewModel.playCollection(songs, songs.indexOf(song)) },
                     // Трек уезжает из списка сам: после нажатия «удалить»
                     // должно быть видно, что удалилось именно это, а не
                     // что список перерисовался целиком.
                     modifier = Modifier.animateItem(),
                     actions = { DownloadButton(song.id, onDownload = { viewModel.download(song) }) },
                 )
+            }
+            if (suggestions.isNotEmpty()) {
+                item(key = "suggestions-header") {
+                    SectionHeader(
+                        label = stringResource(R.string.playlist_suggestions),
+                        hint = stringResource(R.string.playlist_suggestions_hint),
+                        modifier = Modifier.padding(top = 18.dp, bottom = 6.dp),
+                    )
+                }
+                // Рекомендация запускается одна, отдельно от плейлиста.
+                items(suggestions, key = { "s-" + it.id }) { song ->
+                    SongRow(song = song, onClick = { viewModel.play(listOf(song), 0) })
+                }
             }
         }
     }

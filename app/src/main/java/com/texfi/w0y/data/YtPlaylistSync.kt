@@ -110,6 +110,31 @@ class YtPlaylistSync @Inject constructor(
         missing.size
     }
 
+    /**
+     * Переставляет треки в плейлисте аккаунта под локальный порядок.
+     *
+     * YouTube умеет только «поставить вхождение перед другим», поэтому
+     * порядок собирается с конца: каждый трек ставится перед тем, что идёт
+     * за ним. На одно перетаскивание это один-два запроса. Если перестановок
+     * больше [MAX_MOVES], аккаунт не трогаем — честнее оставить порядок
+     * локальным, чем сотней запросов упереться в ограничение YouTube.
+     */
+    suspend fun reorder(remoteId: String, desired: List<String>): Boolean {
+        if (!enabled()) return false
+        val remote = fetch(remoteId, maxPages = 10) ?: return false
+        if (!remote.editable || !remote.complete) return false
+        val moves = ReorderPlan.moves(remote.songs.map { it.id }, desired)
+        if (moves.size > MAX_MOVES) return false
+        return attempt("reorder") {
+            moves.forEach { (item, before) ->
+                val set = remote.setVideoIds[item] ?: return@forEach
+                val successor = remote.setVideoIds[before] ?: return@forEach
+                innerTube.movePlaylistSong(YouTubeClient.WEB_REMIX, remoteId, set, successor)
+            }
+            true
+        } ?: false
+    }
+
     /** Плейлист аккаунта целиком: треки, места в нём, обложка, права. */
     data class RemotePlaylist(
         val songs: List<SongItem>,
@@ -231,6 +256,10 @@ class YtPlaylistSync @Inject constructor(
                     ).body<JsonObject>()
             YtJson.songs(response).map { it.id }.toSet()
         }
+
+    private companion object {
+        const val MAX_MOVES = 25
+    }
 
     /** Читать плейлист нужно с приставкой «VL», менять — без неё. */
     private fun browseId(remoteId: String) =
