@@ -923,6 +923,15 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_flip_title),
+                description = stringResource(R.string.stand_flip_desc),
+                keywords = "stand always on flip upside down rotate",
+                control = SettingControl.Toggle(settings.standFlipped, viewModel::setStandFlipped),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
                 title = stringResource(R.string.stand_charging_title),
                 description = stringResource(R.string.stand_charging_desc),
                 keywords = "stand always on",

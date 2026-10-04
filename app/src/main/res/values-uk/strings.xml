@@ -570,7 +570,9 @@
     <string name="stand_view_cover">Обкладинка</string>
     <string name="stand_marquee_title">Підставка: біжуча назва</string>
     <string name="stand_marquee_desc">Довга назва біжить в один рядок, а не переноситься.</string>
-    <string name="stand_brightness_hint">Яскравість</string>
+    <string name="stand_flip_title">Підставка: догори дриґом</string>
+    <string name="stand_flip_desc">Якщо телефон стоїть роз’ємом догори. Перевернути можна й кнопкою в самій підставці.</string>
+    <string name="stand_flip">Перевернути</string>
     <string name="stand_charging_title">Підставка: лише на заряджанні</string>
     <string name="stand_charging_desc">Режим підставки закривається, коли заряджання відʼєднали.</string>
     <string name="stand_max_title">Підставка: межа часу</string>

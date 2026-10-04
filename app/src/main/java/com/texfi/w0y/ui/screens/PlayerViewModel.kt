@@ -60,6 +60,8 @@ class PlayerViewModel @Inject constructor(
 
     fun setStandView(view: com.texfi.w0y.data.StandView) = viewModelScope.launch { settingsRepository.setStandView(view) }
 
+    fun setStandFlipped(value: Boolean) = viewModelScope.launch { settingsRepository.setStandFlipped(value) }
+
     private val _edit = MutableStateFlow<EditSearch>(EditSearch.Idle)
 
     /** Поиск готовой переделки: идёт, не нашлось или уже играет. */

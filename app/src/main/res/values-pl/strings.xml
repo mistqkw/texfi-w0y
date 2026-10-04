@@ -570,7 +570,9 @@
     <string name="stand_view_cover">Okładka</string>
     <string name="stand_marquee_title">Podstawka: przewijany tytuł</string>
     <string name="stand_marquee_desc">Długi tytuł przewija się w jednej linii zamiast się zawijać.</string>
-    <string name="stand_brightness_hint">Jasność</string>
+    <string name="stand_flip_title">Podstawka: do góry nogami</string>
+    <string name="stand_flip_desc">Gdy telefon stoi złączem do góry. Obrócić można też przyciskiem w samej podstawce.</string>
+    <string name="stand_flip">Obróć</string>
     <string name="stand_charging_title">Podstawka: tylko podczas ładowania</string>
     <string name="stand_charging_desc">Tryb podstawki zamyka się po odłączeniu ładowarki.</string>
     <string name="stand_max_title">Podstawka: limit czasu</string>

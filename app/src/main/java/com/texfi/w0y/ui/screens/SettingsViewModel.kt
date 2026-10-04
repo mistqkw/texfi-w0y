@@ -281,6 +281,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setStandMarquee(value: Boolean) = update { repository.setStandMarquee(value) }
 
+    fun setStandFlipped(value: Boolean) = update { repository.setStandFlipped(value) }
+
     fun setStandView(value: com.texfi.w0y.data.StandView) = update { repository.setStandView(value) }
 
     fun setStandChargingOnly(value: Boolean) = update { repository.setStandChargingOnly(value) }

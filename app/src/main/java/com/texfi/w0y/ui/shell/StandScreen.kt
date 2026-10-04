@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -188,6 +189,10 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
         Modifier
             .fillMaxSize()
             .background(Color.Black)
+            // Вверх ногами — поворотом всего слоя: касания поворачиваются вместе
+            // с ним, а ориентацию окна трогать не нужно (на многих телефонах
+            // поворот на 180° системой выключен).
+            .graphicsLayer { rotationZ = if (settings.standFlipped) 180f else 0f }
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -208,7 +213,7 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                     alpha = enter.value
                     scaleX = 0.94f + 0.06f * enter.value
                     scaleY = 0.94f + 0.06f * enter.value
-                }.padding(28.dp),
+                }.padding(start = 28.dp, end = 28.dp, top = 72.dp, bottom = 112.dp),
         ) {
             val wide = maxWidth > maxHeight
             val text = Color(0xFFE8E4DA)
@@ -309,26 +314,18 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                 TransportButton(Sprites.next, size = 34, onClick = { viewModel.player.skipNext(); touch++ }, color = Color(0xFFE8E4DA), touchPadding = 12)
             }
         }
+        // Верх одной строкой: яркость занимает, сколько осталось, и до
+        // кнопок не доходит — раньше на узком экране подпись наезжала на крестик.
         AnimatedVisibility(
             visible = controls,
             enter = fadeIn(tween(160)),
             exit = fadeOut(tween(160)),
-            modifier = Modifier.align(Alignment.TopEnd),
+            modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth(),
         ) {
-            Box(Modifier.padding(16.dp).size(48.dp), contentAlignment = Alignment.Center) {
-                SpriteButton(Sprites.close, onClick = { exit(StandExit.USER) }, size = 26)
-            }
-        }
-        // Яркость — вместе с кнопками: ползунок и «как в системе».
-        AnimatedVisibility(
-            visible = controls,
-            enter = fadeIn(tween(160)),
-            exit = fadeOut(tween(160)),
-            modifier = Modifier.align(Alignment.TopStart),
-        ) {
-            Row(Modifier.padding(start = 24.dp, top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.stand_brightness_hint), style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A877F))
-                Spacer(Modifier.width(12.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 com.texfi.w0y.ui.components.PixelSlider(
                     value = if (brightness < 0f) 0.3f else brightness,
                     range = 0.01f..1f,
@@ -337,20 +334,34 @@ fun StandScreen(onExit: (StandExit) -> Unit, viewModel: PlayerViewModel = hiltVi
                         brightness = it
                         touch++
                     },
-                    modifier = Modifier.width(200.dp),
+                    modifier = Modifier.weight(1f).widthIn(max = 260.dp),
                 )
-                Spacer(Modifier.width(12.dp))
                 Text(
                     stringResource(R.string.stand_brightness_system),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (brightness < 0f) colors.accentText else Color(0xFF8A877F),
+                    maxLines = 1,
                     modifier =
                         Modifier
                             .clickable {
                                 brightness = com.texfi.w0y.data.STAND_BRIGHTNESS_SYSTEM
                                 touch++
-                            }.padding(8.dp),
+                            }.padding(horizontal = 10.dp, vertical = 12.dp),
                 )
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    SpriteButton(
+                        Sprites.rotate,
+                        onClick = {
+                            viewModel.setStandFlipped(!settings.standFlipped)
+                            touch++
+                        },
+                        active = settings.standFlipped,
+                        size = 24,
+                    )
+                }
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    SpriteButton(Sprites.close, onClick = { exit(StandExit.USER) }, size = 26)
+                }
             }
         }
     }

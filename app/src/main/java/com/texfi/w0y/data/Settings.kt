@@ -299,6 +299,8 @@ data class W0ySettings(
     val standBrightness: Float = STAND_BRIGHTNESS_SYSTEM,
     /** Название бежит строкой, а не переносится. */
     val standMarquee: Boolean = false,
+    /** Подставка вверх ногами: телефон стоит разъёмом вверх. */
+    val standFlipped: Boolean = false,
     val standView: StandView = StandView.TEXT,
     val standChargingOnly: Boolean = false,
     /** Сколько режим держится сам, минут; 0 — пока не выйдешь. */
@@ -388,6 +390,7 @@ class SettingsRepository @Inject constructor(
                     standVisualizer = prefs[Keys.STAND_VIZ] ?: false,
                     standBrightness = prefs[Keys.STAND_BRIGHTNESS] ?: STAND_BRIGHTNESS_SYSTEM,
                     standMarquee = prefs[Keys.STAND_MARQUEE] ?: false,
+                    standFlipped = prefs[Keys.STAND_FLIPPED] ?: false,
                     standView = prefs.enum(Keys.STAND_VIEW, StandView.TEXT),
                     standChargingOnly = prefs[Keys.STAND_CHARGING] ?: false,
                     standMaxMinutes = prefs[Keys.STAND_MAX_MIN] ?: 60,
@@ -559,6 +562,8 @@ class SettingsRepository @Inject constructor(
         put(Keys.STAND_BRIGHTNESS, if (value < 0f) STAND_BRIGHTNESS_SYSTEM else value.coerceIn(0.01f, 1f))
 
     suspend fun setStandMarquee(value: Boolean) = put(Keys.STAND_MARQUEE, value)
+
+    suspend fun setStandFlipped(value: Boolean) = put(Keys.STAND_FLIPPED, value)
 
     suspend fun setStandView(value: StandView) = put(Keys.STAND_VIEW, value.name)
 
@@ -750,6 +755,7 @@ class SettingsRepository @Inject constructor(
         val STAND_VIZ = booleanPreferencesKey("stand_visualizer")
         val STAND_BRIGHTNESS = floatPreferencesKey("stand_brightness")
         val STAND_MARQUEE = booleanPreferencesKey("stand_marquee")
+        val STAND_FLIPPED = booleanPreferencesKey("stand_flipped")
         val STAND_VIEW = stringPreferencesKey("stand_view")
         val STAND_CHARGING = booleanPreferencesKey("stand_charging_only")
         val STAND_MAX_MIN = intPreferencesKey("stand_max_minutes")

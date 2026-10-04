@@ -570,7 +570,9 @@
     <string name="stand_view_cover">Обложка</string>
     <string name="stand_marquee_title">Подставка: бегущее название</string>
     <string name="stand_marquee_desc">Длинное название бежит в одну строку, а не переносится.</string>
-    <string name="stand_brightness_hint">Яркость</string>
+    <string name="stand_flip_title">Подставка: вверх ногами</string>
+    <string name="stand_flip_desc">Если телефон стоит разъёмом вверх. Перевернуть можно и кнопкой в самой подставке.</string>
+    <string name="stand_flip">Перевернуть</string>
     <string name="stand_charging_title">Подставка: только на зарядке</string>
     <string name="stand_charging_desc">Режим подставки закрывается, когда зарядку отключили.</string>
     <string name="stand_max_title">Подставка: предел времени</string>

@@ -570,7 +570,9 @@
     <string name="stand_view_cover">Cover</string>
     <string name="stand_marquee_title">Stand: scrolling title</string>
     <string name="stand_marquee_desc">A long title scrolls in one line instead of wrapping.</string>
-    <string name="stand_brightness_hint">Brightness</string>
+    <string name="stand_flip_title">Stand: upside down</string>
+    <string name="stand_flip_desc">For a phone standing with its port up. The button in stand mode flips it too.</string>
+    <string name="stand_flip">Flip</string>
     <string name="stand_charging_title">Stand: only while charging</string>
     <string name="stand_charging_desc">Stand mode closes when the charger is unplugged.</string>
     <string name="stand_max_title">Stand: time limit</string>
