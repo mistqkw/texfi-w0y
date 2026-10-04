@@ -1,49 +1,42 @@
-# w0y v0.0.2 beta-1
+# w0y v0.0.2 beta-2
 
-The second beta: a second look for the whole app, lyrics and a visualizer,
-proper downloads, listening stats and a lot of speed work.
+Fixes for beta-1 and a new look: real liquid glass in Smooth, split bars
+and grouped settings in both styles.
 
 ## New
 
-- **Two styles.** Pixel, as before, and Smooth: rounded, soft, with a light
-  liquid-glass touch on panels and cards (or plain matte surfaces, if you
-  prefer). Picked once on first launch, changed any time in Settings → Look,
-  with a circular transition and no restart.
-- **Lyrics.** Large synced lyrics in the player and full screen, the current
-  line highlighted, word-by-word where available, tap a line to seek.
-- **Visualizer** in place of the cover: four looks in Pixel, two in Smooth.
-- **Stand mode:** a black full-screen view with a large title and big
-  buttons for a phone on a stand; the screen stays on while it is open.
-- **Downloads, reworked.** Range downloads with a queue, reasons when
-  something fails, a Downloads section in settings and a downloaded screen.
-- **Save to the phone as MP3.** "Save to music" now makes MP3 files at
-  320 kbps with cover, title, artist and album. The folder is chosen right on
-  the Downloaded screen the first time you open it.
-- **Listening stats:** a real listening rule, minutes, a chart.
-- **Playlists:** drag to reorder, a header like an album's, and playing a
-  playlist plays only its own tracks.
-- **Speed dial** fills from the first play and learns the order from what you
-  finish. "Hide" just hides a tile; play the track again and it can come back.
-- **Featured artists:** on a track with several artists, each one opens on
-  its own from the player and the track menu.
-- **Swipe along the bottom bar** to switch tabs without tapping each one.
-- **Full reset** in Settings → Data.
-- Sand is the default accent colour.
-
-## Faster
-
-- Faster track start: the start is measured step by step, the next track is
-  prepared in advance.
-- Pixel style reacts from the first frame and no longer redraws the screen
-  while idle.
+- **Liquid glass, for real.** In Smooth with glass, the screen now runs
+  under the bottom bars, and they blur and slightly bend what is behind
+  them, with a thin bright rim — like iOS 26. Cards, buttons and the track
+  menu use the same glass. Blur needs Android 12, the bending Android 13;
+  older phones get denser bars.
+- **Split bottom bar.** Tabs sit in one block, search in its own button on
+  the right. In Smooth it is a capsule and a circle, in Pixel two TexFi
+  blocks with hard shadows.
+- **Grouped settings.** Sections are gathered into captioned groups (Sound
+  & player, Speed & storage, Music & account, App): grey glass in Smooth,
+  bordered blocks in Pixel. Settings open under the bottom bars; a tab
+  closes them.
+- **Stand mode:** brightness follows the system by default and has a slider
+  right in stand mode; a "cover" view with a large cover; long press
+  switches title and cover; optional scrolling title; an upside-down view
+  for a phone standing port-up.
 
 ## Fixed
 
-- Downloads from servers that do not report the file size were cut at 1 MB
-  and still marked complete. If you have such tracks, delete them and
-  download again.
-- Seasonal promo shelves from YouTube ("The sound of autumn" and the like) no
-  longer appear on the home screen.
+- **Playback and downloads failed** on tracks YouTube serves only over its
+  SABR protocol ("Expected URL scheme 'http' or 'https'"). Such tracks now
+  play and download.
+- **Recommendations leaked into playlists.** Account sync read the second
+  page of a short playlist from YouTube's recommendations, so foreign
+  tracks got in and kept changing. Sync now reads only the playlist itself,
+  and playlists already mixed up are restored once from the account. A
+  track added on the phone that never reached the account can be removed
+  by that one-time restore.
+- A playlist's queue no longer turns into recommendations after the app
+  restarts, and shuffle on albums and artists plays only their tracks.
+- Stand mode no longer lights the screen brighter than the system setting,
+  and the brightness controls no longer overlap the close button.
 
 ## Files
 
@@ -52,21 +45,19 @@ proper downloads, listening stats and a lot of speed work.
   run `./install.sh`.
 - `SHA256SUMS.txt` — checksums of the files above.
 
-The APK is signed with the project key: if you have v0.0.1 installed, the
-update goes on top and your data stays.
+The APK is signed with the project key: it installs over beta-1 and your
+data stays.
 
 ## Honest about the limits
 
+- If recommendations already got into a playlist on YouTube itself (for
+  example after "upload again"), remove them there by hand: the app cannot
+  tell them from tracks you added.
 - MP3 at 320 kbps does not make the sound better than the source: YouTube's
-  audio is compressed more than that. 320 is there so nothing more is lost
-  in conversion. Converting takes a few seconds per track.
+  audio is compressed more than that.
 - Account sync works by reading YouTube's pages the way the web app does,
-  and YouTube can change them without notice. A list that was not read to
-  the end is never taken as a reason to delete anything.
-- Words cannot be cut out of a finished recording; the app swaps in the
-  official clean version when one exists.
+  and YouTube can change them without notice.
 - The Linux version's interface is in Russian only and does not have the new
   features of this release yet.
-- There is no web version and none is planned.
 
 w0y is not affiliated with YouTube or Google.
