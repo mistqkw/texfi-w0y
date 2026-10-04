@@ -300,7 +300,7 @@ class YouTubeRepository @Inject constructor(
      * загрузка в «лучшем» не подменила плееру ссылку «экономной».
      */
     suspend fun stream(videoId: String, quality: Quality?): ExtractedStream {
-        val key = if (quality == null) videoId else "$videoId#${quality.name}"
+        val key = streamKey(videoId, quality)
         cached(key)?.let { return it }
         val lock = locks.getOrPut(key) { Mutex() }
         return lock.withLock {
@@ -322,6 +322,26 @@ class YouTubeRepository @Inject constructor(
             }
         }
     }
+
+    /** Ключ потока в кэше: у загрузок своё качество — свой ключ. */
+    fun streamKey(videoId: String, quality: Quality?): String = if (quality == null) videoId else "$videoId#${quality.name}"
+
+    /**
+     * Адрес, который можно дать плееру: обычная ссылка или, если YouTube
+     * отдал звук только по SABR, `sabr://<ключ>` для [com.texfi.w0y.playback.SabrDataSource].
+     */
+    fun playable(key: String, stream: ExtractedStream): com.texfi.w0y.playback.ResolvedAudio =
+        if (isSabr(stream)) {
+            com.texfi.w0y.playback.ResolvedAudio(com.texfi.w0y.playback.sabrUri(key).toString(), emptyMap())
+        } else {
+            com.texfi.w0y.playback.ResolvedAudio(stream.audioUrl, stream.headers)
+        }
+
+    private fun isSabr(stream: ExtractedStream) =
+        stream.sabrBootstrap != null && stream.audioUrl.substringBefore(':') == com.texfi.w0y.playback.SABR_SCHEME
+
+    /** Данные SABR-потока из кэша — их читает [com.texfi.w0y.playback.SabrDataSource]. */
+    fun sabrBootstrap(key: String): com.metrolist.innertubex.sabr.SabrBootstrap? = streams[key]?.sabrBootstrap
 
     /** Сколько заняло последнее получение адреса — часть разбора «нажал → звук». */
     private val resolveMs = ConcurrentHashMap<String, Long>()
@@ -352,7 +372,10 @@ class YouTubeRepository @Inject constructor(
         invalidate(videoId)
         return runCatching {
             kotlinx.coroutines.runBlocking { stream(videoId, quality) }
-        }.map { com.texfi.w0y.playback.ResolvedAudio(it.audioUrl, it.headers) }.getOrNull()
+        }.getOrNull()
+            // Обновление нужно HTTP-загрузке посреди файла; SABR-адрес ей не подходит.
+            ?.takeUnless(::isSabr)
+            ?.let { com.texfi.w0y.playback.ResolvedAudio(it.audioUrl, it.headers) }
     }
 
     private val warmed = java.util.concurrent.atomic.AtomicBoolean(false)

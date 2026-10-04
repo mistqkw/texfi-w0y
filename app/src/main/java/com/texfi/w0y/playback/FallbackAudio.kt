@@ -108,7 +108,7 @@ class FallbackAudio @Inject constructor(
                 .take(3)
         for ((candidate, _) in ranked) {
             val stream = runCatching { repository.stream(candidate.id) }.getOrNull() ?: continue
-            return ResolvedAudio(stream.audioUrl, stream.headers)
+            return repository.playable(candidate.id, stream)
         }
         return null
     }

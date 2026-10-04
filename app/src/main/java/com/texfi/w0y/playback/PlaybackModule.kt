@@ -93,6 +93,7 @@ object PlaybackModule {
     @Named("resolving")
     fun resolvingFactory(
         okHttpClient: OkHttpClient,
+        httpClient: io.ktor.client.HttpClient,
         repository: YouTubeRepository,
         fallback: FallbackAudio,
         settings: SettingsRepository,
@@ -100,11 +101,15 @@ object PlaybackModule {
         ResolvingDataSource.Factory(
             DataSource.Factory {
                 FallbackDataSource(
-                    RangedHttpDataSource.Factory(
-                        calls = okHttpClient,
-                        plan = { PLAYER_PLAN },
-                        hint = repository::streamHint,
-                        refresh = { id -> repository.refreshBlocking(id, null) },
+                    withSabr(
+                        RangedHttpDataSource.Factory(
+                            calls = okHttpClient,
+                            plan = { PLAYER_PLAN },
+                            hint = repository::streamHint,
+                            refresh = { id -> repository.refreshBlocking(id, null) },
+                        ),
+                        httpClient,
+                        repository,
                     ),
                     fallback,
                     settings,
@@ -124,6 +129,7 @@ object PlaybackModule {
     @Named("downloadResolving")
     fun downloadResolvingFactory(
         okHttpClient: OkHttpClient,
+        httpClient: io.ktor.client.HttpClient,
         repository: YouTubeRepository,
         fallback: FallbackAudio,
         settings: SettingsRepository,
@@ -134,12 +140,16 @@ object PlaybackModule {
         return ResolvingDataSource.Factory(
             DataSource.Factory {
                 FallbackDataSource(
-                    RangedHttpDataSource.Factory(
-                        calls = okHttpClient,
-                        plan = { RangePlan(RangedHttpDataSource.CHUNK, RangedHttpDataSource.CHUNK, 3, holder.current.downloadRetries) },
-                        hint = { id -> repository.streamHint("$id#${quality().name}") ?: repository.streamHint(id) },
-                        refresh = { id -> repository.refreshBlocking(id, quality()) },
-                        limiter = limiter,
+                    withSabr(
+                        RangedHttpDataSource.Factory(
+                            calls = okHttpClient,
+                            plan = { RangePlan(RangedHttpDataSource.CHUNK, RangedHttpDataSource.CHUNK, 3, holder.current.downloadRetries) },
+                            hint = { id -> repository.streamHint("$id#${quality().name}") ?: repository.streamHint(id) },
+                            refresh = { id -> repository.refreshBlocking(id, quality()) },
+                            limiter = limiter,
+                        ),
+                        httpClient,
+                        repository,
                     ),
                     fallback,
                     settings,
@@ -147,6 +157,16 @@ object PlaybackModule {
             },
             StreamResolver(repository, fallback, settings, downloadQuality = quality),
         )
+    }
+
+    /** HTTP-источник, который умеет и SABR: YouTube отдаёт его вместо ссылки на части треков. */
+    private fun withSabr(
+        http: DataSource.Factory,
+        httpClient: io.ktor.client.HttpClient,
+        repository: YouTubeRepository,
+    ): DataSource.Factory {
+        val sabr = SabrDataSource.Factory(httpClient, repository::sabrBootstrap)
+        return DataSource.Factory { SchemeSwitchDataSource(http.createDataSource(), sabr.createDataSource()) }
     }
 
     /** Первый кусок 256 КБ: несколько секунд звука, приходит быстро. */

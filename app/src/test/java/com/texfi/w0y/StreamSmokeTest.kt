@@ -14,6 +14,7 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 
@@ -33,10 +34,11 @@ class StreamSmokeTest {
         val innerTube = InnerTube(httpClient = http)
         val configStore =
             RemotePlayerConfigStore(httpClient = http, repository = PlayerConfigRepository.disabled())
+        val cipher = YouTubeCipherService(http, configStore)
         val extractor =
             InnerTubeExtractor(
-                configParser = YtConfigParserImpl(http, innerTube, configStore),
-                cipherService = YouTubeCipherService(http, configStore),
+                configParser = YtConfigParserImpl(http, innerTube, configStore, cipherService = cipher),
+                cipherService = cipher,
                 innerTube = innerTube,
             )
         val stream =
@@ -55,5 +57,54 @@ class StreamSmokeTest {
         println("ССЫЛКА ЖИВЁТ ДО: ${stream?.expiresAt}, длина=${stream?.contentLengthBytes}")
         http.close()
         assertNotNull("Поток не извлёкся", stream)
+    }
+
+    /**
+     * Треки, которые YouTube отдаёт только по SABR: поток собирается из
+     * кусков в целый файл — без дыр и ровно нужной длины.
+     */
+    @OptIn(com.metrolist.innertubex.sabr.ExperimentalSabrApi::class)
+    @Test
+    fun sabrStreamAssemblesWholeFile() = runBlocking {
+        requireLiveNetwork()
+        val http =
+            HttpClient(OkHttp) {
+                install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+            }
+        val innerTube = InnerTube(httpClient = http)
+        val configStore = RemotePlayerConfigStore(httpClient = http, repository = PlayerConfigRepository.disabled())
+        val cipher = YouTubeCipherService(http, configStore)
+        val extractor =
+            InnerTubeExtractor(
+                configParser = YtConfigParserImpl(http, innerTube, configStore, cipherService = cipher),
+                cipherService = cipher,
+                innerTube = innerTube,
+            )
+        try {
+            for (id in listOf("OeRhL--tVz0", "tRAmPLYjbGg", "khnokW3Mw24")) {
+                val stream =
+                    try {
+                        extractor.extract(videoId = id, hints = ContentHints(wantVideo = false), audioQuality = AudioQuality.HIGH)
+                    } catch (error: Throwable) {
+                        skipIfNativeCipherMissing(error)
+                        println("$id: не извлёкся — ${error.message}")
+                        null
+                    } ?: continue
+                val scheme = stream.audioUrl.substringBefore(':')
+                println("$id: схема=$scheme sabr=${stream.sabrBootstrap != null} длина=${stream.contentLengthBytes}")
+                val bootstrap = stream.sabrBootstrap ?: continue
+                if (scheme != "sabr") continue
+                var next = 0L
+                com.metrolist.innertubex.sabr.SabrAudioStream(http, bootstrap).chunks().collect { chunk ->
+                    if (chunk.endRangeExclusive <= next) return@collect
+                    org.junit.Assert.assertTrue("$id: дыра на байте $next, кусок с ${chunk.startRange}", chunk.startRange <= next)
+                    next = chunk.endRangeExclusive
+                }
+                println("$id: собрано $next байт")
+                bootstrap.contentLengthBytes?.let { assertEquals("$id: длина файла", it, next) }
+            }
+        } finally {
+            http.close()
+        }
     }
 }

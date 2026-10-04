@@ -46,8 +46,9 @@ class StreamResolver(
         fallback.remember(videoId, dataSpec.uri.getQueryParameter("t"), dataSpec.uri.getQueryParameter("a"), dataSpec.uri.getQueryParameter("d"))
         val audio =
             try {
-                val stream = runBlocking { repository.stream(videoId, downloadQuality?.invoke()) }
-                ResolvedAudio(stream.audioUrl, stream.headers)
+                val quality = downloadQuality?.invoke()
+                val stream = runBlocking { repository.stream(videoId, quality) }
+                repository.playable(repository.streamKey(videoId, quality), stream)
             } catch (error: Exception) {
                 val prefs = runBlocking { settings.settings.first() }
                 if (!prefs.fallbackAudio) throw error

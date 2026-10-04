@@ -68,9 +68,12 @@ object YouTubeModule {
                 httpClient = httpClient,
                 repository = PlayerConfigRepository.disabled(),
             )
+        // Один сервис расшифровки на разбор конфигурации и на извлечение:
+        // с 0.7.4 библиотека ждёт общий, чтобы не тянуть скрипт плеера дважды.
+        val cipher = YouTubeCipherService(httpClient, configStore)
         return InnerTubeExtractor(
-            configParser = YtConfigParserImpl(httpClient, innerTube, configStore),
-            cipherService = YouTubeCipherService(httpClient, configStore),
+            configParser = YtConfigParserImpl(httpClient, innerTube, configStore, cipherService = cipher),
+            cipherService = cipher,
             innerTube = innerTube,
         )
     }
