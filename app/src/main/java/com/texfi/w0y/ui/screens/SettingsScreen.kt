@@ -62,6 +62,7 @@ import com.texfi.w0y.data.StartTab
 import com.texfi.w0y.data.ThemeMode
 import com.texfi.w0y.playback.AudioOutput
 import com.texfi.w0y.ui.components.EmptyState
+import com.texfi.w0y.ui.components.forUi
 import com.texfi.w0y.ui.components.ConfirmPanel
 import com.texfi.w0y.ui.components.PixelButton
 import com.texfi.w0y.ui.components.PixelSegmented
@@ -804,6 +805,102 @@ private fun settingsRows(
                 title = stringResource(R.string.settings_playlist_recs),
                 description = stringResource(R.string.settings_playlist_recs_hint),
                 control = SettingControl.Toggle(settings.showPlaylistRecommendations, viewModel::setShowPlaylistRecommendations),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.viz_style_title),
+                description = stringResource(R.string.viz_style_desc),
+                keywords = "visualizer spectrum",
+                control = SettingControl.Choice(com.texfi.w0y.data.VisualizerStyle.entries.filter { it.smooth == (settings.uiStyle == com.texfi.w0y.data.UiStyle.SMOOTH) }, settings.visualizerStyle.forUi(settings.uiStyle), { stringResource(it.label) }, viewModel::setVisualizerStyle),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.viz_sensitivity_title),
+                description = stringResource(R.string.viz_sensitivity_desc),
+                control = SettingControl.Choice(listOf(0.5f, 1f, 1.5f, 2f), settings.visualizerSensitivity, { "×" + it.toString().removeSuffix(".0") }, viewModel::setVisualizerSensitivity),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.viz_fps_title),
+                description = stringResource(R.string.viz_fps_desc),
+                control = SettingControl.Choice(listOf(30, 60), settings.visualizerFps, { it.toString() }, viewModel::setVisualizerFps),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.viz_backdrop_title),
+                description = stringResource(R.string.viz_backdrop_desc),
+                control = SettingControl.Toggle(settings.visualizerCoverBackdrop, viewModel::setVisualizerCoverBackdrop),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.lyrics_size_title),
+                description = stringResource(R.string.lyrics_size_desc),
+                keywords = "lyrics text",
+                control = SettingControl.Choice(com.texfi.w0y.data.LyricsSize.entries, settings.lyricsSize, { stringResource(it.label) }, viewModel::setLyricsSize),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_lyrics_title),
+                description = stringResource(R.string.stand_lyrics_desc),
+                keywords = "stand always on",
+                control = SettingControl.Toggle(settings.standLyrics, viewModel::setStandLyrics),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_viz_title),
+                description = stringResource(R.string.stand_viz_desc),
+                keywords = "stand always on",
+                control = SettingControl.Toggle(settings.standVisualizer, viewModel::setStandVisualizer),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_brightness_title),
+                description = stringResource(R.string.stand_brightness_desc),
+                keywords = "stand always on",
+                control = SettingControl.Choice(listOf(0.1f, 0.2f, 0.35f, 0.5f), settings.standBrightness, { "${(it * 100).toInt()}%" }, viewModel::setStandBrightness),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_charging_title),
+                description = stringResource(R.string.stand_charging_desc),
+                keywords = "stand always on",
+                control = SettingControl.Toggle(settings.standChargingOnly, viewModel::setStandChargingOnly),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_max_title),
+                description = stringResource(R.string.stand_max_desc),
+                keywords = "stand always on",
+                control = SettingControl.Choice(listOf(0, 30, 60, 120), settings.standMaxMinutes, { if (it == 0) stringResource(R.string.dl_no_limit) else stringResource(R.string.settings_sleep_minutes, it) }, viewModel::setStandMaxMinutes),
+            ),
+        )
+        add(
+            SettingRow(
+                section = SettingsSection.PLAYER,
+                title = stringResource(R.string.stand_battery_title),
+                description = stringResource(R.string.stand_battery_desc),
+                keywords = "stand always on",
+                control = SettingControl.Toggle(settings.standLowBatteryExit, viewModel::setStandLowBatteryExit),
             ),
         )
         add(

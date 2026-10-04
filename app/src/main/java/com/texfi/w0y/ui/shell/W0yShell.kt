@@ -132,6 +132,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
     val playerState by viewModel.player.state.collectAsStateWithLifecycle()
     var playerExpanded by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
+    var standOpen by remember { mutableStateOf(false) }
     var loginOpen by remember { mutableStateOf(false) }
     var loginError by remember { mutableStateOf<String?>(null) }
     var loginBusy by remember { mutableStateOf(false) }
@@ -284,7 +285,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
             expanded = playerExpanded && playerState.song != null,
             onCollapse = { playerExpanded = false },
         ) {
-            PlayerScreen(onCollapse = { playerExpanded = false })
+            PlayerScreen(onCollapse = { playerExpanded = false }, onStand = { standOpen = true })
         }
 
         menuSong?.let { song ->
@@ -374,6 +375,17 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
                     // Пропуск оставляет Pixel, даже если по пути успели переключить.
                     viewModel.setUiStyle(UiStyle.PIXEL)
                     viewModel.completeStylePick()
+                },
+            )
+        }
+
+        // Подставка — поверх всего, включая плеер и навигацию.
+        if (standOpen && playerState.song != null) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            StandScreen(
+                onExit = { reason ->
+                    standOpen = false
+                    reason.message?.let { android.widget.Toast.makeText(context, it, android.widget.Toast.LENGTH_LONG).show() }
                 },
             )
         }
