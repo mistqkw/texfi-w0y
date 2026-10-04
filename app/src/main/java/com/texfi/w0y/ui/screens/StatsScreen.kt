@@ -31,6 +31,7 @@ import com.texfi.w0y.ui.components.FillText
 import com.texfi.w0y.ui.components.SegmentedBar
 import com.texfi.w0y.ui.components.EmptyState
 import com.texfi.w0y.ui.components.Gutter
+import com.texfi.w0y.ui.components.ListenChart
 import com.texfi.w0y.ui.components.PixelSegmented
 import com.texfi.w0y.ui.components.ScreenTitle
 import com.texfi.w0y.ui.components.SectionHeader
@@ -85,6 +86,16 @@ fun StatsScreen(
                     Metric(stringResource(R.string.stats_minutes), stats.minutes.toString(), Modifier.weight(1f))
                     Spacer(Modifier.width(12.dp))
                     Metric(stringResource(R.string.stats_plays), stats.plays.toString(), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(22.dp))
+                SectionHeader(stringResource(R.string.stats_chart_title))
+                Spacer(Modifier.height(10.dp))
+                ListenChart(bars = stats.bars, bucket = stats.bucket)
+                Spacer(Modifier.height(12.dp))
+                Text(stringResource(R.string.stats_rule_note), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
+                if (stats.hasLegacy) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(stringResource(R.string.stats_legacy_note), style = MaterialTheme.typography.bodySmall, color = colors.textMuted)
                 }
                 Spacer(Modifier.height(22.dp))
             }

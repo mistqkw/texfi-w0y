@@ -43,9 +43,17 @@ class LibraryRepository @Inject constructor(
     val downloaded: Flow<List<SongItem>> =
         dao.songsWithDownloadState().map { list -> list.map(SongEntity::toItem) }
 
-    /** Что слушается чаще всего — основа быстрого набора на главной. */
+    /** Что слушается чаще всего — с числом засчитанных прослушиваний. */
     val mostPlayed: Flow<List<SongItem>> =
         dao.mostPlayed().map { list -> list.map { it.song.toItem() } }
+
+    /**
+     * Кандидаты быстрого набора: только треки, прослушанные не меньше
+     * [minPlays] раз по правилу прослушивания. Порядок — по числу
+     * прослушиваний, при равенстве выше то, что слушалось позже.
+     */
+    fun dialCandidates(minPlays: Int): Flow<List<SongItem>> =
+        dao.mostPlayed(minPlays = minPlays.coerceAtLeast(1)).map { list -> list.map { it.song.toItem() } }
 
     val pins: Flow<List<PinEntity>> = dao.pins()
 
@@ -127,15 +135,30 @@ class LibraryRepository @Inject constructor(
     }
 
     /**
-     * История пишется на старте трека, а не на его конце: пользователю
-     * важнее «что я недавно включал», чем «что я дослушал».
+     * Строка истории заводится на старте трека — «недавнее» показывает всё,
+     * что включали. Прослушиванием она станет позже, по правилу
+     * [ListenRule], через [updateListen]. Возвращает id строки.
      */
-    suspend fun remember(song: SongItem) {
+    suspend fun remember(song: SongItem): Long {
         // Слияние со старой записью — внутри saveSongMeta: из плеера трек
         // приходит без альбома и длительности, а лайк и загрузка вообще не
         // его дело.
         dao.saveSongMeta(SongEntity.from(song))
-        dao.addHistory(HistoryEntity(songId = song.id, playedAt = now()))
+        return dao.addHistory(HistoryEntity(songId = song.id, playedAt = now()))
+    }
+
+    suspend fun updateListen(historyId: Long, listenedMs: Long, counted: Boolean) =
+        dao.updateListen(historyId, listenedMs, counted)
+
+    /** Длительность, которую узнал плеер, — если своей у трека нет. */
+    suspend fun rememberDuration(songId: String, durationMs: Long) {
+        if (durationMs > 0) dao.setDurationMs(songId, durationMs)
+    }
+
+    /** Новый порядок своего плейлиста. Аккаунтный порядок меняет [YtPlaylistSync]. */
+    suspend fun reorderPlaylist(playlistId: Long, songIds: List<String>) {
+        dao.reorderPlaylist(playlistId, songIds)
+        remoteId(playlistId)?.let { remote -> sync.reorder(remote, songIds) }
     }
 
     suspend fun clearHistory() = dao.clearHistory()
@@ -194,7 +217,16 @@ class LibraryRepository @Inject constructor(
 
     suspend fun markDownload(songId: String, state: Int) = dao.setDownloadState(songId, state)
 
+    suspend fun markDownloadError(songId: String, error: String?) = dao.setDownloadError(songId, error)
+
+    val downloadErrors: Flow<Map<String, String>> =
+        dao.downloadErrors().map { rows -> rows.associate { it.id to it.downloadError } }
+
     suspend fun saveSong(song: SongItem) = dao.saveSongMeta(SongEntity.from(song))
+
+    suspend fun songOnce(id: String): SongItem? = dao.song(id)?.toItem()
+
+    suspend fun downloadedIds(): List<String> = dao.downloadedIds()
 
     /**
      * Лайки из аккаунта в локальную библиотеку.
