@@ -63,6 +63,9 @@ fun StyleRevealHost(
     val context = LocalContext.current
     val progress = remember { Animatable(1f) }
     var snapshot by remember { mutableStateOf<ImageBitmap?>(null) }
+    // Запись в слой — только в момент смены: постоянная запись каждого
+    // кадра стоила бы работы на каждом кадре всего приложения.
+    var capturing by remember { mutableStateOf<kotlinx.coroutines.CompletableDeferred<Unit>?>(null) }
     var origin by remember { mutableStateOf<Offset?>(null) }
     val style by rememberUpdatedState(current)
     val apply by rememberUpdatedState(onApply)
@@ -78,6 +81,10 @@ fun StyleRevealHost(
                     return@StyleSwitcher
                 }
                 scope.launch {
+                    val recorded = kotlinx.coroutines.CompletableDeferred<Unit>()
+                    capturing = recorded
+                    withTimeoutOrNull(APPLY_WAIT_MS) { recorded.await() }
+                    capturing = null
                     snapshot = runCatching { layer.toImageBitmap() }.getOrNull()
                     if (snapshot == null) {
                         apply(target)
@@ -99,8 +106,14 @@ fun StyleRevealHost(
         Modifier
             .fillMaxSize()
             .drawWithContent {
-                layer.record { this@drawWithContent.drawContent() }
-                drawLayer(layer)
+                val pending = capturing
+                if (pending != null) {
+                    layer.record { this@drawWithContent.drawContent() }
+                    drawLayer(layer)
+                    pending.complete(Unit)
+                } else {
+                    drawContent()
+                }
                 val image = snapshot ?: return@drawWithContent
                 val center = origin ?: Offset(size.width / 2, size.height / 2)
                 val far =

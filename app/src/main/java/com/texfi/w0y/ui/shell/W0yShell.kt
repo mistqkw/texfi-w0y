@@ -196,6 +196,7 @@ fun W0yShell(viewModel: ShellViewModel = hiltViewModel()) {
         LocalCompactRows provides compactRows,
         LocalHaptics provides haptics,
         LocalPlayingSongId provides playerState.song?.id,
+        com.texfi.w0y.ui.components.LocalIsPlaying provides playerState.isPlaying,
         LocalSongActions provides songActions,
     ) {
     val haptic = rememberHaptics()

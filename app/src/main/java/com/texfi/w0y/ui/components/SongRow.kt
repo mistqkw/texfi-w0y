@@ -263,7 +263,10 @@ private fun PlayingMark(modifier: Modifier = Modifier) {
     // внутри лямбды отрисовки. Раньше высота задавалась через Modifier.height,
     // то есть строка — а вместе с ней и весь ленивый список — переизмерялась
     // на каждом кадре, пока играющий трек виден на экране.
-    val phase = rememberAnimationPhase(MARK_PERIOD_MS, MARK_FPS)
+    // На паузе столбики стоят: анимация 30 кадров в секунду на паузе
+    // держала экран в постоянной перерисовке.
+    val playing = LocalIsPlaying.current
+    val phase = rememberAnimationPhase(MARK_PERIOD_MS, MARK_FPS, enabled = playing)
     Canvas(
         modifier
             .background(colors.background.copy(alpha = 0.72f))
@@ -306,5 +309,8 @@ class SongActions(
     val enqueue: (SongItem) -> Unit,
     val openMenu: (SongItem) -> Unit,
 )
+
+/** Идёт ли звук прямо сейчас — для отметки играющего трека. */
+val LocalIsPlaying = androidx.compose.runtime.compositionLocalOf { false }
 
 val LocalSongActions = androidx.compose.runtime.staticCompositionLocalOf<SongActions?> { null }

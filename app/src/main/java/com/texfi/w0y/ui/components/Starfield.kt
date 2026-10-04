@@ -1,5 +1,8 @@
 package com.texfi.w0y.ui.components
 
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -40,21 +43,26 @@ fun Starfield(modifier: Modifier = Modifier, animated: Boolean = true) {
     Box(modifier) {
         // Сетка и свечение — отдельным слоем: они не зависят от фазы, и этот
         // слой не перерисовывается вообще, пока не поменялся размер или тема.
+        // Свой слой (graphicsLayer): мерцание звёзд перерисовывает только их,
+        // а сетку из сотен точек система берёт из готовой записи.
         Box(
-            Modifier.matchParentSize().drawWithCache {
+            Modifier.matchParentSize().graphicsLayer().drawWithCache {
                 val glow =
                     Brush.radialGradient(
                         colors = listOf(colors.accent.copy(alpha = GLOW_ALPHA), Color.Transparent),
                         center = Offset(size.width * 0.5f, 0f),
                         radius = size.width * 0.9f,
                     )
+                val points = dotGrid(GRID_STEP_PX)
+                val dot = colors.border.copy(alpha = GRID_ALPHA)
                 onDrawBehind {
                     drawRect(glow)
-                    drawDotGrid(colors.border.copy(alpha = GRID_ALPHA), GRID_STEP_PX)
+                    // Все точки — одним вызовом.
+                    drawPoints(points, PointMode.Points, dot, strokeWidth = 2f * density, cap = StrokeCap.Round)
                 }
             },
         )
-        Canvas(Modifier.matchParentSize()) {
+        Canvas(Modifier.matchParentSize().graphicsLayer()) {
             // В статичном режиме фаза не читается — и канва после первого
             // кадра больше не перерисовывается.
             val current = if (animated) phase.floatValue else STILL_PHASE
@@ -73,17 +81,19 @@ fun Starfield(modifier: Modifier = Modifier, animated: Boolean = true) {
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDotGrid(color: Color, stepPx: Float) {
+private fun androidx.compose.ui.draw.CacheDrawScope.dotGrid(stepPx: Float): List<Offset> {
     val step = stepPx * density
+    val points = ArrayList<Offset>()
     var y = step / 2
     while (y < size.height) {
         var x = step / 2
         while (x < size.width) {
-            drawCircle(color = color, radius = 1f * density, center = Offset(x, y))
+            points += Offset(x, y)
             x += step
         }
         y += step
     }
+    return points
 }
 
 private data class Star(

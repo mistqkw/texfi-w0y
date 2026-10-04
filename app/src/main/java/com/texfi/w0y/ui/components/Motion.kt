@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlin.math.ceil
 import kotlin.math.floor
 
 /**
@@ -78,7 +79,10 @@ class SteppedEasing(
         // В плавном стиле те же анимации идут без ступеней: кривые одни на
         // всё приложение, поэтому переключаются здесь, а не на каждом экране.
         if (!W0yMotion.stepped) return SmoothCurve.transform(fraction)
-        val stepped = floor(fraction * steps) / steps
+        // Ступень вверх, а не вниз: первое движение — на первом же кадре.
+        // С округлением вниз элемент стоял целую ступень (до 40 мс) и
+        // казался запаздывающим рядом с плавным стилем.
+        val stepped = ceil(fraction * steps).coerceAtMost(steps.toFloat()) / steps
         if (!overshoot) return stepped
         val p = stepped - 1f
         return 1f + (BACK + 1f) * p * p * p + BACK * p * p

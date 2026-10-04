@@ -1,6 +1,9 @@
 package com.texfi.w0y.ui.components
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ColorFilter
@@ -8,8 +11,6 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.texfi.w0y.ui.icons.SmoothIcons
 import com.texfi.w0y.ui.theme.isSmooth
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -35,22 +36,41 @@ fun PixelSprite(
             return
         }
     }
-    Canvas(modifier = modifier) {
-        val cols = rows.maxOf { it.length }
-        val cell = minOf(size.width / cols, size.height / rows.size)
-        val originX = (size.width - cell * cols) / 2f
-        val originY = (size.height - cell * rows.size) / 2f
-        val cellSize = Size(cell + 0.5f, cell + 0.5f)
-        rows.forEachIndexed { y, row ->
-            row.forEachIndexed { x, ch ->
-                if (ch == '#') {
-                    drawRect(
-                        color = color,
-                        topLeft = Offset(originX + x * cell, originY + y * cell),
-                        size = cellSize,
+    // Сетка собирается в один контур один раз на размер: раньше каждая
+    // клетка была отдельным прямоугольником на каждом кадре — до 144 вызовов
+    // на иконку, а иконок на экране десятки.
+    Spacer(
+        modifier.drawWithCache {
+            val cols = rows.maxOf { it.length }
+            val cell = minOf(size.width / cols, size.height / rows.size)
+            val originX = (size.width - cell * cols) / 2f
+            val originY = (size.height - cell * rows.size) / 2f
+            val path = Path()
+            rows.forEachIndexed { y, row ->
+                var x = 0
+                while (x < row.length) {
+                    if (row[x] != '#') {
+                        x++
+                        continue
+                    }
+                    // Подряд идущие клетки — одним прямоугольником.
+                    var run = x
+                    while (run < row.length && row[run] == '#') run++
+                    path.addRect(
+                        Rect(
+                            originX + x * cell,
+                            originY + y * cell,
+                            originX + run * cell + OVERLAP,
+                            originY + (y + 1) * cell + OVERLAP,
+                        ),
                     )
+                    x = run
                 }
             }
-        }
-    }
+            onDrawBehind { drawPath(path, color) }
+        },
+    )
 }
+
+/** Нахлёст ячеек: без него на субпиксельном рендере между ними щели. */
+private const val OVERLAP = 0.5f

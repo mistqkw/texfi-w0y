@@ -1,6 +1,7 @@
 package com.texfi.w0y.ui.components
 
-import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.currentStateAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.FloatState
 import androidx.compose.runtime.LaunchedEffect
@@ -26,8 +27,10 @@ import androidx.compose.runtime.remember
  * приложение перестаёт перерисовываться на каждом vsync просто потому, что на
  * экране есть фон.
  *
- * Часы берутся из [withInfiniteAnimationFrameNanos], а не из `delay`, чтобы
- * анимация останавливалась, когда окно не рисуется, и не будила телефон в фоне.
+ * Между тиками — сон, а не подписка на каждый кадр экрана: раньше цикл
+ * просыпался на каждый vsync (60–120 раз в секунду), чтобы обновить фазу
+ * 12–30 раз. Часы идут, только пока экран на переднем плане: в фоне и при
+ * выключенном экране они стоят и не будят телефон.
  *
  * [enabled] = false останавливает часы совсем: фаза замирает, и кадровый
  * колбэк не заводится. Нужно там, где анимацию можно выключить настройкой.
@@ -39,20 +42,19 @@ fun rememberAnimationPhase(
     enabled: Boolean = true,
 ): FloatState {
     val phase = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(periodMillis, framesPerSecond, enabled) {
-        if (!enabled) return@LaunchedEffect
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    val state by lifecycle.currentStateAsState()
+    val visible = state.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+    LaunchedEffect(periodMillis, framesPerSecond, enabled, visible) {
+        if (!enabled || !visible) return@LaunchedEffect
         val period = periodMillis * 1_000_000L
-        val step = 1_000_000_000L / framesPerSecond
-        var last = 0L
+        val stepMs = 1000L / framesPerSecond
         while (true) {
-            withInfiniteAnimationFrameNanos { nanos ->
-                if (nanos - last >= step) {
-                    last = nanos
-                    // Фаза считается от абсолютного времени, а не набегает
-                    // шагами: пропущенный тик тогда не сдвигает анимацию.
-                    phase.floatValue = (nanos % period) / period.toFloat() * TWO_PI
-                }
-            }
+            val nanos = System.nanoTime()
+            // Фаза считается от абсолютного времени, а не набегает шагами:
+            // пропущенный тик тогда не сдвигает анимацию.
+            phase.floatValue = (nanos % period) / period.toFloat() * TWO_PI
+            kotlinx.coroutines.delay(stepMs)
         }
     }
     return phase
