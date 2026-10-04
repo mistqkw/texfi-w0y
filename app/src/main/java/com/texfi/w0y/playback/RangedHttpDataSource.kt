@@ -95,6 +95,9 @@ class RangedHttpDataSource(
     private var opened = false
     private var passthrough = false
 
+    /** Сервер не назвал полный размер: читаем кусками, пока он не кончится. */
+    private var unknownLength = false
+
     private class Pending(val from: Long, val until: Long, val future: Future<ByteArray>)
 
     override fun open(dataSpec: DataSpec): Long {
@@ -131,13 +134,17 @@ class RangedHttpDataSource(
             transferStarted(dataSpec)
             return if (end == Long.MAX_VALUE) C.LENGTH_UNSET.toLong() else end - position
         }
-        val total = totalFrom(response) ?: known?.contentLength ?: clen(url)
+        // Размер — только из ответа сервера или из адреса (clen). Раньше при
+        // их отсутствии концом считался первый кусок, и файл обрывался на
+        // первом мегабайте, а загрузка числилась готовой.
+        val total = totalFrom(response) ?: clen(url)
+        unknownLength = total == null && requestedEnd == null
         end =
             when {
                 requestedEnd != null && total != null -> minOf(requestedEnd, total)
                 requestedEnd != null -> requestedEnd
                 total != null -> total
-                else -> firstEnd
+                else -> Long.MAX_VALUE
             }
         val body = response.body ?: throw IOException("пустой ответ")
         directResponse = response
@@ -147,7 +154,7 @@ class RangedHttpDataSource(
         opened = true
         transferStarted(dataSpec)
         scheduleAhead()
-        return if (total == null && requestedEnd == null) C.LENGTH_UNSET.toLong() else end - position
+        return if (unknownLength) C.LENGTH_UNSET.toLong() else end - position
     }
 
     override fun read(target: ByteArray, offset: Int, length: Int): Int {
@@ -167,6 +174,13 @@ class RangedHttpDataSource(
                 // обычным куском с того же места.
                 closeDirect()
                 if (passthrough) return C.RESULT_END_OF_INPUT
+                if (unknownLength) {
+                    // Файл короче первого куска — он весь уже отдан.
+                    end = position
+                    ahead.forEach { it.future.cancel(true) }
+                    ahead.clear()
+                    return C.RESULT_END_OF_INPUT
+                }
                 scheduledUntil = position
                 ahead.forEach { it.future.cancel(true) }
                 ahead.clear()
@@ -196,6 +210,14 @@ class RangedHttpDataSource(
                 throw InterruptedIOException()
             }
         bufferPos = 0
+        val got = buffer?.size ?: 0
+        if (unknownLength && got < next.until - next.from) {
+            // Короткий кусок — это конец файла: дальше не просим.
+            end = next.from + got
+            ahead.forEach { it.future.cancel(true) }
+            ahead.clear()
+            if (got == 0) return C.RESULT_END_OF_INPUT
+        }
         scheduleAhead()
         return read(target, offset, length)
     }
@@ -227,10 +249,14 @@ class RangedHttpDataSource(
                     val bytes = body.bytes()
                     val expected = (to - from + 1).toInt()
                     if (response.code == HTTP_PARTIAL && bytes.size >= expected) return bytes.copyOf(expected)
+                    // Без известного размера короткий кусок — последний, а не обрыв.
+                    if (response.code == HTTP_PARTIAL && unknownLength && bytes.size < expected) return bytes
                     if (response.code == HTTP_PARTIAL) throw IOException("кусок оборвался: ${bytes.size} из $expected")
                     throw IOException("сервер не отдал диапазон: HTTP ${response.code}")
                 }
             } catch (error: HttpDataSource.InvalidResponseCodeException) {
+                // За концом файла неизвестной длины — пустой кусок, то есть конец.
+                if (error.responseCode == HTTP_RANGE_NOT_SATISFIABLE && unknownLength) return ByteArray(0)
                 if (error.responseCode in EXPIRED_CODES && !refreshed && renew()) {
                     refreshed = true
                     continue
@@ -339,6 +365,7 @@ class RangedHttpDataSource(
     companion object {
         private const val HTTP_OK = 200
         private const val HTTP_PARTIAL = 206
+        private const val HTTP_RANGE_NOT_SATISFIABLE = 416
         private val EXPIRED_CODES = setOf(403, 410)
         private val RETRY_CODES = setOf(429, 500, 502, 503, 504)
         private const val BACKOFF_MS = 600L

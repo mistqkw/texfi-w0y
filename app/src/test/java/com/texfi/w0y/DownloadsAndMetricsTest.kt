@@ -42,7 +42,12 @@ class DownloadsAndMetricsTest {
     private val file = ByteArray(3_000_000) { (it * 31 + 7).toByte() }
 
     /** Сервер с диапазонами. [expired] — адреса, на которые он отвечает 403; [flaky] — сколько раз оборвать связь. */
-    private fun server(expired: Set<String> = emptySet(), flaky: AtomicInteger = AtomicInteger(0), hits: MutableList<String>? = null) =
+    private fun server(
+        expired: Set<String> = emptySet(),
+        flaky: AtomicInteger = AtomicInteger(0),
+        hits: MutableList<String>? = null,
+        sendTotal: Boolean = true,
+    ) =
         OkHttpClient
             .Builder()
             .addInterceptor { chain ->
@@ -63,13 +68,23 @@ class DownloadsAndMetricsTest {
                 val range = request.header("Range")!!.removePrefix("bytes=").split('-')
                 val from = range[0].toInt()
                 val to = minOf(range[1].toInt(), file.size - 1)
+                if (from >= file.size) {
+                    return@addInterceptor Response
+                        .Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(416)
+                        .message("Range Not Satisfiable")
+                        .body(ByteArray(0).toResponseBody())
+                        .build()
+                }
                 Response
                     .Builder()
                     .request(request)
                     .protocol(Protocol.HTTP_1_1)
                     .code(206)
                     .message("Partial")
-                    .header("Content-Range", "bytes $from-$to/${file.size}")
+                    .header("Content-Range", if (sendTotal) "bytes $from-$to/${file.size}" else "bytes $from-$to/*")
                     .body(file.copyOfRange(from, to + 1).toResponseBody("audio/mp4".toMediaType()))
                     .build()
             }.build()
@@ -98,6 +113,14 @@ class DownloadsAndMetricsTest {
         val source = RangedHttpDataSource(server(hits = hits), plan, { null }, { null })
         assertArrayEquals(file, readAll(source, spec("https://x.test/a?v=1")))
         assertTrue("файл должен идти кусками, а не одним запросом", hits.size > 3)
+    }
+
+    @Test
+    fun readsWholeFileWhenServerHidesSize() {
+        // Живой случай: сервер не назвал полный размер — раньше файл обрывался
+        // на первом куске, а загрузка числилась готовой.
+        val source = RangedHttpDataSource(server(sendTotal = false), plan, { null }, { null })
+        assertArrayEquals(file, readAll(source, spec("https://x.test/a?v=1")))
     }
 
     @Test
