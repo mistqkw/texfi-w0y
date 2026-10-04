@@ -163,11 +163,10 @@ class LibraryViewModel @Inject constructor(
                 .take(SPEED_DIAL_SIZE + SPEED_DIAL_SPARE)
         }
 
-    /** Быстрый набор без временно убранных плиток; просроченные скрытия уже не считаются. */
+    /** Быстрый набор без убранных плиток. */
     val speedDial: StateFlow<List<DialItem>> =
         combine(rawDial, dialHidden.hidden) { items, hidden ->
-            val now = System.currentTimeMillis()
-            val gone = hidden.filter { it.untilMs > now }.map { it.kind to it.id }.toSet()
+            val gone = hidden.map { it.kind to it.id }.toSet()
             items.filterNot { (it.kind to it.id) in gone }.take(SPEED_DIAL_SIZE)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

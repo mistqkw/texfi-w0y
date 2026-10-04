@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 class LibraryRepository @Inject constructor(
     private val dao: W0yDao,
     private val sync: YtPlaylistSync,
+    private val dialHidden: DialHiddenRepository,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -143,6 +144,8 @@ class LibraryRepository @Inject constructor(
         // приходит без альбома и длительности, а лайк и загрузка вообще не
         // его дело.
         dao.saveSongMeta(SongEntity.from(song))
+        // Убранный из быстрого набора трек включили снова — он может вернуться.
+        dialHidden.restore(PinEntity.KIND_SONG, song.id)
         return dao.addHistory(HistoryEntity(songId = song.id, playedAt = now()))
     }
 
@@ -180,6 +183,8 @@ class LibraryRepository @Inject constructor(
             dao.unpin(key)
             return false
         }
+        // Закрепил снова — значит, плитка снова нужна.
+        dialHidden.restore(kind, targetId)
         dao.pin(
             PinEntity(
                 key = key,

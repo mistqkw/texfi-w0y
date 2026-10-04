@@ -50,7 +50,6 @@ class SettingsViewModel @Inject constructor(
     private val audioSession: AudioSessionHolder,
     private val playback: PlaybackStarter,
     private val account: AccountRepository,
-    private val dialHidden: com.texfi.w0y.data.DialHiddenRepository,
     devices: AudioDevicesRepository,
     startupMetrics: StartupMetrics,
     private val downloads: com.texfi.w0y.playback.DownloadsRepository,
@@ -190,15 +189,15 @@ class SettingsViewModel @Inject constructor(
 
     fun setAccent(value: Accent) = update { repository.setAccent(value) }
 
-    /** Скрытое из быстрого набора: видно в настройках, чтобы можно было вернуть. */
-    val hiddenDial: StateFlow<List<com.texfi.w0y.data.HiddenDial>> =
-        dialHidden.hidden.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun restoreDial(kind: String, id: String) = viewModelScope.launch { dialHidden.restore(kind, id) }
-
-    fun restoreAllDial() = viewModelScope.launch { dialHidden.restoreAll() }
-
-    fun setDialHideDays(days: Int) = update { repository.setDialHideDays(days) }
+    /**
+     * Полный сброс: система стирает всё, что есть у приложения, — настройки,
+     * библиотеку, историю, вход в аккаунт, загрузки и кэш — и закрывает его.
+     * Следующий запуск — как первый. Файлы, сохранённые в папку на телефоне,
+     * не трогаются: они уже не принадлежат приложению.
+     */
+    fun fullReset() {
+        context.getSystemService(android.app.ActivityManager::class.java).clearApplicationUserData()
+    }
 
     fun setCustomAccent(argb: Int) = update { repository.setCustomAccent(argb) }
 

@@ -121,6 +121,7 @@ fun SettingsScreen(
     // Предупреждение об авторских правах — один раз, при первом включении
     // сохранения на устройство; действие выполняется после согласия.
     var copyrightPending by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var resetPending by remember { mutableStateOf(false) }
     val withCopyrightNotice: (() -> Unit) -> Unit = { action ->
         if (currentSettings.exportWarningSeen) action() else copyrightPending = action
     }
@@ -137,6 +138,20 @@ fun SettingsScreen(
             kotlinx.coroutines.delay(2500)
             viewModel.consumeMessage()
         }
+    }
+
+    // Полный сброс — только после явного «да»: вернуть стёртое нельзя.
+    if (resetPending) {
+        ConfirmPanel(
+            title = stringResource(R.string.settings_reset_confirm_title),
+            text = stringResource(R.string.settings_reset_confirm_text),
+            confirm = stringResource(R.string.settings_reset_button),
+            dismiss = stringResource(R.string.common_cancel),
+            onConfirm = viewModel::fullReset,
+            onDismiss = { resetPending = false },
+        )
+        BackHandler { resetPending = false }
+        return
     }
 
     copyrightPending?.let { action ->
@@ -172,6 +187,7 @@ fun SettingsScreen(
             viewModel = viewModel,
             onOpenLogin = onOpenLogin,
             onOpenAbout = { aboutOpen = true },
+            onFullReset = { resetPending = true },
             onExport = { exportLauncher.launch("w0y-settings.json") },
             onImport = { importLauncher.launch(arrayOf("application/json")) },
             onAutoExport = { on -> if (on) withCopyrightNotice { viewModel.setAutoExport(true) } else viewModel.setAutoExport(false) },
@@ -570,6 +586,7 @@ private fun settingsRows(
     viewModel: SettingsViewModel,
     onOpenLogin: () -> Unit,
     onOpenAbout: () -> Unit,
+    onFullReset: () -> Unit,
     onExport: () -> Unit,
     onImport: () -> Unit,
     onAutoExport: (Boolean) -> Unit,
@@ -583,7 +600,6 @@ private fun settingsRows(
     val downloadBytes by viewModel.downloadBytes.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
-    val hiddenDial by viewModel.hiddenDial.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     return buildList {
@@ -1382,37 +1398,6 @@ private fun settingsRows(
         add(
             SettingRow(
                 section = SettingsSection.LOOK,
-                title = stringResource(R.string.settings_dial_hide_title),
-                description = stringResource(R.string.settings_dial_hide_desc),
-                keywords = "speed dial hide",
-                control =
-                    SettingControl.Choice(
-                        options = listOf(7, 14, 28, 56),
-                        selected = settings.dialHideDays,
-                        label = { stringResource(R.string.dial_days, it) },
-                        onSelect = viewModel::setDialHideDays,
-                    ),
-            ),
-        )
-        add(
-            SettingRow(
-                section = SettingsSection.LOOK,
-                title = stringResource(R.string.settings_dial_hidden_title),
-                description = stringResource(R.string.settings_dial_hidden_desc),
-                keywords = "speed dial hidden restore",
-                control =
-                    SettingControl.Custom {
-                        HiddenDialList(
-                            items = hiddenDial.filter { it.untilMs > System.currentTimeMillis() },
-                            onRestore = viewModel::restoreDial,
-                            onRestoreAll = viewModel::restoreAllDial,
-                        )
-                    },
-            ),
-        )
-        add(
-            SettingRow(
-                section = SettingsSection.LOOK,
                 title = stringResource(R.string.settings_live_background_title),
                 description = stringResource(R.string.settings_live_background_desc),
                 control = SettingControl.Toggle(settings.animatedBackground, viewModel::setAnimatedBackground),
@@ -1464,6 +1449,15 @@ private fun settingsRows(
                 control = SettingControl.Action(stringResource(R.string.settings_about_button), onOpenAbout),
             ),
         )
+        add(
+            SettingRow(
+                section = SettingsSection.DATA,
+                title = stringResource(R.string.settings_reset_title),
+                description = stringResource(R.string.settings_reset_desc),
+                keywords = "reset wipe clear factory",
+                control = SettingControl.Action(stringResource(R.string.settings_reset_button), onFullReset),
+            ),
+        )
     }
 }
 
@@ -1483,43 +1477,3 @@ private fun themeLabel(mode: ThemeMode): String =
         ThemeMode.LIGHT -> stringResource(R.string.theme_light)
         ThemeMode.GLASS -> stringResource(R.string.theme_glass)
     }
-
-/** Скрытое из быстрого набора: что убрано и кнопки «вернуть» у каждой записи и «вернуть все». */
-@Composable
-private fun HiddenDialList(
-    items: List<com.texfi.w0y.data.HiddenDial>,
-    onRestore: (String, String) -> Unit,
-    onRestoreAll: () -> Unit,
-) {
-    val colors = LocalW0yColors.current
-    if (items.isEmpty()) {
-        Text(
-            text = stringResource(R.string.settings_dial_hidden_empty),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.textMuted,
-        )
-        return
-    }
-    Column(Modifier.fillMaxWidth()) {
-        items.forEach { item ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.text,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                Spacer(Modifier.width(10.dp))
-                PixelButton(
-                    text = stringResource(R.string.dial_restore),
-                    onClick = { onRestore(item.kind, item.id) },
-                    fill = colors.surfaceHigh,
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-        PixelButton(text = stringResource(R.string.dial_restore_all), onClick = onRestoreAll)
-    }
-}

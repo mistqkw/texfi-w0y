@@ -69,6 +69,7 @@ class LibraryLikesTest {
                         account = AccountRepository(context, innerTube),
                         settings = SettingsRepository(context),
                     ),
+                dialHidden = com.texfi.w0y.data.DialHiddenRepository(context),
             )
     }
 
