@@ -1,11 +1,11 @@
 # w0y v0.0.2 beta-2
 
-Fixes for beta-1 and a new look: real liquid glass in Smooth, split bars
+Fixes for beta-1 and a new look: Easy Glass in Smooth, split bars
 and grouped settings in both styles.
 
 ## New
 
-- **Liquid glass, for real.** In Smooth with glass, the screen now runs
+- **Easy Glass.** In Smooth with Easy Glass on, the screen now runs
   under the bottom bars, and they blur and slightly bend what is behind
   them, with a thin bright rim — like iOS 26. Cards, buttons and the track
   menu use the same glass. Blur needs Android 12, the bending Android 13;

@@ -485,7 +485,7 @@
     <string name="settings_startup_parts_value">%1$d запусків</string>
     <string name="style_pick_title">Обери вигляд</string>
     <string name="style_pick_text">Два стилі, можливості однакові. Перемкнути можна будь-коли: налаштування → «Вигляд».</string>
-    <string name="style_glass">Рідке скло</string>
+    <string name="style_glass">Easy Glass</string>
     <string name="style_matte">Матовий</string>
     <string name="style_pick_accent">Акцент</string>
     <string name="style_pick_done">Готово</string>

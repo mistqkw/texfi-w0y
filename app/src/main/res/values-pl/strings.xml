@@ -485,7 +485,7 @@
     <string name="settings_startup_parts_value">%1$d startów</string>
     <string name="style_pick_title">Wybierz wygląd</string>
     <string name="style_pick_text">Dwa style, te same funkcje. Zmienisz w każdej chwili: Ustawienia → Wygląd.</string>
-    <string name="style_glass">Płynne szkło</string>
+    <string name="style_glass">Easy Glass</string>
     <string name="style_matte">Matowy</string>
     <string name="style_pick_accent">Akcent</string>
     <string name="style_pick_done">Gotowe</string>
