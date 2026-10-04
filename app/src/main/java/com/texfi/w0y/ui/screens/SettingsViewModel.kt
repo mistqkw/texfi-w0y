@@ -69,6 +69,7 @@ class SettingsViewModel @Inject constructor(
     val startupAverage: StateFlow<Long?> = startupMetrics.average
     val startupLast: StateFlow<Long?> = startupMetrics.last
     val startupCount: StateFlow<Int> = startupMetrics.count
+    val startupBreakdown: StateFlow<com.texfi.w0y.playback.StartupBreakdown?> = startupMetrics.breakdown
 
     val audioSessionId: Int get() = audioSession.sessionId
     val settings: StateFlow<W0ySettings> =
@@ -190,6 +191,62 @@ class SettingsViewModel @Inject constructor(
     fun setFallbackSource(value: com.texfi.w0y.data.FallbackSource) = update { repository.setFallbackSource(value) }
 
     fun setPlayerCoverGlow(value: Boolean) = update { repository.setPlayerCoverGlow(value) }
+
+    fun setDownloadQualityWifi(value: Quality) = update { repository.setDownloadQualityWifi(value) }
+
+    fun setDownloadQualityMobile(value: Quality) = update { repository.setDownloadQualityMobile(value) }
+
+    fun setDownloadParallel(value: Int) = update { repository.setDownloadParallel(value) }
+
+    fun setDownloadSpeedLimit(kb: Int) = update { repository.setDownloadSpeedLimit(kb) }
+
+    fun setDownloadPauseOnLowBattery(value: Boolean) = update { repository.setDownloadPauseOnLowBattery(value) }
+
+    fun setDownloadAutoResume(value: Boolean) = update { repository.setDownloadAutoResume(value) }
+
+    fun setDownloadRetries(value: Int) = update { repository.setDownloadRetries(value) }
+
+    fun setDownloadStorageLimit(mb: Int) = update { repository.setDownloadStorageLimit(mb) }
+
+    fun setDownloadNotifications(value: Boolean) = update { repository.setDownloadNotifications(value) }
+
+    fun setExportTree(uri: String) = update { repository.setExportTree(uri) }
+
+    fun setAutoExport(value: Boolean) = update { repository.setAutoExport(value) }
+
+    fun setExportWarningSeen(value: Boolean) = update { repository.setExportWarningSeen(value) }
+
+    fun setAutoDownloadPlaylist(id: Long, enabled: Boolean) = update { repository.setAutoDownloadPlaylist(id, enabled) }
+
+    fun setShowPlaylistRecommendations(value: Boolean) = update { repository.setShowPlaylistRecommendations(value) }
+
+    fun setDialMinPlays(value: Int) = update { repository.setDialMinPlays(value) }
+
+    fun setUiStyle(value: com.texfi.w0y.data.UiStyle) = update { repository.setUiStyle(value) }
+
+    fun setStylePicked(value: Boolean) = update { repository.setStylePicked(value) }
+
+    fun setLyricsSize(value: com.texfi.w0y.data.LyricsSize) = update { repository.setLyricsSize(value) }
+
+    fun setVisualizerStyle(value: com.texfi.w0y.data.VisualizerStyle) = update { repository.setVisualizerStyle(value) }
+
+    fun setVisualizerSensitivity(value: Float) = update { repository.setVisualizerSensitivity(value) }
+
+    fun setVisualizerFps(value: Int) = update { repository.setVisualizerFps(value) }
+
+    fun setVisualizerCoverBackdrop(value: Boolean) = update { repository.setVisualizerCoverBackdrop(value) }
+
+    fun setStandLyrics(value: Boolean) = update { repository.setStandLyrics(value) }
+
+    fun setStandVisualizer(value: Boolean) = update { repository.setStandVisualizer(value) }
+
+    fun setStandBrightness(value: Float) = update { repository.setStandBrightness(value) }
+
+    fun setStandChargingOnly(value: Boolean) = update { repository.setStandChargingOnly(value) }
+
+    fun setStandMaxMinutes(value: Int) = update { repository.setStandMaxMinutes(value) }
+
+    fun setStandLowBatteryExit(value: Boolean) = update { repository.setStandLowBatteryExit(value) }
 
     suspend fun exportJson(): String = repository.export(repository.settings.first())
 

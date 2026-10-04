@@ -117,6 +117,9 @@ interface W0yDao {
     @Query("SELECT COUNT(*) FROM songs WHERE speed IS NOT NULL")
     fun soundProfileCount(): Flow<Int>
 
+    @Query("SELECT id FROM songs WHERE downloadState = 2")
+    suspend fun downloadedIds(): List<String>
+
     @Query("SELECT * FROM songs WHERE downloadState = :state ORDER BY title")
     fun songsWithDownloadState(state: Int = SongEntity.DOWNLOAD_DONE): Flow<List<SongEntity>>
 
@@ -234,7 +237,42 @@ interface W0yDao {
     }
 
     @Insert
-    suspend fun addHistory(entry: HistoryEntity)
+    suspend fun addHistory(entry: HistoryEntity): Long
+
+    /** Сколько проиграно в этом включении и засчитано ли оно уже. */
+    @Query("UPDATE history SET listenedMs = :listenedMs, counted = :counted WHERE id = :id")
+    suspend fun updateListen(id: Long, listenedMs: Long, counted: Boolean)
+
+    /** Длительность от плеера — только если своей у трека ещё нет. */
+    @Query("UPDATE songs SET durationMs = :durationMs WHERE id = :id AND (durationMs IS NULL OR durationMs <= 0)")
+    suspend fun setDurationMs(id: String, durationMs: Long)
+
+    @Query("UPDATE songs SET downloadError = :error WHERE id = :id")
+    suspend fun setDownloadError(id: String, error: String?)
+
+    @Query("SELECT id, downloadError FROM songs WHERE downloadError IS NOT NULL")
+    fun downloadErrors(): Flow<List<DownloadErrorRow>>
+
+    /** Порядок своего плейлиста целиком: позиции переписываются подряд. */
+    @Transaction
+    suspend fun reorderPlaylist(playlistId: Long, songIds: List<String>) {
+        songIds.forEachIndexed { index, songId -> setPosition(playlistId, songId, index) }
+    }
+
+    @Query("UPDATE playlist_songs SET position = :position WHERE playlistId = :playlistId AND songId = :songId")
+    suspend fun setPosition(playlistId: Long, songId: String, position: Int)
+
+    /** Включения за период — сырьё для графиков. */
+    @Query(
+        """
+        SELECT history.playedAt AS playedAt, history.listenedMs AS listenedMs,
+               history.legacy AS legacy, history.counted AS counted,
+               songs.durationMs AS durationMs, songs.durationText AS durationText
+        FROM history JOIN songs ON songs.id = history.songId
+        WHERE history.playedAt >= :since
+        """,
+    )
+    suspend fun listensSince(since: Long): List<ListenRow>
 
     @Query(
         """
@@ -256,12 +294,14 @@ interface W0yDao {
         """
         SELECT songs.*, COUNT(history.id) AS plays FROM songs
         JOIN history ON songs.id = history.songId
+        WHERE history.counted = 1
         GROUP BY songs.id
+        HAVING plays >= :minPlays
         ORDER BY plays DESC, MAX(history.playedAt) DESC
         LIMIT :limit
         """,
     )
-    fun mostPlayed(limit: Int = 12): Flow<List<SongPlays>>
+    fun mostPlayed(minPlays: Int = 1, limit: Int = 60): Flow<List<SongPlays>>
 
     /**
      * Кого слушают чаще всего. По этому списку рекомендации понимают вкус:
@@ -271,7 +311,7 @@ interface W0yDao {
         """
         SELECT songs.artist AS artist, COUNT(history.id) AS plays FROM songs
         JOIN history ON songs.id = history.songId
-        WHERE songs.artist != ''
+        WHERE songs.artist != '' AND history.counted = 1
         GROUP BY songs.artist
         ORDER BY plays DESC
         LIMIT :limit
@@ -279,14 +319,18 @@ interface W0yDao {
     )
     suspend fun topArtists(limit: Int = 40): List<ArtistPlays>
 
-    @Query("SELECT COUNT(*) FROM history WHERE playedAt >= :since")
+    @Query("SELECT COUNT(*) FROM history WHERE playedAt >= :since AND counted = 1")
     suspend fun playsSince(since: Long): Int
+
+    /** Есть ли за период записи, посчитанные по старым правилам. */
+    @Query("SELECT COUNT(*) FROM history WHERE playedAt >= :since AND legacy = 1")
+    suspend fun legacySince(since: Long): Int
 
     @Query(
         """
         SELECT songs.*, COUNT(history.id) AS plays FROM songs
         JOIN history ON songs.id = history.songId
-        WHERE history.playedAt >= :since
+        WHERE history.playedAt >= :since AND history.counted = 1
         GROUP BY songs.id
         ORDER BY plays DESC, MAX(history.playedAt) DESC
         LIMIT :limit
@@ -298,7 +342,7 @@ interface W0yDao {
         """
         SELECT songs.artist AS artist, COUNT(history.id) AS plays FROM songs
         JOIN history ON songs.id = history.songId
-        WHERE history.playedAt >= :since AND songs.artist != ''
+        WHERE history.playedAt >= :since AND songs.artist != '' AND history.counted = 1
         GROUP BY songs.artist
         ORDER BY plays DESC
         LIMIT :limit
@@ -338,3 +382,6 @@ interface W0yDao {
 
 /** Первая картинка плейлиста — обложка, когда своей нет. */
 data class PlaylistCoverRow(val playlistId: Long, val url: String)
+
+/** Трек и причина, по которой он не скачался. */
+data class DownloadErrorRow(val id: String, val downloadError: String)

@@ -38,6 +38,18 @@ data class SongEntity(
     val speed: Float? = null,
     val pitch: Float? = null,
     val reverb: String? = null,
+    /**
+     * Почему трек не скачался — имя из [com.texfi.w0y.playback.DownloadFailure].
+     * Лежит рядом с состоянием загрузки: список загрузок показывает причину
+     * прямо в строке, и молчаливого «не вышло» больше нет.
+     */
+    val downloadError: String? = null,
+    /**
+     * Длительность, которую узнал сам плеер. В выдаче YouTube она бывает
+     * не везде, а без неё не посчитать ни минуты старых записей истории,
+     * ни половину трека для правила прослушивания.
+     */
+    val durationMs: Long? = null,
 ) {
     /** Версия трека, если она вообще задана: скорость обязательна. */
     fun sound(): SoundProfile? =
@@ -125,11 +137,29 @@ data class PlaylistSongEntity(
     val addedAt: Long,
 )
 
-@Entity(tableName = "history", indices = [Index("playedAt")])
+/**
+ * Одно включение трека.
+ *
+ * Строка заводится на старте — так «недавнее» показывает всё, что включали,
+ * — а прослушиванием она становится, только когда реально проиграна хотя бы
+ * половина трека (или 4 минуты у длинных): см. [com.texfi.w0y.data.ListenRule].
+ * Перемотка вперёд в [listenedMs] не попадает: считается проигранное время,
+ * а не позиция.
+ *
+ * Записи до правила ([legacy]) остаются как были: тогда засчитывался любой
+ * старт, и отделить дослушанное от пропущенного задним числом нельзя.
+ */
+@Entity(tableName = "history", indices = [Index("playedAt"), Index("songId")])
 data class HistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val songId: String,
     val playedAt: Long,
+    /** Сколько реально проиграно, мс. У старых записей — 0: тогда не мерили. */
+    @ColumnInfo(defaultValue = "0") val listenedMs: Long = 0,
+    /** Засчитано ли как прослушивание. */
+    @ColumnInfo(defaultValue = "1") val counted: Boolean = false,
+    /** Запись до правила прослушивания: считалась по старым правилам. */
+    @ColumnInfo(defaultValue = "1") val legacy: Boolean = false,
 )
 
 /**
@@ -192,4 +222,17 @@ data class ArtistPlays(
 data class DurationPlays(
     val durationText: String?,
     val plays: Int,
+)
+
+/**
+ * Включение для графиков: когда, сколько проиграно и, для старых записей,
+ * длительность трека — по ней оцениваются их минуты.
+ */
+data class ListenRow(
+    val playedAt: Long,
+    val listenedMs: Long,
+    val legacy: Boolean,
+    val counted: Boolean,
+    val durationMs: Long?,
+    val durationText: String?,
 )

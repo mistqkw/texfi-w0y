@@ -165,6 +165,42 @@ enum class Accent(
 }
 
 /**
+ * Стиль оформления — независимо от темы.
+ *
+ * Pixel — родной язык TexFi: пиксельный шрифт, спрайты, жёсткие смещённые
+ * тени, ступенчатое движение. Smooth — без пикселей: скругления, мягкие
+ * тени, плавные пружины, обычный шрифт. Палитра, нумерация разделов и
+ * тон текста у обоих общие.
+ */
+enum class UiStyle(@StringRes val label: Int, @StringRes val hint: Int) {
+    PIXEL(R.string.style_pixel, R.string.style_pixel_hint),
+    SMOOTH(R.string.style_smooth, R.string.style_smooth_hint),
+}
+
+/** Размер текста лирики. */
+enum class LyricsSize(@StringRes val label: Int, val sp: Int) {
+    SMALL(R.string.lyrics_size_small, 18),
+    MEDIUM(R.string.lyrics_size_medium, 23),
+    LARGE(R.string.lyrics_size_large, 29),
+}
+
+/**
+ * Стиль визуализатора. Первые четыре — для Pixel, последние два — для
+ * Smooth; если выбран стиль чужого оформления, берётся ближайший свой.
+ */
+enum class VisualizerStyle(@StringRes val label: Int, val smooth: Boolean) {
+    SEGMENTS(R.string.viz_segments, false),
+    RING(R.string.viz_ring, false),
+    SCOPE(R.string.viz_scope, false),
+    MOSAIC(R.string.viz_mosaic, false),
+    BARS(R.string.viz_bars, true),
+    WAVE(R.string.viz_wave, true),
+}
+
+/** Что занимает место обложки в плеере. */
+enum class PlayerArt { COVER, VISUALIZER }
+
+/**
  * Все настройки одним снимком — так экраны и плеер читают согласованное
  * состояние, а не собирают его из десятка отдельных потоков.
  */
@@ -214,6 +250,49 @@ data class W0ySettings(
     val fallbackSource: FallbackSource = FallbackSource.AUTO,
     val lyricsLang: String = "",
     val experiments: Boolean = false,
+    // ── Загрузки ─────────────────────────────────────────────────────────
+    val downloadQualityWifi: Quality = Quality.HIGH,
+    val downloadQualityMobile: Quality = Quality.HIGH,
+    /** Сколько треков качается одновременно. */
+    val downloadParallel: Int = 2,
+    /** Лимит скорости загрузок, КБ/с; 0 — без лимита. */
+    val downloadSpeedLimitKb: Int = 0,
+    val downloadPauseOnLowBattery: Boolean = true,
+    val downloadAutoResume: Boolean = true,
+    val downloadRetries: Int = 3,
+    /** Предел места под загрузки, МБ; 0 — без предела. */
+    val downloadStorageLimitMb: Int = 0,
+    val downloadNotifications: Boolean = true,
+    /** Папка «Сохранить на устройство» (SAF, tree URI); пусто — «Музыка/w0y music». */
+    val exportTreeUri: String = "",
+    val autoExport: Boolean = false,
+    val exportWarningSeen: Boolean = false,
+    /** Свои плейлисты, которые докачиваются сами. */
+    val autoDownloadPlaylists: Set<Long> = emptySet(),
+    // ── Плейлисты и быстрый набор ────────────────────────────────────────
+    val showPlaylistRecommendations: Boolean = false,
+    /** Со скольких прослушиваний трек попадает в быстрый набор. */
+    val dialMinPlays: Int = 3,
+    // ── Стиль ────────────────────────────────────────────────────────────
+    val uiStyle: UiStyle = UiStyle.PIXEL,
+    /** Показан ли выбор стиля — на первом запуске и один раз после обновления. */
+    val stylePicked: Boolean = false,
+    // ── Лирика и визуализатор ────────────────────────────────────────────
+    val lyricsSize: LyricsSize = LyricsSize.MEDIUM,
+    val visualizerStyle: VisualizerStyle = VisualizerStyle.SEGMENTS,
+    val visualizerSensitivity: Float = 1f,
+    val visualizerFps: Int = 60,
+    val visualizerCoverBackdrop: Boolean = true,
+    val playerArt: PlayerArt = PlayerArt.COVER,
+    // ── Режим подставки ──────────────────────────────────────────────────
+    val standLyrics: Boolean = false,
+    val standVisualizer: Boolean = false,
+    /** Яркость экрана в режиме, 0.05–1. */
+    val standBrightness: Float = 0.35f,
+    val standChargingOnly: Boolean = false,
+    /** Сколько режим держится сам, минут; 0 — пока не выйдешь. */
+    val standMaxMinutes: Int = 60,
+    val standLowBatteryExit: Boolean = true,
 )
 
 @Singleton
@@ -269,6 +348,36 @@ class SettingsRepository @Inject constructor(
                     fallbackSource = prefs.enum(Keys.FALLBACK_SOURCE, FallbackSource.AUTO),
                     lyricsLang = prefs[Keys.LYRICS_LANG].orEmpty(),
                     experiments = prefs[Keys.EXPERIMENTS] ?: false,
+                    downloadQualityWifi = prefs.enum(Keys.DL_QUALITY_WIFI, Quality.HIGH),
+                    downloadQualityMobile = prefs.enum(Keys.DL_QUALITY_MOBILE, Quality.HIGH),
+                    downloadParallel = (prefs[Keys.DL_PARALLEL] ?: 2).coerceIn(1, 4),
+                    downloadSpeedLimitKb = prefs[Keys.DL_SPEED_LIMIT] ?: 0,
+                    downloadPauseOnLowBattery = prefs[Keys.DL_LOW_BATTERY] ?: true,
+                    downloadAutoResume = prefs[Keys.DL_AUTO_RESUME] ?: true,
+                    downloadRetries = (prefs[Keys.DL_RETRIES] ?: 3).coerceIn(0, 10),
+                    downloadStorageLimitMb = prefs[Keys.DL_STORAGE_LIMIT] ?: 0,
+                    downloadNotifications = prefs[Keys.DL_NOTIFICATIONS] ?: true,
+                    exportTreeUri = prefs[Keys.EXPORT_TREE].orEmpty(),
+                    autoExport = prefs[Keys.AUTO_EXPORT] ?: false,
+                    exportWarningSeen = prefs[Keys.EXPORT_WARNING] ?: false,
+                    autoDownloadPlaylists =
+                        prefs[Keys.AUTO_DL_PLAYLISTS].orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toSet(),
+                    showPlaylistRecommendations = prefs[Keys.PLAYLIST_RECS] ?: false,
+                    dialMinPlays = (prefs[Keys.DIAL_MIN_PLAYS] ?: 3).coerceIn(1, 20),
+                    uiStyle = prefs.enum(Keys.UI_STYLE, UiStyle.PIXEL),
+                    stylePicked = prefs[Keys.STYLE_PICKED] ?: false,
+                    lyricsSize = prefs.enum(Keys.LYRICS_SIZE, LyricsSize.MEDIUM),
+                    visualizerStyle = prefs.enum(Keys.VIZ_STYLE, VisualizerStyle.SEGMENTS),
+                    visualizerSensitivity = prefs[Keys.VIZ_SENSITIVITY] ?: 1f,
+                    visualizerFps = prefs[Keys.VIZ_FPS] ?: 60,
+                    visualizerCoverBackdrop = prefs[Keys.VIZ_BACKDROP] ?: true,
+                    playerArt = prefs.enum(Keys.PLAYER_ART, PlayerArt.COVER),
+                    standLyrics = prefs[Keys.STAND_LYRICS] ?: false,
+                    standVisualizer = prefs[Keys.STAND_VIZ] ?: false,
+                    standBrightness = prefs[Keys.STAND_BRIGHTNESS] ?: 0.35f,
+                    standChargingOnly = prefs[Keys.STAND_CHARGING] ?: false,
+                    standMaxMinutes = prefs[Keys.STAND_MAX_MIN] ?: 60,
+                    standLowBatteryExit = prefs[Keys.STAND_LOW_BATTERY] ?: true,
                 )
             }
 
@@ -369,6 +478,70 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setExperiments(value: Boolean) = put(Keys.EXPERIMENTS, value)
 
+    suspend fun setDownloadQualityWifi(value: Quality) = put(Keys.DL_QUALITY_WIFI, value.name)
+
+    suspend fun setDownloadQualityMobile(value: Quality) = put(Keys.DL_QUALITY_MOBILE, value.name)
+
+    suspend fun setDownloadParallel(value: Int) = put(Keys.DL_PARALLEL, value.coerceIn(1, 4))
+
+    suspend fun setDownloadSpeedLimit(kb: Int) = put(Keys.DL_SPEED_LIMIT, kb.coerceAtLeast(0))
+
+    suspend fun setDownloadPauseOnLowBattery(value: Boolean) = put(Keys.DL_LOW_BATTERY, value)
+
+    suspend fun setDownloadAutoResume(value: Boolean) = put(Keys.DL_AUTO_RESUME, value)
+
+    suspend fun setDownloadRetries(value: Int) = put(Keys.DL_RETRIES, value.coerceIn(0, 10))
+
+    suspend fun setDownloadStorageLimit(mb: Int) = put(Keys.DL_STORAGE_LIMIT, mb.coerceAtLeast(0))
+
+    suspend fun setDownloadNotifications(value: Boolean) = put(Keys.DL_NOTIFICATIONS, value)
+
+    suspend fun setExportTree(uri: String) = put(Keys.EXPORT_TREE, uri)
+
+    suspend fun setAutoExport(value: Boolean) = put(Keys.AUTO_EXPORT, value)
+
+    suspend fun setExportWarningSeen(value: Boolean) = put(Keys.EXPORT_WARNING, value)
+
+    suspend fun setAutoDownloadPlaylist(id: Long, enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            val now = prefs[Keys.AUTO_DL_PLAYLISTS].orEmpty().split(',').mapNotNull { it.toLongOrNull() }.toMutableSet()
+            if (enabled) now += id else now -= id
+            prefs[Keys.AUTO_DL_PLAYLISTS] = now.joinToString(",")
+        }
+    }
+
+    suspend fun setShowPlaylistRecommendations(value: Boolean) = put(Keys.PLAYLIST_RECS, value)
+
+    suspend fun setDialMinPlays(value: Int) = put(Keys.DIAL_MIN_PLAYS, value.coerceIn(1, 20))
+
+    suspend fun setUiStyle(value: UiStyle) = put(Keys.UI_STYLE, value.name)
+
+    suspend fun setStylePicked(value: Boolean) = put(Keys.STYLE_PICKED, value)
+
+    suspend fun setLyricsSize(value: LyricsSize) = put(Keys.LYRICS_SIZE, value.name)
+
+    suspend fun setVisualizerStyle(value: VisualizerStyle) = put(Keys.VIZ_STYLE, value.name)
+
+    suspend fun setVisualizerSensitivity(value: Float) = put(Keys.VIZ_SENSITIVITY, value.coerceIn(0.3f, 3f))
+
+    suspend fun setVisualizerFps(value: Int) = put(Keys.VIZ_FPS, if (value >= 60) 60 else 30)
+
+    suspend fun setVisualizerCoverBackdrop(value: Boolean) = put(Keys.VIZ_BACKDROP, value)
+
+    suspend fun setPlayerArt(value: PlayerArt) = put(Keys.PLAYER_ART, value.name)
+
+    suspend fun setStandLyrics(value: Boolean) = put(Keys.STAND_LYRICS, value)
+
+    suspend fun setStandVisualizer(value: Boolean) = put(Keys.STAND_VIZ, value)
+
+    suspend fun setStandBrightness(value: Float) = put(Keys.STAND_BRIGHTNESS, value.coerceIn(0.05f, 1f))
+
+    suspend fun setStandChargingOnly(value: Boolean) = put(Keys.STAND_CHARGING, value)
+
+    suspend fun setStandMaxMinutes(value: Int) = put(Keys.STAND_MAX_MIN, value.coerceAtLeast(0))
+
+    suspend fun setStandLowBatteryExit(value: Boolean) = put(Keys.STAND_LOW_BATTERY, value)
+
     /**
      * Язык пишется сразу в двух местах.
      *
@@ -408,6 +581,13 @@ class SettingsRepository @Inject constructor(
             .put("playerCoverGlow", current.playerCoverGlow)
             .put("fallbackAudio", current.fallbackAudio)
             .put("fallbackSource", current.fallbackSource.name)
+            .put("uiStyle", current.uiStyle.name)
+            .put("downloadQualityWifi", current.downloadQualityWifi.name)
+            .put("downloadQualityMobile", current.downloadQualityMobile.name)
+            .put("downloadParallel", current.downloadParallel)
+            .put("dialMinPlays", current.dialMinPlays)
+            .put("lyricsSize", current.lyricsSize.name)
+            .put("visualizerStyle", current.visualizerStyle.name)
             .toString(2)
 
     suspend fun import(json: String) {
@@ -438,6 +618,13 @@ class SettingsRepository @Inject constructor(
             if (obj.has("playerCoverGlow")) prefs[Keys.COVER_GLOW] = obj.getBoolean("playerCoverGlow")
             if (obj.has("fallbackAudio")) prefs[Keys.FALLBACK_AUDIO] = obj.getBoolean("fallbackAudio")
             obj.optString("fallbackSource").takeIf { it.isNotBlank() }?.let { prefs[Keys.FALLBACK_SOURCE] = it }
+            obj.optString("uiStyle").takeIf { it.isNotBlank() }?.let { prefs[Keys.UI_STYLE] = it }
+            obj.optString("downloadQualityWifi").takeIf { it.isNotBlank() }?.let { prefs[Keys.DL_QUALITY_WIFI] = it }
+            obj.optString("downloadQualityMobile").takeIf { it.isNotBlank() }?.let { prefs[Keys.DL_QUALITY_MOBILE] = it }
+            if (obj.has("downloadParallel")) prefs[Keys.DL_PARALLEL] = obj.getInt("downloadParallel")
+            if (obj.has("dialMinPlays")) prefs[Keys.DIAL_MIN_PLAYS] = obj.getInt("dialMinPlays")
+            obj.optString("lyricsSize").takeIf { it.isNotBlank() }?.let { prefs[Keys.LYRICS_SIZE] = it }
+            obj.optString("visualizerStyle").takeIf { it.isNotBlank() }?.let { prefs[Keys.VIZ_STYLE] = it }
             // Язык из выгрузки нужно продублировать в синхронное хранилище:
             // именно оттуда его читает attachBaseContext при следующем старте.
             obj.optString("language").takeIf { it.isNotBlank() }?.let { name ->
@@ -507,5 +694,34 @@ class SettingsRepository @Inject constructor(
         val FALLBACK_AUDIO = booleanPreferencesKey("fallback_audio")
         val FALLBACK_SOURCE = stringPreferencesKey("fallback_source")
         val LYRICS_LANG = stringPreferencesKey("lyrics_lang")
+        val DL_QUALITY_WIFI = stringPreferencesKey("dl_quality_wifi")
+        val DL_QUALITY_MOBILE = stringPreferencesKey("dl_quality_mobile")
+        val DL_PARALLEL = intPreferencesKey("dl_parallel")
+        val DL_SPEED_LIMIT = intPreferencesKey("dl_speed_limit_kb")
+        val DL_LOW_BATTERY = booleanPreferencesKey("dl_pause_low_battery")
+        val DL_AUTO_RESUME = booleanPreferencesKey("dl_auto_resume")
+        val DL_RETRIES = intPreferencesKey("dl_retries")
+        val DL_STORAGE_LIMIT = intPreferencesKey("dl_storage_limit_mb")
+        val DL_NOTIFICATIONS = booleanPreferencesKey("dl_notifications")
+        val EXPORT_TREE = stringPreferencesKey("export_tree_uri")
+        val AUTO_EXPORT = booleanPreferencesKey("auto_export")
+        val EXPORT_WARNING = booleanPreferencesKey("export_warning_seen")
+        val AUTO_DL_PLAYLISTS = stringPreferencesKey("auto_download_playlists")
+        val PLAYLIST_RECS = booleanPreferencesKey("playlist_recommendations")
+        val DIAL_MIN_PLAYS = intPreferencesKey("dial_min_plays")
+        val UI_STYLE = stringPreferencesKey("ui_style")
+        val STYLE_PICKED = booleanPreferencesKey("style_picked")
+        val LYRICS_SIZE = stringPreferencesKey("lyrics_size")
+        val VIZ_STYLE = stringPreferencesKey("visualizer_style")
+        val VIZ_SENSITIVITY = floatPreferencesKey("visualizer_sensitivity")
+        val VIZ_FPS = intPreferencesKey("visualizer_fps")
+        val VIZ_BACKDROP = booleanPreferencesKey("visualizer_backdrop")
+        val PLAYER_ART = stringPreferencesKey("player_art")
+        val STAND_LYRICS = booleanPreferencesKey("stand_lyrics")
+        val STAND_VIZ = booleanPreferencesKey("stand_visualizer")
+        val STAND_BRIGHTNESS = floatPreferencesKey("stand_brightness")
+        val STAND_CHARGING = booleanPreferencesKey("stand_charging_only")
+        val STAND_MAX_MIN = intPreferencesKey("stand_max_minutes")
+        val STAND_LOW_BATTERY = booleanPreferencesKey("stand_low_battery_exit")
     }
 }

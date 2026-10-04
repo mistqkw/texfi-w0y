@@ -13,7 +13,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         HistoryEntity::class,
         PinEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class W0yDatabase : RoomDatabase() {
@@ -77,6 +77,29 @@ abstract class W0yDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE playlists ADD COLUMN syncedAt INTEGER NOT NULL DEFAULT 0")
                 }
             }
+
+        /**
+         * Правило прослушивания и причины сбоев загрузки.
+         *
+         * Старые строки истории получают legacy = 1 и counted = 1: они
+         * писались на старте трека, и что из них дослушано, уже не узнать.
+         * Ничего не удаляется и не пересчитывается — итоги за прошлое
+         * остаются теми же, новое правило действует с обновления.
+         */
+        val MIGRATION_5_6 =
+            object : Migration(5, 6) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE history ADD COLUMN listenedMs INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE history ADD COLUMN counted INTEGER NOT NULL DEFAULT 1")
+                    db.execSQL("ALTER TABLE history ADD COLUMN legacy INTEGER NOT NULL DEFAULT 1")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_history_songId ON history(songId)")
+                    db.execSQL("ALTER TABLE songs ADD COLUMN downloadError TEXT")
+                    db.execSQL("ALTER TABLE songs ADD COLUMN durationMs INTEGER")
+                }
+            }
+
+        /** Все миграции по порядку — и для приложения, и для тестов. */
+        val ALL by lazy { arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6) }
 
         /** Метка «E»: её показывает список, поэтому хранится вместе с треком. */
         val MIGRATION_2_3 =
