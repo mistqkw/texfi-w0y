@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.liquidGlass
 import com.texfi.w0y.ui.theme.styleTokens
 
 private val CardShape = RoundedCornerShape(8.dp)
@@ -121,8 +122,7 @@ private fun SmoothCard(
     Column(
         modifier
             .fillMaxWidth()
-            .clip(styleTokens.card)
-            .background(colors.surface)
+            .liquidGlass(styleTokens.card)
             .padding(16.dp),
     ) {
         if (label != null) {

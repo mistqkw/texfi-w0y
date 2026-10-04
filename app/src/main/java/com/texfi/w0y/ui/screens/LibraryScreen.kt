@@ -1,5 +1,6 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledSurface
 import com.texfi.w0y.ui.theme.styledClip
 import com.texfi.w0y.ui.theme.styledBorder
 import com.texfi.w0y.ui.components.W0yMotion
@@ -339,9 +340,7 @@ private fun ShortcutCard(
     val colors = LocalW0yColors.current
     Box(
         modifier
-            .styledClip(8)
-            .background(colors.surface)
-            .styledBorder(8)
+            .styledSurface(8)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {

@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.liquidGlass
+import androidx.compose.ui.graphics.Color
 import com.texfi.w0y.ui.theme.styleTokens
 import kotlin.math.roundToInt
 
@@ -60,9 +62,8 @@ fun FloatingSurface(
     if (isSmooth || colors.glass) {
         Box(
             modifier
-                .shadow(10.dp, tokens.bar, clip = false)
-                .clip(tokens.bar)
-                .background(if (colors.glass) colors.surfaceHigh else colors.surfaceHigh),
+                .shadow(14.dp, tokens.bar, clip = false, ambientColor = Color.Black.copy(alpha = 0.5f), spotColor = Color.Black.copy(alpha = 0.5f))
+                .liquidGlass(tokens.bar, colors.surfaceHigh),
             content = content,
         )
         return

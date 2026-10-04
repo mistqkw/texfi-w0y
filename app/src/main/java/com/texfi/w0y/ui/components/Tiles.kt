@@ -50,6 +50,7 @@ import com.texfi.w0y.data.SongItem
 import com.texfi.w0y.data.Thumbnails
 import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.liquidGlass
 import com.texfi.w0y.ui.theme.styleTokens
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 
@@ -296,7 +297,7 @@ fun PixelSegmented(
             .fillMaxWidth()
             .then(
                 if (smooth) {
-                    Modifier.clip(tokens.chip).background(colors.surfaceHigh).padding(4.dp)
+                    Modifier.liquidGlass(tokens.chip, colors.surfaceHigh).padding(4.dp)
                 } else {
                     Modifier.styledBorder(0)
                 },

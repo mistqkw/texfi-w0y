@@ -1,5 +1,6 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledSurface
 import com.texfi.w0y.ui.theme.styledClip
 import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.background
@@ -128,8 +129,7 @@ private fun Preview() {
     Row(
         Modifier
             .fillMaxWidth()
-            .background(colors.surface)
-            .styledBorder(0)
+            .styledSurface(0)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -190,8 +190,7 @@ private fun CustomEditor(argb: Int, onCustom: (Int) -> Unit) {
             Box(
                 Modifier
                     .weight(1f)
-                    .background(colors.surface)
-                    .styledBorder(0)
+                    .styledSurface(0)
                     .padding(horizontal = 12.dp, vertical = 10.dp),
             ) {
                 BasicTextField(

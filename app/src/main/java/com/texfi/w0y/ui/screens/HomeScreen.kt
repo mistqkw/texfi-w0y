@@ -1,5 +1,6 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledSurface
 import com.texfi.w0y.ui.theme.styledClip
 import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.foundation.background
@@ -373,8 +374,7 @@ private fun GhostTile(modifier: Modifier = Modifier) {
     Box(
         modifier
             .aspectRatio(1f)
-            .background(colors.surface)
-            .styledBorder(0),
+            .styledSurface(0),
         contentAlignment = Alignment.Center,
     ) {
         Text(

@@ -1,5 +1,6 @@
 package com.texfi.w0y.ui.screens
 
+import com.texfi.w0y.ui.theme.styledSurface
 import com.texfi.w0y.ui.theme.styledClip
 import com.texfi.w0y.ui.theme.styledBorder
 import androidx.compose.animation.AnimatedVisibility
@@ -449,9 +450,7 @@ private fun SearchField(
     Row(
         Modifier
             .fillMaxWidth()
-            .styledClip(8)
-            .background(colors.surface)
-            .styledBorder(8)
+            .styledSurface(8)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

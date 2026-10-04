@@ -25,6 +25,7 @@ import com.texfi.w0y.ui.theme.LocalW0yColors
 import com.texfi.w0y.ui.theme.PixelSectionLabel
 import com.texfi.w0y.ui.theme.Contrast
 import com.texfi.w0y.ui.theme.isSmooth
+import com.texfi.w0y.ui.theme.liquidGlass
 import com.texfi.w0y.ui.theme.styleTokens
 
 private val ButtonShape = RoundedCornerShape(8.dp)
@@ -177,9 +178,15 @@ private fun SmoothButton(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
-            }.clip(tokens.button)
-            .background(fill)
-            .clickable(interactionSource = interaction, indication = null, enabled = enabled) {
+            }.then(
+                // Главная кнопка плотная — полупрозрачное главное действие
+                // теряется; остальные стеклянные.
+                if (body == colors.accent || body == colors.secondary || !enabled) {
+                    Modifier.clip(tokens.button).background(fill)
+                } else {
+                    Modifier.liquidGlass(tokens.button, fill)
+                },
+            ).clickable(interactionSource = interaction, indication = null, enabled = enabled) {
                 tap()
                 onClick()
             }.padding(horizontal = 22.dp, vertical = 13.dp),
