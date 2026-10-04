@@ -70,16 +70,16 @@ language, dark theme by default, the same blue `#4a7cfb` and sand `#e0a860`.
 
 **Android 8.0 (API 26) or newer.**
 
-1. Download [`TexFi-w0y-android.apk`](https://github.com/mistqkw/texfi-w0y/releases/download/v0.0.2-beta-2/TexFi-w0y-android.apk)
-   from the [release page](https://github.com/mistqkw/texfi-w0y/releases/tag/v0.0.2-beta-2)
+1. Download [`TexFi-w0y-android.apk`](https://github.com/texfi-w0y/texfi-w0y/releases/download/v0.0.2-beta-2/TexFi-w0y-android.apk)
+   from the [release page](https://github.com/texfi-w0y/texfi-w0y/releases/tag/v0.0.2-beta-2)
    and open it. Checksums are in `SHA256SUMS.txt` next to it.
-2. Or add `https://github.com/mistqkw/texfi-w0y` to
+2. Or add `https://github.com/texfi-w0y/texfi-w0y` to
    [Obtainium](https://github.com/ImranR98/Obtainium).
 
 Updates install over the top as long as they come signed with the project key.
 
 **Linux (x86_64):** download
-[`w0y-linux-x86_64.tar.gz`](https://github.com/mistqkw/texfi-w0y/releases/download/v0.0.2-beta-2/w0y-linux-x86_64.tar.gz),
+[`w0y-linux-x86_64.tar.gz`](https://github.com/texfi-w0y/texfi-w0y/releases/download/v0.0.2-beta-2/w0y-linux-x86_64.tar.gz),
 unpack it and run `./install.sh`. You need `mpv` installed. The interface of
 the Linux version is in Russian only.
 
@@ -105,7 +105,7 @@ signing key is not in the repository (see [docs/RELEASING.md](docs/RELEASING.md)
 
 ## Report a problem
 
-Open an [issue](https://github.com/mistqkw/texfi-w0y/issues/new/choose) and say
+Open an [issue](https://github.com/texfi-w0y/texfi-w0y/issues/new/choose) and say
 what you did, what you expected and what happened. Add the app version
 (Settings → About) and your Android version. The release build writes no log of its own, but the system log still shows
 crashes and errors. With the phone connected and w0y running:

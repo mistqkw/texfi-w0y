@@ -415,9 +415,9 @@ private fun DonateCard(onClick: () -> Unit) {
     }
 }
 
-private const val REPO_URL = "https://github.com/mistqkw/texfi-w0y"
-private const val REPO_SHORT = "github.com/mistqkw/texfi-w0y"
-private const val LICENSE_URL = "https://github.com/mistqkw/texfi-w0y/blob/main/LICENSE"
+private const val REPO_URL = "https://github.com/texfi-w0y/texfi-w0y"
+private const val REPO_SHORT = "github.com/texfi-w0y/texfi-w0y"
+private const val LICENSE_URL = "https://github.com/texfi-w0y/texfi-w0y/blob/main/LICENSE"
 private const val HUB_URL = "https://texfi-hub.vercel.app"
 private const val HUB_SHORT = "texfi-hub.vercel.app"
 

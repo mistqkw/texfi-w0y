@@ -44,13 +44,13 @@ TEXT = {
         "tagline": "YouTube Music client for Android",
         "line": "no ads · no Premium limits · your own account",
         "chips": ["NO ADS", "DOWNLOADS", "120 HZ"],
-        "foot": "github.com/mistqkw/texfi-w0y · AGPL-3.0",
+        "foot": "github.com/texfi-w0y/texfi-w0y · AGPL-3.0",
     },
     "ru": {
         "tagline": "Клиент YouTube Music для Android",
         "line": "без рекламы · без ограничений · свой аккаунт",
         "chips": ["БЕЗ РЕКЛАМЫ", "ЗАГРУЗКИ", "120 ГЦ"],
-        "foot": "github.com/mistqkw/texfi-w0y · открытый код, AGPL-3.0",
+        "foot": "github.com/texfi-w0y/texfi-w0y · открытый код, AGPL-3.0",
     },
 }
 

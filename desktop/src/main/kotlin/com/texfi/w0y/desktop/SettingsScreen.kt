@@ -436,7 +436,7 @@ private fun AboutPane(app: AppState, onBack: () -> Unit) {
                     Txt("Лицензия GNU AGPL v3", size = 15, weight = FontWeight.Medium)
                     Txt("Кто выпустит изменённую версию — обязан открыть свои правки.", color = C.Muted, size = 12, maxLines = 2)
                     Gap(h = 10)
-                    PixelButton("ИСХОДНИКИ НА GITHUB", onClick = { openUrl("https://github.com/mistqkw/texfi-w0y") }, primary = false)
+                    PixelButton("ИСХОДНИКИ НА GITHUB", onClick = { openUrl("https://github.com/texfi-w0y/texfi-w0y") }, primary = false)
                 }
             }
             PixelCard(Modifier.fillMaxWidth()) {
