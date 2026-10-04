@@ -211,8 +211,9 @@ class YouTubeRepository @Inject constructor(
         // Только треки самого плейлиста: под своим плейлистом YouTube кладёт
         // «рекомендованные» строки того же вида, и раньше они попадали
         // в список и в очередь как будто из плейлиста.
-        val collected = YtJson.playlistTracks(first, first = true).toMutableList()
-        var token = YtJson.playlistContinuation(first)
+        val head = YtJson.playlistPage(first, owned = null)
+        val collected = head.songs.toMutableList()
+        var token = head.continuation
         var page = 1
         while (token != null && page < maxPages) {
             val next =
@@ -225,10 +226,10 @@ class YouTubeRepository @Inject constructor(
                             setLogin = true,
                         ).body<JsonObject>()
                 }.getOrNull() ?: break
-            val more = YtJson.playlistTracks(next, first = false)
-            if (more.isEmpty()) break
-            collected += more
-            token = YtJson.continuation(next)
+            val more = YtJson.playlistPage(next, owned = head.owned)
+            if (more.songs.isEmpty()) break
+            collected += more.songs
+            token = more.continuation
             page++
         }
         collected.distinctBy { it.id }

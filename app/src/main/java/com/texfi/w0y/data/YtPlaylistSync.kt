@@ -165,9 +165,12 @@ class YtPlaylistSync @Inject constructor(
                 }
                 val root = first.body<JsonObject>()
                 val header = YtJson.playlistHeader(root)
-                val songs = YtJson.playlistTracks(root, first = true).toMutableList()
+                // Только треки самого плейлиста и только его продолжение: общий
+                // токен страницы у короткого плейлиста ведёт в рекомендации.
+                val head = YtJson.playlistPage(root, owned = null)
+                val songs = head.songs.toMutableList()
                 val videoIds = YtJson.setVideoIds(root).toMutableMap()
-                var token = YtJson.continuation(root)
+                var token = head.continuation
                 var page = 1
                 var complete = true
                 while (token != null) {
@@ -189,11 +192,11 @@ class YtPlaylistSync @Inject constructor(
                         complete = false
                         break
                     }
-                    val more = YtJson.playlistTracks(next, first = false)
-                    if (more.isEmpty()) break
-                    songs += more
+                    val more = YtJson.playlistPage(next, owned = head.owned)
+                    if (more.songs.isEmpty()) break
+                    songs += more.songs
                     videoIds += YtJson.setVideoIds(next)
-                    token = YtJson.continuation(next)
+                    token = more.continuation
                     page++
                 }
                 Timber.d(
@@ -254,7 +257,7 @@ class YtPlaylistSync @Inject constructor(
                         browseId = browseId(remoteId),
                         setLogin = true,
                     ).body<JsonObject>()
-            YtJson.songs(response).map { it.id }.toSet()
+            YtJson.playlistTracks(response, first = true).map { it.id }.toSet()
         }
 
     private companion object {

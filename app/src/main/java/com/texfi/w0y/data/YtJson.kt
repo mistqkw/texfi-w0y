@@ -318,24 +318,39 @@ object YtJson {
      * под списком идут «рекомендации» — такие же строки, но не из плейлиста,
      * поэтому берём только полку самого плейлиста, если она нашлась.
      */
-    fun playlistTracks(root: JsonElement, first: Boolean): List<SongItem> {
-        val shelves = if (first) root.findAll("musicPlaylistShelfRenderer") else emptyList()
-        val rows = if (shelves.isNotEmpty()) shelves.flatMap { it.findAll(ROW) } else root.findAll(ROW)
-        return songsOf(ownRows(rows))
-    }
+    fun playlistTracks(root: JsonElement, first: Boolean): List<SongItem> = playlistPage(root, owned = null).songs
 
     /**
-     * Строки самого плейлиста, без рекомендаций под ним — не по разметке
-     * страницы, которую YouTube меняет, а по самим строкам: у трека своего
-     * плейлиста есть место в нём (playlistSetVideoId), у рекомендованной
-     * строки — нет. Если мест нет ни у одной строки (чужой плейлист), берём
-     * всё как есть: рекомендаций там и не бывает.
+     * Страница плейлиста: треки, свой ли он и токен следующей страницы.
+     *
+     * [owned] — что стало ясно по первой странице: null на ней самой. У
+     * своего плейлиста на следующих страницах берутся только строки с местом
+     * в плейлисте (playlistSetVideoId), без исключений: страница
+     * рекомендаций выглядит как продолжение, но мест у её строк нет, и
+     * раньше именно так в плейлист попадали чужие треки — каждый раз
+     * другие, отчего состав ещё и перемешивался.
      */
-    private fun ownRows(rows: List<JsonObject>): List<JsonObject> {
-        fun placed(row: JsonObject) =
-            row.findAll("playlistItemData").any { it["playlistSetVideoId"].asString() != null }
-        return if (rows.any(::placed)) rows.filter(::placed) else rows
+    fun playlistPage(root: JsonElement, owned: Boolean?): PlaylistPage {
+        val shelves = root.findAll("musicPlaylistShelfRenderer")
+        val rows = if (shelves.isNotEmpty()) shelves.flatMap { it.findAll(ROW) } else root.findAll(ROW)
+        val own = owned ?: rows.any(::placed)
+        val kept = if (own) rows.filter(::placed) else rows
+        return PlaylistPage(
+            songs = songsOf(kept),
+            owned = own,
+            continuation = if (owned == null) playlistContinuation(root) else continuation(root),
+        )
     }
+
+    data class PlaylistPage(val songs: List<SongItem>, val owned: Boolean, val continuation: String?)
+
+    /**
+     * Строка самого плейлиста: у трека своего плейлиста есть место в нём
+     * (playlistSetVideoId), у рекомендованной строки — нет. По разметке
+     * страницы отличать нельзя: YouTube её меняет.
+     */
+    private fun placed(row: JsonObject) =
+        row.findAll("playlistItemData").any { it["playlistSetVideoId"].asString() != null }
 
     /**
      * Продолжение именно списка плейлиста, а не полки рекомендаций под ним:

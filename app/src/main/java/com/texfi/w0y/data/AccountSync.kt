@@ -164,6 +164,7 @@ class AccountSync @Inject constructor(
         val pulled = remote.fetch(remoteId, maxPages = if (playlist.remoteEditable) EDITABLE_PAGES else SAVED_PAGES)
         if (pulled == null) return
         if (!pulled.exists) return
+        if (cleanOnce(playlist, remoteId, pulled)) return
         val base = playlist.syncBase?.lineSequence()?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
         val localIds = dao.playlistSongIds(playlist.id)
         val localSet = localIds.toSet()
@@ -197,6 +198,25 @@ class AccountSync @Inject constructor(
         val finalIds = dao.playlistSongIds(playlist.id).toSet()
         val newBase = (finalIds - failedAdds) + failedRemoves
         dao.markSynced(playlist.id, pulled.editable, newBase.joinToString("\n"), stamp, pulled.cover)
+    }
+
+    /**
+     * Разовая чистка после ошибки разбора: сверка брала вторую страницу по
+     * токену рекомендаций, и в плейлисты попадали чужие треки — каждый раз
+     * другие. Слиянием это не убрать: такой трек выглядит как добавленный
+     * здесь и ушёл бы в аккаунт. Поэтому состав один раз приводится ровно к
+     * аккаунту, в его порядке, — и только по полностью прочитанному списку.
+     */
+    private suspend fun cleanOnce(playlist: PlaylistEntity, remoteId: String, pulled: YtPlaylistSync.RemotePlaylist): Boolean {
+        if (!pulled.complete || remoteId in account.cleanedPlaylists()) return false
+        // Пустой ответ вместо непустого плейлиста — скорее сбой, чем правда.
+        if (pulled.songs.isEmpty() && dao.playlistSongIds(playlist.id).isNotEmpty()) return false
+        val stamp = now()
+        dao.replacePlaylistSongs(playlist.id, pulled.songs.map(SongEntity::from), stamp)
+        dao.markSynced(playlist.id, pulled.editable, pulled.songs.joinToString("\n") { it.id }, stamp, pulled.cover)
+        account.markPlaylistCleaned(remoteId)
+        Timber.d("Плейлист %s приведён к аккаунту: %d треков", remoteId, pulled.songs.size)
+        return true
     }
 
     /** Лайки — тот же способ, что и у плейлистов, по одному списку на весь аккаунт. */

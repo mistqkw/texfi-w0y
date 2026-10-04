@@ -54,6 +54,30 @@ class PlaylistOnlyOwnTracksTest {
         assertEquals(listOf("own00000001", "own00000002"), YtJson.playlistTracks(root, first = false).map { it.id })
     }
 
+    /**
+     * Так рекомендации и попадали в плейлист при сверке: у короткого своего
+     * плейлиста общий токен страницы ведёт в рекомендации, и их страница
+     * разбиралась как продолжение.
+     */
+    @Test
+    fun shortOwnPlaylistDoesNotFollowSuggestions() {
+        val first =
+            Json.parseToJsonElement(
+                """{"contents":{"sectionListRenderer":{"contents":[
+                  {"musicPlaylistShelfRenderer":{"contents":[${placedRow("own00000001")},${placedRow("own00000002")}]}},
+                  {"musicShelfRenderer":{"contents":[${row("sug00000001")}]}}
+                ],"continuations":[{"nextContinuationData":{"continuation":"SUGGEST_TOKEN"}}]}}}""",
+            )
+        val head = YtJson.playlistPage(first, owned = null)
+        assertEquals(listOf("own00000001", "own00000002"), head.songs.map { it.id })
+        assertEquals(true, head.owned)
+        assertNull(head.continuation)
+
+        // Даже если страницу рекомендаций всё-таки прочитали — своих строк в ней нет.
+        val suggestions = Json.parseToJsonElement("""{"continuationContents":{"musicShelfContinuation":{"contents":[${row("sug00000001")},${row("sug00000002")}]}}}""")
+        assertEquals(emptyList<String>(), YtJson.playlistPage(suggestions, owned = true).songs.map { it.id })
+    }
+
     @Test
     fun foreignPlaylistKeepsAllRows() {
         val root = Json.parseToJsonElement("""{"contents":[${row("abc00000001")},${row("abc00000002")}]}""")

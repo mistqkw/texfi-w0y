@@ -163,6 +163,20 @@ class AccountRepository @Inject constructor(
         context.accountStore.edit { it[Keys.LIKES_BASE] = ids.joinToString("\n") }
     }
 
+    /**
+     * Плейлисты, уже приведённые к составу аккаунта после ошибки разбора,
+     * из-за которой в них попадали рекомендации (до 0.0.2 beta-2).
+     */
+    suspend fun cleanedPlaylists(): Set<String> =
+        context.accountStore.data.first()[Keys.CLEANED]?.lineSequence()?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+
+    suspend fun markPlaylistCleaned(remoteId: String) {
+        context.accountStore.edit { prefs ->
+            val now = prefs[Keys.CLEANED]?.lineSequence()?.filter { it.isNotEmpty() }?.toSet() ?: emptySet()
+            prefs[Keys.CLEANED] = (now + remoteId).joinToString("\n")
+        }
+    }
+
     suspend fun history(): List<SongItem> = browseSongs("FEmusic_history")
 
     private suspend fun browseSongs(browseId: String): List<SongItem> = withContext(Dispatchers.IO) {
@@ -211,6 +225,7 @@ class AccountRepository @Inject constructor(
         val NAME = stringPreferencesKey("name")
         val AVATAR = stringPreferencesKey("avatar")
         val LIKES_BASE = stringPreferencesKey("likes_base")
+        val CLEANED = stringPreferencesKey("playlists_cleaned_v1")
     }
 
     private companion object {

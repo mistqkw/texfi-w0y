@@ -130,7 +130,14 @@ interface W0yDao {
     suspend fun createPlaylist(playlist: PlaylistEntity): Long
 
     @Query("DELETE FROM playlists WHERE id = :id")
-    suspend fun deletePlaylist(id: Long)
+    suspend fun deletePlaylistRow(id: Long)
+
+    /** Плейлист вместе с составом: без внешнего ключа строки состава иначе остаются сиротами. */
+    @Transaction
+    suspend fun deletePlaylist(id: Long) {
+        clearPlaylistSongs(id)
+        deletePlaylistRow(id)
+    }
 
     @Query("UPDATE playlists SET name = :name WHERE id = :id")
     suspend fun renamePlaylist(id: Long, name: String)
@@ -258,6 +265,16 @@ interface W0yDao {
 
     @Query("SELECT id, downloadError FROM songs WHERE downloadError IS NOT NULL")
     fun downloadErrors(): Flow<List<DownloadErrorRow>>
+
+    /** Состав плейлиста ровно как в аккаунте и в его порядке. */
+    @Transaction
+    suspend fun replacePlaylistSongs(playlistId: Long, songs: List<SongEntity>, now: Long) {
+        clearPlaylistSongs(playlistId)
+        songs.forEachIndexed { index, song ->
+            saveSongMeta(song)
+            addToPlaylist(PlaylistSongEntity(playlistId = playlistId, songId = song.id, position = index, addedAt = now))
+        }
+    }
 
     /** Порядок своего плейлиста целиком: позиции переписываются подряд. */
     @Transaction
